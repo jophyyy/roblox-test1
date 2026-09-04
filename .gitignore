@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+
+# Rojo temporary build outputs (optional)
+# *.rbxl

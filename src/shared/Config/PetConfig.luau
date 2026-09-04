@@ -1,0 +1,97 @@
+--!strict
+export type PetDef = {
+	id: string,
+	name: string,
+	rarity: "Common" | "Rare" | "Epic" | "Legendary" | "Mythic",
+	cashMultiplier: number,
+	gemMultiplier: number,
+	color: Color3,
+	meshType: "Sphere" | "Block" | "Diamond",
+}
+
+export type EggDef = {
+	id: string,
+	name: string,
+	cost: number,
+	currency: "Gems",
+	dropPool: { { petId: string, weight: number } },
+}
+
+local PetConfig = {
+	MAX_EQUIPPED = 3,
+
+	PETS = {
+		CrystalDoge = {
+			id = "CrystalDoge",
+			name = "Crystal Pup",
+			rarity = "Common",
+			cashMultiplier = 1.25,
+			gemMultiplier = 1.1,
+			color = Color3.fromRGB(240, 200, 80),
+			meshType = "Block",
+		},
+		SparkleKitty = {
+			id = "SparkleKitty",
+			name = "Sparkle Kitty",
+			rarity = "Common",
+			cashMultiplier = 1.35,
+			gemMultiplier = 1.15,
+			color = Color3.fromRGB(255, 182, 193),
+			meshType = "Block",
+		},
+		NeonBunny = {
+			id = "NeonBunny",
+			name = "Neon Bunny",
+			rarity = "Rare",
+			cashMultiplier = 1.6,
+			gemMultiplier = 1.3,
+			color = Color3.fromRGB(80, 240, 255),
+			meshType = "Sphere",
+		},
+		InfernoDragon = {
+			id = "InfernoDragon",
+			name = "Inferno Drake",
+			rarity = "Epic",
+			cashMultiplier = 2.2,
+			gemMultiplier = 1.75,
+			color = Color3.fromRGB(255, 69, 0),
+			meshType = "Diamond",
+		},
+		VoidPhoenix = {
+			id = "VoidPhoenix",
+			name = "Void Phoenix",
+			rarity = "Legendary",
+			cashMultiplier = 3.5,
+			gemMultiplier = 2.5,
+			color = Color3.fromRGB(186, 85, 211),
+			meshType = "Diamond",
+		},
+	} :: { [string]: PetDef },
+
+	EGGS = {
+		BasicEgg = {
+			id = "BasicEgg",
+			name = "Prism Egg",
+			cost = 100,
+			currency = "Gems",
+			dropPool = {
+				{ petId = "CrystalDoge", weight = 55 },
+				{ petId = "SparkleKitty", weight = 35 },
+				{ petId = "NeonBunny", weight = 10 },
+			},
+		},
+		CosmicEgg = {
+			id = "CosmicEgg",
+			name = "Cosmic Egg",
+			cost = 750,
+			currency = "Gems",
+			dropPool = {
+				{ petId = "NeonBunny", weight = 60 },
+				{ petId = "InfernoDragon", weight = 35 },
+				{ petId = "VoidPhoenix", weight = 5 },
+			},
+		},
+	} :: { [string]: EggDef },
+}
+
+return PetConfig

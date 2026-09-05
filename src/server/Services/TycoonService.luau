@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 
 local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
+local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 
@@ -279,6 +280,8 @@ function TycoonService.createPlot(plotId: number, plotCFrame: CFrame): Plot
 			local rebirthMult = 1
 			local petCashMult = 1
 			local petGemMult = 1
+			local backpackMult = 1.0
+			local backpackGems = 0
 
 			if player then
 				local pData = DataService.get(player)
@@ -288,6 +291,14 @@ function TycoonService.createPlot(plotId: number, plotCFrame: CFrame): Plot
 					end)
 					if okRebirth and rMult then
 						rebirthMult = rMult
+					end
+
+					if pData.EquippedBackpack then
+						local bpDef = ShopConfig.getBackpack(pData.EquippedBackpack)
+						if bpDef then
+							backpackMult = bpDef.multiplier
+							backpackGems = bpDef.bonusGems
+						end
 					end
 				end
 				local okPetCash, pCash = pcall(function()
@@ -304,8 +315,8 @@ function TycoonService.createPlot(plotId: number, plotCFrame: CFrame): Plot
 				end
 			end
 
-			local totalEarnedCash = math.max(1, math.floor(baseValue * upgraderMult * rebirthMult * petCashMult))
-			local bonusGemRoll = if (baseGems > 0 or math.random() <= 0.25) then math.max(1, baseGems) else 0
+			local totalEarnedCash = math.max(1, math.floor(baseValue * upgraderMult * rebirthMult * petCashMult * backpackMult))
+			local bonusGemRoll = if (baseGems > 0 or math.random() <= 0.25) then math.max(1, baseGems + backpackGems) else backpackGems
 			local totalEarnedGems = math.floor(bonusGemRoll * petGemMult)
 
 			-- Store into the Collector Bank!
@@ -781,11 +792,22 @@ function TycoonService.init()
 		local petCashMult = PetService.getCashMultiplier(player)
 		local petGemMult = PetService.getGemMultiplier(player)
 
-		local earnedCash = math.floor(TycoonConfig.MANUAL_CLICK_CASH * rebirthMult * petCashMult)
+		-- Shovel equipment bonus
+		local shovelCash = TycoonConfig.MANUAL_CLICK_CASH
+		local shovelGems = TycoonConfig.MANUAL_CLICK_GEMS
+		if data.EquippedShovel then
+			local shDef = ShopConfig.getShovel(data.EquippedShovel)
+			if shDef then
+				shovelCash = shDef.clickCash
+				shovelGems += shDef.clickGems
+			end
+		end
+
+		local earnedCash = math.floor(shovelCash * rebirthMult * petCashMult)
 		
 		-- 10% chance for a Lucky Gem Strike (+5 Gems)
 		local isCrit = math.random() <= 0.10
-		local baseGems = if isCrit then 5 else TycoonConfig.MANUAL_CLICK_GEMS
+		local baseGems = if isCrit then (shovelGems + 5) else shovelGems
 		local earnedGems = math.floor(baseGems * petGemMult)
 
 		DataService.addCash(player, earnedCash)

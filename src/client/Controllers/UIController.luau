@@ -9,6 +9,7 @@ local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
+local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local TycoonClient = require(script.Parent.TycoonClient)
 
 local player = Players.LocalPlayer
@@ -24,6 +25,8 @@ local gemsLabel: TextLabel
 local multiplierBadge: TextLabel
 
 local activeModal: Frame? = nil
+local activeDialogue: Frame? = nil
+local currentShopTab = "Shovel"
 
 -- Helper to create rounded styled frames
 local function createStyledFrame(parent: Instance, name: string, size: UDim2, pos: UDim2, bgColor: Color3): Frame
@@ -86,7 +89,22 @@ function UIController.updateHUD()
 	end
 end
 
+local function closeDialogue()
+	if activeDialogue then
+		local target = activeDialogue
+		local tween = TweenService:Create(target, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, 1, 240),
+		})
+		tween:Play()
+		tween.Completed:Connect(function()
+			target:Destroy()
+		end)
+		activeDialogue = nil
+	end
+end
+
 local function closeModal()
+	closeDialogue()
 	if activeModal then
 		local target = activeModal
 		local tween = TweenService:Create(target, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
@@ -447,6 +465,389 @@ local function openPetModal()
 	}):Play()
 end
 
+local function openEquipmentShopModal()
+	closeModal()
+	closeDialogue()
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		else
+			return
+		end
+	end
+
+	local modal = createStyledFrame(screenGui, "EquipmentShopModal", UDim2.new(0, 530, 0, 480), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 30))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 42)
+	title.BackgroundTransparency = 1
+	title.Text = "🛒 BARNABY'S EQUIPMENT SHOP 🛒"
+	title.TextColor3 = Color3.fromRGB(255, 215, 0)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 20
+	title.Parent = modal
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 20)
+	subTitle.Position = UDim2.new(0, 0, 0, 38)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Equip shovels for higher click rewards & backpacks for tycoon multipliers!"
+	subTitle.TextColor3 = Color3.fromRGB(180, 190, 210)
+	subTitle.Font = Enum.Font.GothamMedium
+	subTitle.TextSize = 12
+	subTitle.Parent = modal
+
+	-- Tab Switcher Bar
+	local tabBar = Instance.new("Frame")
+	tabBar.Size = UDim2.new(0.92, 0, 0, 40)
+	tabBar.Position = UDim2.new(0.04, 0, 0, 66)
+	tabBar.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+	tabBar.BorderSizePixel = 0
+	tabBar.Parent = modal
+
+	local tbCorner = Instance.new("UICorner")
+	tbCorner.CornerRadius = UDim.new(0, 8)
+	tbCorner.Parent = tabBar
+
+	local tabShovelBtn = Instance.new("TextButton")
+	tabShovelBtn.Size = UDim2.new(0.5, -4, 1, -6)
+	tabShovelBtn.Position = UDim2.new(0, 3, 0, 3)
+	tabShovelBtn.Text = "⛏️ Shovels (Tools)"
+	tabShovelBtn.Font = Enum.Font.GothamBold
+	tabShovelBtn.TextSize = 13
+	tabShovelBtn.BorderSizePixel = 0
+	tabShovelBtn.Parent = tabBar
+
+	local t1Corner = Instance.new("UICorner")
+	t1Corner.CornerRadius = UDim.new(0, 6)
+	t1Corner.Parent = tabShovelBtn
+
+	local tabPackBtn = Instance.new("TextButton")
+	tabPackBtn.Size = UDim2.new(0.5, -4, 1, -6)
+	tabPackBtn.Position = UDim2.new(0.5, 1, 0, 3)
+	tabPackBtn.Text = "🎒 Backpacks (Boosts)"
+	tabPackBtn.Font = Enum.Font.GothamBold
+	tabPackBtn.TextSize = 13
+	tabPackBtn.BorderSizePixel = 0
+	tabPackBtn.Parent = tabBar
+
+	local t2Corner = Instance.new("UICorner")
+	t2Corner.CornerRadius = UDim.new(0, 6)
+	t2Corner.Parent = tabPackBtn
+
+	-- Scrolling Items Container
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(0.92, 0, 0, 350)
+	scroll.Position = UDim2.new(0.04, 0, 0, 114)
+	scroll.BackgroundColor3 = Color3.fromRGB(24, 27, 36)
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 6
+	scroll.Parent = modal
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 8)
+	sCorner.Parent = scroll
+
+	local function refreshItems()
+		scroll:ClearAllChildren()
+		local uilist = Instance.new("UIListLayout")
+		uilist.Padding = UDim.new(0, 8)
+		uilist.Parent = scroll
+
+		-- Update Tab active styles
+		if currentShopTab == "Shovel" then
+			tabShovelBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 120)
+			tabShovelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			tabPackBtn.BackgroundColor3 = Color3.fromRGB(35, 39, 52)
+			tabPackBtn.TextColor3 = Color3.fromRGB(170, 175, 190)
+		else
+			tabPackBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 120)
+			tabPackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			tabShovelBtn.BackgroundColor3 = Color3.fromRGB(35, 39, 52)
+			tabShovelBtn.TextColor3 = Color3.fromRGB(170, 175, 190)
+		end
+
+		local items = if currentShopTab == "Shovel" then ShopConfig.SHOVELS else ShopConfig.BACKPACKS
+		local ownedMap = if currentShopTab == "Shovel" then (cachedData.OwnedShovels or {}) else (cachedData.OwnedBackpacks or {})
+		local equippedId = if currentShopTab == "Shovel" then cachedData.EquippedShovel else cachedData.EquippedBackpack
+
+		for _, item in ipairs(items) do
+			local isOwned = ownedMap[item.id] == true
+			local isEquipped = (equippedId == item.id)
+
+			local card = Instance.new("Frame")
+			card.Size = UDim2.new(0.96, 0, 0, 66)
+			card.BackgroundColor3 = if isEquipped then Color3.fromRGB(36, 55, 46) else Color3.fromRGB(32, 35, 46)
+			card.BorderSizePixel = 0
+			card.Parent = scroll
+
+			local cCorner = Instance.new("UICorner")
+			cCorner.CornerRadius = UDim.new(0, 8)
+			cCorner.Parent = card
+
+			local cStroke = Instance.new("UIStroke")
+			cStroke.Color = if isEquipped then Color3.fromRGB(0, 230, 118) else Color3.fromRGB(55, 62, 78)
+			cStroke.Thickness = if isEquipped then 1.5 else 1
+			cStroke.Parent = card
+
+			-- Icon box
+			local iconLabel = Instance.new("TextLabel")
+			iconLabel.Size = UDim2.new(0, 48, 1, 0)
+			iconLabel.BackgroundTransparency = 1
+			iconLabel.Text = item.icon
+			iconLabel.TextSize = 26
+			iconLabel.Parent = card
+
+			-- Name Label
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Size = UDim2.new(0.55, 0, 0, 24)
+			nameLabel.Position = UDim2.new(0, 52, 0, 8)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = item.name
+			nameLabel.TextColor3 = item.color
+			nameLabel.Font = Enum.Font.GothamBold
+			nameLabel.TextSize = 14
+			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+			nameLabel.Parent = card
+
+			-- Stat perks line
+			local perkLabel = Instance.new("TextLabel")
+			perkLabel.Size = UDim2.new(0.55, 0, 0, 20)
+			perkLabel.Position = UDim2.new(0, 52, 0, 34)
+			perkLabel.BackgroundTransparency = 1
+			perkLabel.TextColor3 = Color3.fromRGB(200, 210, 225)
+			perkLabel.Font = Enum.Font.GothamMedium
+			perkLabel.TextSize = 12
+			perkLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+			if item.category == "Shovel" then
+				local sh = item :: ShopConfig.ShovelDef
+				local gemBonusText = if sh.clickGems > 0 then string.format(" • +%d 💎/Click", sh.clickGems) else ""
+				perkLabel.Text = string.format("+%s Cash/Click%s", FormatNumber.formatCompact(sh.clickCash), gemBonusText)
+			else
+				local bp = item :: ShopConfig.BackpackDef
+				local gemBonusText = if bp.bonusGems > 0 then string.format(" • +%d 💎/Ore", bp.bonusGems) else ""
+				perkLabel.Text = string.format("+%.0f%% Tycoon Cash%s", (bp.multiplier - 1) * 100, gemBonusText)
+			end
+			perkLabel.Parent = card
+
+			-- Action Button
+			local actionBtn = Instance.new("TextButton")
+			actionBtn.Size = UDim2.new(0.32, 0, 0, 42)
+			actionBtn.Position = UDim2.new(0.65, 0, 0.5, -21)
+			actionBtn.Font = Enum.Font.GothamBold
+			actionBtn.TextSize = 12
+			actionBtn.BorderSizePixel = 0
+			actionBtn.Parent = card
+
+			local aCorner = Instance.new("UICorner")
+			aCorner.CornerRadius = UDim.new(0, 8)
+			aCorner.Parent = actionBtn
+
+			if isEquipped then
+				actionBtn.BackgroundColor3 = Color3.fromRGB(60, 65, 75)
+				actionBtn.TextColor3 = Color3.fromRGB(160, 165, 175)
+				actionBtn.Text = "EQUIPPED"
+			elseif isOwned then
+				actionBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 230)
+				actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				actionBtn.Text = "EQUIP"
+				actionBtn.MouseButton1Click:Connect(function()
+					local equipFn = Remotes.getFunction("EquipShopItem")
+					local ok, success, msg = pcall(function()
+						return equipFn:InvokeServer(item.category, item.id)
+					end)
+					if ok and success then
+						if item.category == "Shovel" then
+							cachedData.EquippedShovel = item.id
+						else
+							cachedData.EquippedBackpack = item.id
+						end
+						showFloatingPopup("Equipped " .. item.name .. "!", Color3.fromRGB(0, 230, 118))
+						refreshItems()
+					end
+				end)
+			else
+				local canAfford = (cachedData.Cash or 0) >= item.cost
+				actionBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 180, 100) else Color3.fromRGB(80, 50, 55)
+				actionBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(200, 150, 150)
+				actionBtn.Text = if canAfford then ("$" .. FormatNumber.formatCompact(item.cost) .. " BUY") else ("$" .. FormatNumber.formatCompact(item.cost))
+
+				actionBtn.MouseButton1Click:Connect(function()
+					local buyFn = Remotes.getFunction("BuyShopItem")
+					local ok, success, msg = pcall(function()
+						return buyFn:InvokeServer(item.category, item.id)
+					end)
+					if ok and success then
+						showFloatingPopup("Bought " .. item.name .. "!", Color3.fromRGB(255, 215, 0))
+						local getFn = Remotes.getFunction("GetPlayerData")
+						local okData, freshData = pcall(function()
+							return getFn:InvokeServer()
+						end)
+						if okData and freshData then
+							cachedData = freshData
+						end
+						UIController.updateHUD()
+						refreshItems()
+					else
+						showFloatingPopup(tostring(msg or "Cannot purchase"), Color3.fromRGB(255, 90, 80))
+					end
+				end)
+			end
+		end
+
+		scroll.CanvasSize = UDim2.new(0, 0, 0, #items * 76)
+	end
+
+	tabShovelBtn.MouseButton1Click:Connect(function()
+		currentShopTab = "Shovel"
+		refreshItems()
+	end)
+
+	tabPackBtn.MouseButton1Click:Connect(function()
+		currentShopTab = "Backpack"
+		refreshItems()
+	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -42, 0, 8)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	refreshItems()
+
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
+local function openDialogueModal(npcName: string)
+	closeModal()
+	closeDialogue()
+
+	local dlg = createStyledFrame(screenGui, "DialogueBox", UDim2.new(0, 620, 0, 190), UDim2.new(0.5, 0, 1, 240), Color3.fromRGB(22, 25, 34))
+	dlg.AnchorPoint = Vector2.new(0.5, 1)
+	activeDialogue = dlg
+
+	-- Name Tag Banner
+	local nameBadge = Instance.new("Frame")
+	nameBadge.Size = UDim2.new(0, 240, 0, 32)
+	nameBadge.Position = UDim2.new(0, 20, 0, -16)
+	nameBadge.BackgroundColor3 = Color3.fromRGB(35, 42, 60)
+	nameBadge.BorderSizePixel = 0
+	nameBadge.Parent = dlg
+
+	local nbCorner = Instance.new("UICorner")
+	nbCorner.CornerRadius = UDim.new(0, 8)
+	nbCorner.Parent = nameBadge
+
+	local nbStroke = Instance.new("UIStroke")
+	nbStroke.Color = Color3.fromRGB(255, 215, 0)
+	nbStroke.Thickness = 1.5
+	nbStroke.Parent = nameBadge
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 1, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = "🛒 Barnaby [Equipment Merchant]"
+	nameLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 13
+	nameLabel.Parent = nameBadge
+
+	-- NPC Dialogue Speech Label
+	local speechLabel = Instance.new("TextLabel")
+	speechLabel.Size = UDim2.new(1, -40, 0, 60)
+	speechLabel.Position = UDim2.new(0, 20, 0, 24)
+	speechLabel.BackgroundTransparency = 1
+	speechLabel.Text = "“Greetings, traveler! The ores beneath these mountains are rich, but you'll need the right gear to harvest them quickly. What can I do for you?”"
+	speechLabel.TextColor3 = Color3.fromRGB(235, 240, 250)
+	speechLabel.Font = Enum.Font.GothamMedium
+	speechLabel.TextSize = 14
+	speechLabel.TextWrapped = true
+	speechLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speechLabel.Parent = dlg
+
+	-- Choice Buttons Container
+	local choicesRow = Instance.new("Frame")
+	choicesRow.Size = UDim2.new(1, -40, 0, 60)
+	choicesRow.Position = UDim2.new(0, 20, 0, 95)
+	choicesRow.BackgroundTransparency = 1
+	choicesRow.Parent = dlg
+
+	local choiceList = Instance.new("UIListLayout")
+	choiceList.FillDirection = Enum.FillDirection.Horizontal
+	choiceList.Padding = UDim.new(0, 12)
+	choiceList.Parent = choicesRow
+
+	local function makeChoice(text: string, color: Color3, onClick: () -> ()): TextButton
+		local cBtn = Instance.new("TextButton")
+		cBtn.Size = UDim2.new(0.31, 0, 0, 52)
+		cBtn.BackgroundColor3 = color
+		cBtn.Text = text
+		cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		cBtn.Font = Enum.Font.GothamBold
+		cBtn.TextSize = 13
+		cBtn.TextWrapped = true
+		cBtn.BorderSizePixel = 0
+		cBtn.Parent = choicesRow
+
+		local cCorner = Instance.new("UICorner")
+		cCorner.CornerRadius = UDim.new(0, 8)
+		cCorner.Parent = cBtn
+
+		local cStroke = Instance.new("UIStroke")
+		cStroke.Color = Color3.fromRGB(255, 255, 255)
+		cStroke.Transparency = 0.8
+		cStroke.Parent = cBtn
+
+		cBtn.MouseButton1Click:Connect(onClick)
+		return cBtn
+	end
+
+	-- Choice 1: What do you have for sale?
+	makeChoice("🛒 What do you have for sale?", Color3.fromRGB(0, 170, 120), function()
+		closeDialogue()
+		openEquipmentShopModal()
+	end)
+
+	-- Choice 2: Any advice for the mines?
+	makeChoice("📜 Tell me about this place.", Color3.fromRGB(55, 75, 130), function()
+		speechLabel.Text = "“Build out your tycoon droppers and upgrade fields! Upgraded ores yield heaps of cash. And buy a sturdy backpack from me to multiply every batch!”"
+	end)
+
+	-- Choice 3: Leave
+	makeChoice("✕ Just browsing. [Leave]", Color3.fromRGB(75, 80, 90), function()
+		closeDialogue()
+	end)
+
+	-- Animate up from bottom
+	TweenService:Create(dlg, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 1, -20),
+	}):Play()
+end
+
 function UIController.buildHUD()
 	screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "TycoonHUD"
@@ -524,8 +925,8 @@ function UIController.buildHUD()
 	-- SIDE MENU BUTTONS
 	local sideMenu = Instance.new("Frame")
 	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 148, 0, 290)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, -145)
+	sideMenu.Size = UDim2.new(0, 148, 0, 350)
+	sideMenu.Position = UDim2.new(0, 16, 0.5, -175)
 	sideMenu.BackgroundTransparency = 1
 	sideMenu.Parent = screenGui
 
@@ -558,6 +959,7 @@ function UIController.buildHUD()
 		return btn
 	end
 
+	createMenuButton("ShopBtn", "🛒 Shop", Color3.fromRGB(220, 100, 30), openEquipmentShopModal)
 	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
 
@@ -602,6 +1004,11 @@ function UIController.buildHUD()
 	end)
 
 	-- Listen for server events
+	local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
+	dialogueEvent.OnClientEvent:Connect(function(npcName: string?)
+		openDialogueModal(npcName or "Barnaby")
+	end)
+
 	local syncEvent = Remotes.getEvent("SyncPlayerData")
 	syncEvent.OnClientEvent:Connect(function(data)
 		cachedData = data

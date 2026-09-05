@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
+local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 
 local DATA_STORE_NAME = "TycoonSave_v1"
@@ -17,6 +18,10 @@ export type PlayerData = {
 	UnlockedItems: { [string]: boolean },
 	OwnedPets: { [string]: number }, -- petId -> count
 	EquippedPets: { [string]: boolean },
+	OwnedShovels: { [string]: boolean },
+	EquippedShovel: string?,
+	OwnedBackpacks: { [string]: boolean },
+	EquippedBackpack: string?,
 	LastSaved: number,
 }
 
@@ -44,6 +49,10 @@ local function getDefaultData(): PlayerData
 		UnlockedItems = {},
 		OwnedPets = {},
 		EquippedPets = {},
+		OwnedShovels = { ["shovel_rusty"] = true },
+		EquippedShovel = "shovel_rusty",
+		OwnedBackpacks = { ["pack_canvas"] = true },
+		EquippedBackpack = "pack_canvas",
 		LastSaved = os.time(),
 	}
 end
@@ -159,10 +168,66 @@ function DataService.load(player: Player)
 	data.UnlockedItems = data.UnlockedItems or {}
 	data.OwnedPets = data.OwnedPets or {}
 	data.EquippedPets = data.EquippedPets or {}
+	data.OwnedShovels = data.OwnedShovels or { ["shovel_rusty"] = true }
+	data.EquippedShovel = data.EquippedShovel or "shovel_rusty"
+	data.OwnedBackpacks = data.OwnedBackpacks or { ["pack_canvas"] = true }
+	data.EquippedBackpack = data.EquippedBackpack or "pack_canvas"
 
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
 	syncToClient(player, data)
+end
+
+function DataService.buyShopItem(player: Player, category: string, itemId: string): (boolean, string)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	if category == "Shovel" then
+		local shovelDef = ShopConfig.getShovel(itemId)
+		if not shovelDef then return false, "Item not found" end
+		if data.OwnedShovels[itemId] then return false, "Already owned!" end
+		if data.Cash < shovelDef.cost then return false, "Not enough Cash!" end
+
+		DataService.addCash(player, -shovelDef.cost)
+		data.OwnedShovels[itemId] = true
+		data.EquippedShovel = itemId
+		syncToClient(player, data)
+		print(string.format("🛒 [Shop] %s purchased Shovel: %s", player.Name, shovelDef.name))
+		return true, "Successfully purchased " .. shovelDef.name .. "!"
+	elseif category == "Backpack" then
+		local packDef = ShopConfig.getBackpack(itemId)
+		if not packDef then return false, "Item not found" end
+		if data.OwnedBackpacks[itemId] then return false, "Already owned!" end
+		if data.Cash < packDef.cost then return false, "Not enough Cash!" end
+
+		DataService.addCash(player, -packDef.cost)
+		data.OwnedBackpacks[itemId] = true
+		data.EquippedBackpack = itemId
+		syncToClient(player, data)
+		print(string.format("🛒 [Shop] %s purchased Backpack: %s", player.Name, packDef.name))
+		return true, "Successfully purchased " .. packDef.name .. "!"
+	end
+
+	return false, "Unknown category"
+end
+
+function DataService.equipShopItem(player: Player, category: string, itemId: string): (boolean, string)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	if category == "Shovel" then
+		if not data.OwnedShovels[itemId] then return false, "Item not owned!" end
+		data.EquippedShovel = itemId
+		syncToClient(player, data)
+		return true, "Equipped Shovel!"
+	elseif category == "Backpack" then
+		if not data.OwnedBackpacks[itemId] then return false, "Item not owned!" end
+		data.EquippedBackpack = itemId
+		syncToClient(player, data)
+		return true, "Equipped Backpack!"
+	end
+
+	return false, "Unknown category"
 end
 
 function DataService.init()
@@ -191,6 +256,17 @@ function DataService.init()
 	local getDataFn = Remotes.getFunction("GetPlayerData")
 	getDataFn.OnServerInvoke = function(player: Player)
 		return playerDataCache[player] or getDefaultData()
+	end
+
+	-- Shop item purchase and equip remotes
+	local buyFn = Remotes.getFunction("BuyShopItem")
+	buyFn.OnServerInvoke = function(player: Player, category: string, itemId: string)
+		return DataService.buyShopItem(player, category, itemId)
+	end
+
+	local equipFn = Remotes.getFunction("EquipShopItem")
+	equipFn.OnServerInvoke = function(player: Player, category: string, itemId: string)
+		return DataService.equipShopItem(player, category, itemId)
 	end
 
 	-- Periodic auto-save loop

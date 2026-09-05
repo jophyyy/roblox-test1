@@ -10,6 +10,7 @@ local REGISTERED_EVENTS = {
 	"CrystalCollected",
 	"ItemPurchased",
 	"PlayerRebirthed",
+	"OpenShopDialogue",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -20,6 +21,8 @@ local REGISTERED_FUNCTIONS = {
 	"HatchEgg",
 	"ToggleEquipPet",
 	"DevAddCash",
+	"BuyShopItem",
+	"EquipShopItem",
 }
 
 local function getRemotesFolder(): Folder

@@ -780,6 +780,136 @@ function MapService.setupAtmosphere()
 	end)
 end
 
+-- 9. Merchant Market Stall & Interactive Shopkeeper NPC ("Barnaby")
+function MapService.buildShopStall(folder: Folder)
+	local stallModel = Instance.new("Model")
+	stallModel.Name = "MerchantStall"
+
+	local stallCF = CFrame.new(-13.5, 0.4, 0) * CFrame.Angles(0, math.rad(90), 0)
+
+	local woodDark = Color3.fromRGB(85, 55, 35)
+	local woodLight = Color3.fromRGB(115, 75, 45)
+	local clothRed = Color3.fromRGB(180, 45, 45)
+	local clothCream = Color3.fromRGB(235, 225, 200)
+
+	-- Counter Table (Front desk)
+	createStudPart(stallModel, "CounterBase", Vector3.new(8, 2.6, 2.4), stallCF * CFrame.new(0, 1.3, 0), woodDark)
+	createStudPart(stallModel, "CounterTop", Vector3.new(9, 0.6, 3.2), stallCF * CFrame.new(0, 2.8, 0), woodLight)
+
+	-- 4 Canopy Support Corner Posts
+	local postOffsets = {
+		Vector3.new(-3.8, 0, -2.4),
+		Vector3.new(3.8, 0, -2.4),
+		Vector3.new(-3.8, 0, 1.2),
+		Vector3.new(3.8, 0, 1.2),
+	}
+	for _, pOff in ipairs(postOffsets) do
+		createStudPart(stallModel, "Post", Vector3.new(0.8, 8, 0.8), stallCF * CFrame.new(pOff.X, 4.4, pOff.Z), woodDark)
+	end
+
+	-- Overhead Striped Canopy Roof (Alternating Red and Cream Slats with Studs)
+	for s = -3, 3 do
+		local slatCol = if s % 2 == 0 then clothRed else clothCream
+		createStudPart(stallModel, "CanopySlat", Vector3.new(1.4, 0.5, 5.0), stallCF * CFrame.new(s * 1.35, 8.4, -0.6) * CFrame.Angles(math.rad(-8), 0, 0), slatCol)
+	end
+
+	-- Back display shelf
+	createStudPart(stallModel, "BackShelf", Vector3.new(8, 4.5, 1.0), stallCF * CFrame.new(0, 2.25, -2.6), woodDark)
+
+	-- Display props on counter
+	local spadeProp = createStudPart(stallModel, "DisplaySpade", Vector3.new(0.5, 1.6, 0.5), stallCF * CFrame.new(-2.6, 3.8, 0) * CFrame.Angles(math.rad(25), 0, math.rad(15)), Color3.fromRGB(0, 210, 255))
+	spadeProp.Material = Enum.Material.Neon
+	local packProp = createStudPart(stallModel, "DisplayPack", Vector3.new(1.2, 1.4, 0.9), stallCF * CFrame.new(2.6, 3.7, 0), Color3.fromRGB(150, 90, 50))
+	packProp.Material = Enum.Material.SmoothPlastic
+
+	-- Hanging Lantern under canopy
+	local lantern = createStudPart(stallModel, "StallLantern", Vector3.new(1.0, 1.2, 1.0), stallCF * CFrame.new(0, 7.2, 0.8), Color3.fromRGB(255, 200, 100))
+	lantern.Material = Enum.Material.Neon
+
+	local stallLight = Instance.new("PointLight")
+	stallLight.Color = Color3.fromRGB(255, 190, 90)
+	stallLight.Brightness = 2.0
+	stallLight.Range = 20
+	stallLight.Parent = lantern
+
+	-- SHOPKEEPER NPC ("Barnaby the Merchant")
+	local npcModel = Instance.new("Model")
+	npcModel.Name = "BarnabyMerchant"
+
+	local npcCF = stallCF * CFrame.new(0, 1.2, -1.2) -- Standing behind the counter
+
+	-- Torso (Interactive root part for ProximityPrompt)
+	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 2.0, 0), Color3.fromRGB(45, 70, 115))
+
+	-- Legs
+	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 0.0, 0), Color3.fromRGB(38, 42, 50))
+	createStudPart(npcModel, "RightLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(0.5, 0.0, 0), Color3.fromRGB(38, 42, 50))
+
+	-- Head & Face
+	local head = createStudPart(npcModel, "Head", Vector3.new(1.25, 1.25, 1.25), npcCF * CFrame.new(0, 3.4, 0), Color3.fromRGB(255, 215, 175), true, Enum.SurfaceType.Smooth)
+	local face = Instance.new("Decal")
+	face.Name = "Face"
+	face.Texture = "rbxasset://textures/face.png"
+	face.Face = Enum.NormalId.Front
+	face.Parent = head
+
+	-- Merchant Fedora / Wide-Brimmed Hat
+	createStudPart(npcModel, "HatBrim", Vector3.new(2.4, 0.35, 2.4), npcCF * CFrame.new(0, 4.0, 0), Color3.fromRGB(80, 45, 25))
+	createStudPart(npcModel, "HatCrown", Vector3.new(1.5, 0.75, 1.5), npcCF * CFrame.new(0, 4.4, 0), Color3.fromRGB(95, 55, 30))
+
+	-- Arms (Resting on counter)
+	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(45, 70, 115))
+	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(45, 70, 115))
+
+	-- Overhead Title Billboard
+	local titleGui = Instance.new("BillboardGui")
+	titleGui.Name = "MerchantTitleGui"
+	titleGui.Size = UDim2.new(0, 200, 0, 50)
+	titleGui.StudsOffset = Vector3.new(0, 3.2, 0)
+	titleGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "🛒 BARNABY 🛒"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 16
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = titleGui
+
+	local subtitleLabel = Instance.new("TextLabel")
+	subtitleLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	subtitleLabel.Position = UDim2.new(0, 0, 0.55, 0)
+	subtitleLabel.BackgroundTransparency = 1
+	subtitleLabel.Text = "[Equipment Merchant]"
+	subtitleLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
+	subtitleLabel.Font = Enum.Font.GothamBold
+	subtitleLabel.TextSize = 13
+	subtitleLabel.TextStrokeTransparency = 0.2
+	subtitleLabel.Parent = titleGui
+	titleGui.Parent = head
+
+	-- PROXIMITY PROMPT: "Press E to Talk"
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "TalkPrompt"
+	prompt.ActionText = "Talk"
+	prompt.ObjectText = "Barnaby (Merchant)"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0.2
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = torso
+
+	prompt.Triggered:Connect(function(player)
+		local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
+		dialogueEvent:FireClient(player, "Barnaby")
+	end)
+
+	npcModel.Parent = stallModel
+	stallModel.Parent = folder
+end
+
 -- Service Initialization
 function MapService.init()
 	-- Clean up existing map container if it exists
@@ -798,6 +928,7 @@ function MapService.init()
 	MapService.buildBase(mapFolder)
 	MapService.buildMountains(mapFolder)
 	MapService.buildPlazaAndPaths(mapFolder)
+	MapService.buildShopStall(mapFolder)
 	MapService.buildDungeonRuins(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)

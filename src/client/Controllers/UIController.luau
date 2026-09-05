@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
@@ -92,14 +93,14 @@ end
 local function closeDialogue()
 	if activeDialogue then
 		local target = activeDialogue
-		local tween = TweenService:Create(target, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		activeDialogue = nil
+		local tween = TweenService:Create(target, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0.5, 0, 1, 240),
 		})
 		tween:Play()
 		tween.Completed:Connect(function()
 			target:Destroy()
 		end)
-		activeDialogue = nil
 	end
 end
 
@@ -743,12 +744,38 @@ local function openEquipmentShopModal()
 end
 
 local function openDialogueModal(npcName: string)
+	print("🗣️ [UIController] openDialogueModal initiated for " .. tostring(npcName or "Barnaby"))
 	closeModal()
 	closeDialogue()
 
-	local dlg = createStyledFrame(screenGui, "DialogueBox", UDim2.new(0, 620, 0, 190), UDim2.new(0.5, 0, 1, 240), Color3.fromRGB(22, 25, 34))
+	if not screenGui then
+		warn("[UIController] Cannot open dialogue: screenGui is nil!")
+		return
+	end
+
+	local dlg = createStyledFrame(screenGui, "DialogueBox", UDim2.new(0, 620, 0, 190), UDim2.new(0.5, 0, 1, 40), Color3.fromRGB(22, 25, 34))
 	dlg.AnchorPoint = Vector2.new(0.5, 1)
+	dlg.ZIndex = 30
 	activeDialogue = dlg
+
+	-- Corner Close "✕" Button
+	local closeDlgBtn = Instance.new("TextButton")
+	closeDlgBtn.Size = UDim2.new(0, 28, 0, 28)
+	closeDlgBtn.Position = UDim2.new(1, -36, 0, 8)
+	closeDlgBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+	closeDlgBtn.Text = "✕"
+	closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeDlgBtn.Font = Enum.Font.GothamBold
+	closeDlgBtn.TextSize = 14
+	closeDlgBtn.BorderSizePixel = 0
+	closeDlgBtn.ZIndex = 35
+	closeDlgBtn.Parent = dlg
+
+	local cdCorner = Instance.new("UICorner")
+	cdCorner.CornerRadius = UDim.new(1, 0)
+	cdCorner.Parent = closeDlgBtn
+
+	closeDlgBtn.MouseButton1Click:Connect(closeDialogue)
 
 	-- Name Tag Banner
 	local nameBadge = Instance.new("Frame")
@@ -756,6 +783,7 @@ local function openDialogueModal(npcName: string)
 	nameBadge.Position = UDim2.new(0, 20, 0, -16)
 	nameBadge.BackgroundColor3 = Color3.fromRGB(35, 42, 60)
 	nameBadge.BorderSizePixel = 0
+	nameBadge.ZIndex = 32
 	nameBadge.Parent = dlg
 
 	local nbCorner = Instance.new("UICorner")
@@ -774,11 +802,12 @@ local function openDialogueModal(npcName: string)
 	nameLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextSize = 13
+	nameLabel.ZIndex = 33
 	nameLabel.Parent = nameBadge
 
 	-- NPC Dialogue Speech Label
 	local speechLabel = Instance.new("TextLabel")
-	speechLabel.Size = UDim2.new(1, -40, 0, 60)
+	speechLabel.Size = UDim2.new(1, -70, 0, 60)
 	speechLabel.Position = UDim2.new(0, 20, 0, 24)
 	speechLabel.BackgroundTransparency = 1
 	speechLabel.Text = "“Greetings, traveler! The ores beneath these mountains are rich, but you'll need the right gear to harvest them quickly. What can I do for you?”"
@@ -787,6 +816,7 @@ local function openDialogueModal(npcName: string)
 	speechLabel.TextSize = 14
 	speechLabel.TextWrapped = true
 	speechLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speechLabel.ZIndex = 32
 	speechLabel.Parent = dlg
 
 	-- Choice Buttons Container
@@ -794,6 +824,7 @@ local function openDialogueModal(npcName: string)
 	choicesRow.Size = UDim2.new(1, -40, 0, 60)
 	choicesRow.Position = UDim2.new(0, 20, 0, 95)
 	choicesRow.BackgroundTransparency = 1
+	choicesRow.ZIndex = 32
 	choicesRow.Parent = dlg
 
 	local choiceList = Instance.new("UIListLayout")
@@ -811,6 +842,7 @@ local function openDialogueModal(npcName: string)
 		cBtn.TextSize = 13
 		cBtn.TextWrapped = true
 		cBtn.BorderSizePixel = 0
+		cBtn.ZIndex = 33
 		cBtn.Parent = choicesRow
 
 		local cCorner = Instance.new("UICorner")
@@ -842,9 +874,9 @@ local function openDialogueModal(npcName: string)
 		closeDialogue()
 	end)
 
-	-- Animate up from bottom
-	TweenService:Create(dlg, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 1, -20),
+	-- Animate up from bottom smoothly
+	TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 1, -24),
 	}):Play()
 end
 
@@ -1003,9 +1035,20 @@ function UIController.buildHUD()
 		end
 	end)
 
+	-- Instantaneous local client prompt response when pressing E near Barnaby
+	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)
+		if who == player or who == nil then
+			if prompt.Name == "TalkPrompt" or prompt.ActionText == "Talk" or string.find(prompt.ObjectText, "Barnaby") then
+				print("🗣️ [UIController] ProximityPrompt triggered locally on client for Barnaby!")
+				openDialogueModal("Barnaby")
+			end
+		end
+	end)
+
 	-- Listen for server events
 	local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
 	dialogueEvent.OnClientEvent:Connect(function(npcName: string?)
+		print("🗣️ [UIController] OpenShopDialogue received from server for " .. tostring(npcName))
 		openDialogueModal(npcName or "Barnaby")
 	end)
 

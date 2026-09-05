@@ -2,7 +2,9 @@
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local DataService = require(script.Parent.DataService)
 
 local MapService = {}
@@ -890,18 +892,33 @@ function MapService.buildShopStall(folder: Folder)
 	subtitleLabel.Parent = titleGui
 	titleGui.Parent = head
 
+	-- INVISIBLE INTERACTION PART & PROXIMITY PROMPT
+	-- Placed right at the front counter facing the player plaza for 100% reliable prompt detection
+	local interactionPart = Instance.new("Part")
+	interactionPart.Name = "BarnabyInteractionPart"
+	interactionPart.Size = Vector3.new(9, 5, 4)
+	interactionPart.CFrame = stallCF * CFrame.new(0, 2.8, 1.2)
+	interactionPart.Transparency = 1
+	interactionPart.CanCollide = false
+	interactionPart.CanTouch = true
+	interactionPart.CanQuery = true
+	interactionPart.Anchored = true
+	interactionPart.Parent = stallModel
+
 	-- PROXIMITY PROMPT: "Press E to Talk"
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "TalkPrompt"
 	prompt.ActionText = "Talk"
 	prompt.ObjectText = "Barnaby (Merchant)"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0.2
-	prompt.MaxActivationDistance = 14
+	prompt.HoldDuration = 0 -- Instantaneous on tap / press
+	prompt.MaxActivationDistance = 16
 	prompt.RequiresLineOfSight = false
-	prompt.Parent = torso
+	prompt.ClickablePrompt = true
+	prompt.Parent = interactionPart
 
 	prompt.Triggered:Connect(function(player)
+		print("🗣️ [MapService] Server ProximityPrompt triggered by " .. player.Name)
 		local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
 		dialogueEvent:FireClient(player, "Barnaby")
 	end)

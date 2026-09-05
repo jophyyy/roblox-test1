@@ -81,19 +81,19 @@
     "Lighting": {
       "$properties": {
         "Ambient": [
-          0.1,
-          0.08,
-          0.14
+          0.45,
+          0.47,
+          0.53
         ],
         "OutdoorAmbient": [
-          0.16,
-          0.15,
-          0.22
+          0.53,
+          0.55,
+          0.61
         ],
-        "Brightness": 1.4,
+        "Brightness": 2.4,
         "GlobalShadows": true,
         "Technology": "ShadowMap",
-        "TimeOfDay": "21:30:00"
+        "TimeOfDay": "17:30:00"
       }
     },
     "SoundService": {

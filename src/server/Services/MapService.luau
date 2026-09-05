@@ -111,8 +111,8 @@ local function createDungeonBrazier(parent: Instance, name: string, cf: CFrame):
 	-- Dynamic Torch Light casting shadows
 	local light = Instance.new("PointLight")
 	light.Color = fireGlow
-	light.Brightness = 1.6
-	light.Range = 28
+	light.Brightness = 2.2
+	light.Range = 32
 	light.Shadows = true
 	light.Parent = coals
 
@@ -715,16 +715,16 @@ function MapService.buildDungeonRuins(folder: Folder)
 	gateModel.Parent = ruinsFolder
 end
 
--- 8. Atmospheric Lighting & Post-Processing Setup (Old Roguelike Mood)
+-- 8. Atmospheric Lighting & Post-Processing Setup (High Visibility Roguelike Mist & Dusk)
 function MapService.setupAtmosphere()
-	-- Configure Lighting for Old Roguelike Mood
-	Lighting.ClockTime = 21.5 -- Deep twilight / starry dungeon night
-	Lighting.Brightness = 1.3
-	Lighting.Ambient = Color3.fromRGB(24, 20, 34) -- Shadowy indigo tint
-	Lighting.OutdoorAmbient = Color3.fromRGB(36, 32, 48)
-	Lighting.FogStart = 40
-	Lighting.FogEnd = 240
-	Lighting.FogColor = Color3.fromRGB(18, 16, 28) -- Creeping dungeon mist
+	-- Configure Lighting for Clear, High-Visibility Atmospheric Roguelike Mood
+	Lighting.ClockTime = 17.5 -- Atmospheric late afternoon / dusk golden-slate hour
+	Lighting.Brightness = 2.4 -- Crisp, bright primary sunlight
+	Lighting.Ambient = Color3.fromRGB(115, 120, 135) -- Soft cool slate-blue shadows (no pitch-black voids!)
+	Lighting.OutdoorAmbient = Color3.fromRGB(135, 140, 155) -- Bright, clearly visible terrain and paths
+	Lighting.FogStart = 120 -- High clarity across the central plaza, paths, and tycoon plots
+	Lighting.FogEnd = 420 -- Soft pale silver-slate mist gently blanketing the distant mountain ridges
+	Lighting.FogColor = Color3.fromRGB(155, 168, 185) -- Pale silver-slate mountain mist
 	Lighting.GlobalShadows = true
 
 	-- Clear out existing post-processing and sky instances
@@ -734,49 +734,37 @@ function MapService.setupAtmosphere()
 		end
 	end
 
-	-- 1. Roguelike Mystical Atmosphere
+	-- 1. Roguelike Mystical Atmosphere (Translucent mist with soft horizon scattering)
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.38
-	atmosphere.Offset = 0.25
-	atmosphere.Color = Color3.fromRGB(48, 42, 64)
-	atmosphere.Decay = Color3.fromRGB(20, 18, 30)
-	atmosphere.Glare = 0.2
-	atmosphere.Haze = 1.4
+	atmosphere.Density = 0.22
+	atmosphere.Offset = 0
+	atmosphere.Color = Color3.fromRGB(175, 188, 205)
+	atmosphere.Decay = Color3.fromRGB(120, 135, 155)
+	atmosphere.Glare = 0.25
+	atmosphere.Haze = 0.8
 	atmosphere.Parent = Lighting
 
 	-- 2. Bloom Effect (causes neon crystals, torch flames, and magic runes to radiate softly)
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 0.65
-	bloom.Size = 24
-	bloom.Threshold = 1.1
+	bloom.Intensity = 0.45
+	bloom.Size = 18
+	bloom.Threshold = 1.15
 	bloom.Parent = Lighting
 
-	-- 3. ColorCorrection (rich roguelike contrasts and cool shadows)
+	-- 3. ColorCorrection (rich roguelike contrasts while preserving vibrant colors)
 	local cc = Instance.new("ColorCorrectionEffect")
-	cc.Contrast = 0.14
-	cc.Saturation = -0.06
-	cc.TintColor = Color3.fromRGB(242, 236, 255)
+	cc.Contrast = 0.06
+	cc.Saturation = 0.08
+	cc.TintColor = Color3.fromRGB(255, 255, 255)
 	cc.Parent = Lighting
 
-	-- 4. SunRays (celestial rays filtering through the mountain ridges)
+	-- 4. SunRays (celestial rays filtering through mountain peaks)
 	local sunRays = Instance.new("SunRaysEffect")
-	sunRays.Intensity = 0.10
-	sunRays.Spread = 0.8
+	sunRays.Intensity = 0.15
+	sunRays.Spread = 0.75
 	sunRays.Parent = Lighting
 
-	-- 5. Deep Starfield Night Sky
-	local sky = Instance.new("Sky")
-	sky.Name = "RoguelikeNightSky"
-	sky.SkyboxBk = "rbxassetid://159454299"
-	sky.SkyboxDn = "rbxassetid://159454296"
-	sky.SkyboxFt = "rbxassetid://159454293"
-	sky.SkyboxLf = "rbxassetid://159454286"
-	sky.SkyboxRt = "rbxassetid://159454300"
-	sky.SkyboxUp = "rbxassetid://159454288"
-	sky.StarCount = 4000
-	sky.Parent = Lighting
-
-	-- 6. Dynamic Torchlight Dancing Flicker Loop
+	-- 5. Dynamic Torchlight Dancing Flicker Loop
 	task.spawn(function()
 		while true do
 			task.wait(0.08)
@@ -784,8 +772,8 @@ function MapService.setupAtmosphere()
 				if pLight and pLight.Parent then
 					-- Subtle organic jitter in torch brightness and range
 					local jitter = (math.random() - 0.5) * 0.35
-					pLight.Brightness = math.clamp(1.6 + jitter, 1.2, 2.0)
-					pLight.Range = math.clamp(28 + (jitter * 4), 24, 32)
+					pLight.Brightness = math.clamp(2.2 + jitter, 1.8, 2.6)
+					pLight.Range = math.clamp(32 + (jitter * 4), 28, 36)
 				end
 			end
 		end

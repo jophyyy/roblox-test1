@@ -78,17 +78,20 @@ function TycoonService.createPlot(plotId: number, origin: Vector3): Plot
 	local model = Instance.new("Model")
 	model.Name = "Plot_" .. plotId
 
-	-- Main Floor (Clean dark slate base resting directly on baseplate)
-	local floor = createPart(model, "Floor", Vector3.new(90, 1.2, 70), CFrame.new(origin + Vector3.new(0, 0.6, 0)), Color3.fromRGB(24, 26, 32), Enum.Material.SmoothPlastic)
+	-- Main Floor (Clean dark slate base elevated 1.6 studs proudly above the grass meadow)
+	local floor = createPart(model, "Floor", Vector3.new(90, 1.6, 70), CFrame.new(origin + Vector3.new(0, 0.8, 0)), Color3.fromRGB(24, 26, 32), Enum.Material.SmoothPlastic)
 
 	-- 4 Perimeter Neon Border Beams framing the plot without ANY surface overlap (Zero Z-fighting)
-	createPart(model, "BorderFront", Vector3.new(92, 1.6, 1.5), CFrame.new(origin + Vector3.new(0, 0.8, 35.75)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
-	createPart(model, "BorderBack", Vector3.new(92, 1.6, 1.5), CFrame.new(origin + Vector3.new(0, 0.8, -35.75)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
-	createPart(model, "BorderLeft", Vector3.new(1.5, 1.6, 70), CFrame.new(origin + Vector3.new(-45.75, 0.8, 0)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
-	createPart(model, "BorderRight", Vector3.new(1.5, 1.6, 70), CFrame.new(origin + Vector3.new(45.75, 0.8, 0)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
+	createPart(model, "BorderFront", Vector3.new(92, 2.0, 1.5), CFrame.new(origin + Vector3.new(0, 1.0, 35.75)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
+	createPart(model, "BorderBack", Vector3.new(92, 2.0, 1.5), CFrame.new(origin + Vector3.new(0, 1.0, -35.75)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
+	createPart(model, "BorderLeft", Vector3.new(1.5, 2.0, 70), CFrame.new(origin + Vector3.new(-45.75, 1.0, 0)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
+	createPart(model, "BorderRight", Vector3.new(1.5, 2.0, 70), CFrame.new(origin + Vector3.new(45.75, 1.0, 0)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon, true, false)
 
-	-- Claim Pad at the entrance (Z = +30)
-	local claimPad = createPart(model, "ClaimPad", Vector3.new(12, 0.4, 10), CFrame.new(origin + Vector3.new(0, 1.4, 30)), Color3.fromRGB(0, 230, 118), Enum.Material.Neon)
+	-- Entrance Ramp / Step connecting stone path (Y=0.4) up to Tycoon floor (Y=1.6)
+	createPart(model, "EntranceRamp", Vector3.new(16, 0.6, 5), CFrame.new(origin + Vector3.new(0, 0.9, 38)), Color3.fromRGB(36, 40, 48), Enum.Material.SmoothPlastic)
+
+	-- Claim Pad at the entrance (Z = +30, resting on the floor at Y = 1.6)
+	local claimPad = createPart(model, "ClaimPad", Vector3.new(12, 0.6, 10), CFrame.new(origin + Vector3.new(0, 1.9, 30)), Color3.fromRGB(0, 230, 118), Enum.Material.Neon)
 	
 	local claimGui = Instance.new("BillboardGui")
 	claimGui.Name = "ClaimBillboard"
@@ -108,36 +111,36 @@ function TycoonService.createPlot(plotId: number, origin: Vector3): Plot
 	claimText.Parent = claimGui
 	claimGui.Parent = claimPad
 
-	-- Conveyor Belt (Z from -27 to +17, surface at Y = 1.8)
-	local conveyor = createPart(model, "Conveyor", Vector3.new(8, 1.0, 44), CFrame.new(origin + Vector3.new(0, 1.3, -5)), Color3.fromRGB(35, 36, 42), Enum.Material.Metal)
+	-- Conveyor Belt (Z from -27 to +17, top surface at Y = 2.6)
+	local conveyor = createPart(model, "Conveyor", Vector3.new(8, 1.0, 44), CFrame.new(origin + Vector3.new(0, 2.1, -5)), Color3.fromRGB(35, 36, 42), Enum.Material.Metal)
 	conveyor.AssemblyLinearVelocity = Vector3.new(0, 0, TycoonConfig.CONVEYOR_SPEED)
 
-	-- Conveyor Side Rails
-	createPart(model, "RailLeft", Vector3.new(0.6, 2.0, 44), CFrame.new(origin + Vector3.new(-4.3, 2.0, -5)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon)
-	createPart(model, "RailRight", Vector3.new(0.6, 2.0, 44), CFrame.new(origin + Vector3.new(4.3, 2.0, -5)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon)
+	-- Conveyor Side Rails (Top at Y = 3.8)
+	createPart(model, "RailLeft", Vector3.new(0.6, 2.0, 44), CFrame.new(origin + Vector3.new(-4.3, 2.8, -5)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon)
+	createPart(model, "RailRight", Vector3.new(0.6, 2.0, 44), CFrame.new(origin + Vector3.new(4.3, 2.8, -5)), Color3.fromRGB(0, 170, 255), Enum.Material.Neon)
 
 	-- COLLECTOR HOPPER AT END OF CONVEYOR (Z = +17 to +24.5)
-	-- Solid glowing neon collection floor (flush at Y=1.7 to catch all crystals coming off the conveyor)
-	local collectorPad = createPart(model, "CollectorSensor", Vector3.new(9.2, 0.8, 7.5), CFrame.new(origin + Vector3.new(0, 1.3, 20.75)), Color3.fromRGB(255, 85, 20), Enum.Material.Neon, true, true)
+	-- Solid glowing neon collection floor (flush at Y=2.5 to catch all crystals coming off conveyor)
+	local collectorPad = createPart(model, "CollectorSensor", Vector3.new(9.2, 0.8, 7.5), CFrame.new(origin + Vector3.new(0, 2.1, 20.75)), Color3.fromRGB(255, 85, 20), Enum.Material.Neon, true, true)
 	collectorPad.CanTouch = true
 
-	-- Invisible Sensor Curtain spanning the entire entrance mouth (Z=18.5) so no crystal can enter without triggering
-	local sensorCurtain = createPart(model, "CollectorCurtain", Vector3.new(8.8, 4.0, 2.0), CFrame.new(origin + Vector3.new(0, 2.8, 18.5)), Color3.fromRGB(255, 255, 255), Enum.Material.Plastic, true, false)
+	-- Invisible Sensor Curtain spanning the entire entrance mouth (Z=18.5)
+	local sensorCurtain = createPart(model, "CollectorCurtain", Vector3.new(8.8, 4.0, 2.0), CFrame.new(origin + Vector3.new(0, 3.6, 18.5)), Color3.fromRGB(255, 255, 255), Enum.Material.Plastic, true, false)
 	sensorCurtain.Transparency = 1
 	sensorCurtain.CanTouch = true
 
 	-- U-Shape Enclosure Walls (Back & Sides only, NO front wall!)
-	local wallLeft = createPart(model, "CollectorWallLeft", Vector3.new(0.6, 2.6, 7.5), CFrame.new(origin + Vector3.new(-4.4, 2.5, 20.75)), Color3.fromRGB(45, 48, 58), Enum.Material.Metal)
+	local wallLeft = createPart(model, "CollectorWallLeft", Vector3.new(0.6, 2.6, 7.5), CFrame.new(origin + Vector3.new(-4.4, 3.3, 20.75)), Color3.fromRGB(45, 48, 58), Enum.Material.Metal)
 	wallLeft.CanTouch = true
-	local wallRight = createPart(model, "CollectorWallRight", Vector3.new(0.6, 2.6, 7.5), CFrame.new(origin + Vector3.new(4.4, 2.5, 20.75)), Color3.fromRGB(45, 48, 58), Enum.Material.Metal)
+	local wallRight = createPart(model, "CollectorWallRight", Vector3.new(0.6, 2.6, 7.5), CFrame.new(origin + Vector3.new(4.4, 3.3, 20.75)), Color3.fromRGB(45, 48, 58), Enum.Material.Metal)
 	wallRight.CanTouch = true
-	local backWall = createPart(model, "CollectorWallBack", Vector3.new(9.4, 2.6, 0.6), CFrame.new(origin + Vector3.new(0, 2.5, 24.5)), Color3.fromRGB(45, 48, 58), Enum.Material.Metal)
+	local backWall = createPart(model, "CollectorWallBack", Vector3.new(9.4, 2.6, 0.6), CFrame.new(origin + Vector3.new(0, 3.3, 24.5)), Color3.fromRGB(45, 48, 58), Enum.Material.Metal)
 	backWall.CanTouch = true
 
 	-- Overhead Collector Arch with Live Digital Stored Counter
-	local archTop = createPart(model, "ArchTop", Vector3.new(9.8, 1.0, 1.2), CFrame.new(origin + Vector3.new(0, 4.4, 20.75)), Color3.fromRGB(255, 120, 0), Enum.Material.Neon)
-	createPart(model, "ArchPillarL", Vector3.new(0.8, 2.4, 1.2), CFrame.new(origin + Vector3.new(-4.5, 3.2, 20.75)), Color3.fromRGB(40, 40, 50), Enum.Material.Metal)
-	createPart(model, "ArchPillarR", Vector3.new(0.8, 2.4, 1.2), CFrame.new(origin + Vector3.new(4.5, 3.2, 20.75)), Color3.fromRGB(40, 40, 50), Enum.Material.Metal)
+	local archTop = createPart(model, "ArchTop", Vector3.new(9.8, 1.0, 1.2), CFrame.new(origin + Vector3.new(0, 5.2, 20.75)), Color3.fromRGB(255, 120, 0), Enum.Material.Neon)
+	createPart(model, "ArchPillarL", Vector3.new(0.8, 2.4, 1.2), CFrame.new(origin + Vector3.new(-4.5, 4.0, 20.75)), Color3.fromRGB(40, 40, 50), Enum.Material.Metal)
+	createPart(model, "ArchPillarR", Vector3.new(0.8, 2.4, 1.2), CFrame.new(origin + Vector3.new(4.5, 4.0, 20.75)), Color3.fromRGB(40, 40, 50), Enum.Material.Metal)
 
 	local archGui = Instance.new("BillboardGui")
 	archGui.Name = "CollectorBillboard"
@@ -169,8 +172,8 @@ function TycoonService.createPlot(plotId: number, origin: Vector3): Plot
 	storedLabel.Parent = archGui
 	archGui.Parent = archTop
 
-	-- PHYSICAL CLAIM MONEY PAD (Placed right beside the collector)
-	local collectPad = createPart(model, "CollectCashPad", Vector3.new(7, 0.6, 7), CFrame.new(origin + Vector3.new(-8.5, 1.2, 20.75)), Color3.fromRGB(0, 230, 118), Enum.Material.Neon)
+	-- PHYSICAL CLAIM MONEY PAD (Resting on the floor at Y = 1.6, top at Y = 2.2)
+	local collectPad = createPart(model, "CollectCashPad", Vector3.new(7, 0.6, 7), CFrame.new(origin + Vector3.new(-8.5, 1.9, 20.75)), Color3.fromRGB(0, 230, 118), Enum.Material.Neon)
 	
 	local collectGui = Instance.new("BillboardGui")
 	collectGui.Name = "CollectBillboard"
@@ -489,11 +492,11 @@ function TycoonService.buildItem(plot: Plot, itemDef: TycoonConfig.ItemDef)
 		-- Position droppers progressively along the conveyor
 		local dropperIndex = tonumber(string.match(itemDef.id, "%d+")) or 1
 		local zOffset = -22 + ((dropperIndex - 1) * 8)
-		local standPos = plot.origin + Vector3.new(0, 9, zOffset)
+		local standPos = plot.origin + Vector3.new(0, 9.8, zOffset)
 
 		-- Stand and dispenser
-		local stand = createPart(itemModel, "Stand", Vector3.new(2, 8, 2), CFrame.new(plot.origin + Vector3.new(-6, 5, zOffset)), Color3.fromRGB(45, 45, 55), Enum.Material.Metal)
-		local arm = createPart(itemModel, "Arm", Vector3.new(6, 1.5, 2), CFrame.new(plot.origin + Vector3.new(-3, 8.5, zOffset)), Color3.fromRGB(45, 45, 55), Enum.Material.Metal)
+		local stand = createPart(itemModel, "Stand", Vector3.new(2, 8.2, 2), CFrame.new(plot.origin + Vector3.new(-6, 5.7, zOffset)), Color3.fromRGB(45, 45, 55), Enum.Material.Metal)
+		local arm = createPart(itemModel, "Arm", Vector3.new(6, 1.5, 2), CFrame.new(plot.origin + Vector3.new(-3, 9.3, zOffset)), Color3.fromRGB(45, 45, 55), Enum.Material.Metal)
 		local dispenser = createPart(itemModel, "Dispenser", Vector3.new(3.5, 2, 3.5), CFrame.new(standPos), dDef.crystalColor, Enum.Material.Neon)
 
 		itemModel.Parent = itemsFolder
@@ -512,15 +515,14 @@ function TycoonService.buildItem(plot: Plot, itemDef: TycoonConfig.ItemDef)
 		local uDef = itemDef :: TycoonConfig.UpgraderDef
 		local upgraderIndex = tonumber(string.match(itemDef.id, "%d+")) or 1
 		local zOffset = -14 + ((upgraderIndex - 1) * 16)
-		local archPos = plot.origin + Vector3.new(0, 3, zOffset)
 
-		-- Arch frame
-		createPart(itemModel, "PillarL", Vector3.new(1.2, 5, 2), CFrame.new(plot.origin + Vector3.new(-4.5, 3.5, zOffset)), Color3.fromRGB(50, 50, 60), Enum.Material.Metal)
-		createPart(itemModel, "PillarR", Vector3.new(1.2, 5, 2), CFrame.new(plot.origin + Vector3.new(4.5, 3.5, zOffset)), Color3.fromRGB(50, 50, 60), Enum.Material.Metal)
-		createPart(itemModel, "TopBar", Vector3.new(10, 1.2, 2), CFrame.new(plot.origin + Vector3.new(0, 6, zOffset)), Color3.fromRGB(50, 50, 60), Enum.Material.Metal)
+		-- Arch frame resting cleanly on floor (Y = 1.6)
+		createPart(itemModel, "PillarL", Vector3.new(1.2, 5, 2), CFrame.new(plot.origin + Vector3.new(-4.5, 4.1, zOffset)), Color3.fromRGB(50, 50, 60), Enum.Material.Metal)
+		createPart(itemModel, "PillarR", Vector3.new(1.2, 5, 2), CFrame.new(plot.origin + Vector3.new(4.5, 4.1, zOffset)), Color3.fromRGB(50, 50, 60), Enum.Material.Metal)
+		createPart(itemModel, "TopBar", Vector3.new(10, 1.2, 2), CFrame.new(plot.origin + Vector3.new(0, 6.8, zOffset)), Color3.fromRGB(50, 50, 60), Enum.Material.Metal)
 
 		-- Glowing laser field
-		local laser = createPart(itemModel, "LaserField", Vector3.new(8, 4.5, 0.4), CFrame.new(plot.origin + Vector3.new(0, 3.5, zOffset)), uDef.laserColor, Enum.Material.ForceField, true, false)
+		local laser = createPart(itemModel, "LaserField", Vector3.new(8, 4.5, 0.4), CFrame.new(plot.origin + Vector3.new(0, 4.3, zOffset)), uDef.laserColor, Enum.Material.ForceField, true, false)
 		
 		laser.Touched:Connect(function(hit)
 			if hit:GetAttribute("IsCrystal") and not hit:GetAttribute("Upgraded_" .. uDef.id) then
@@ -536,9 +538,9 @@ function TycoonService.buildItem(plot: Plot, itemDef: TycoonConfig.ItemDef)
 
 	elseif itemDef.category == "Structure" then
 		-- Surrounding decorative neon walls
-		local wallL = createPart(itemModel, "WallLeft", Vector3.new(2, 14, 68), CFrame.new(plot.origin + Vector3.new(-44, 8, 0)), Color3.fromRGB(30, 32, 40), Enum.Material.Glass)
-		local wallR = createPart(itemModel, "WallRight", Vector3.new(2, 14, 68), CFrame.new(plot.origin + Vector3.new(44, 8, 0)), Color3.fromRGB(30, 32, 40), Enum.Material.Glass)
-		local wallB = createPart(itemModel, "WallBack", Vector3.new(86, 14, 2), CFrame.new(plot.origin + Vector3.new(0, 8, -34)), Color3.fromRGB(30, 32, 40), Enum.Material.Glass)
+		local wallL = createPart(itemModel, "WallLeft", Vector3.new(2, 14, 68), CFrame.new(plot.origin + Vector3.new(-44, 8.6, 0)), Color3.fromRGB(30, 32, 40), Enum.Material.Glass)
+		local wallR = createPart(itemModel, "WallRight", Vector3.new(2, 14, 68), CFrame.new(plot.origin + Vector3.new(44, 8.6, 0)), Color3.fromRGB(30, 32, 40), Enum.Material.Glass)
+		local wallB = createPart(itemModel, "WallBack", Vector3.new(86, 14, 2), CFrame.new(plot.origin + Vector3.new(0, 8.6, -34)), Color3.fromRGB(30, 32, 40), Enum.Material.Glass)
 
 		itemModel.Parent = itemsFolder
 		plot.activeItems[itemDef.id] = itemModel
@@ -562,7 +564,8 @@ function TycoonService.createButton(plot: Plot, itemDef: TycoonConfig.ItemDef)
 
 	local side = if itemIndex % 2 == 0 then 1 else -1
 	local row = math.floor((itemIndex - 1) / 2)
-	local buttonPos = plot.origin + Vector3.new(side * 18, 1.2, -20 + (row * 10))
+	-- Resting right on top of the floor at Y = 1.6 (top of button at Y = 2.2)
+	local buttonPos = plot.origin + Vector3.new(side * 18, 1.9, -20 + (row * 10))
 
 	local buttonPad = createPart(buttonsFolder, "Button_" .. itemDef.id, Vector3.new(5, 0.6, 5), CFrame.new(buttonPos), Color3.fromRGB(0, 170, 255), Enum.Material.Neon)
 	

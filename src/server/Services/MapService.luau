@@ -30,12 +30,12 @@ end
 
 -- 1. Baseplate & Rolling Green Grass Meadow
 function MapService.buildBase(folder: Folder)
-	-- Large primary green meadow base with authentic tactile studs
+	-- Large primary green meadow base sitting flush at ground level (Y = 0)
 	createStudPart(
 		folder,
 		"MeadowGrass",
-		Vector3.new(512, 1.0, 512),
-		CFrame.new(0, 0.5, 0),
+		Vector3.new(512, 10.0, 512),
+		CFrame.new(0, -5.0, 0),
 		Color3.fromRGB(72, 148, 72)
 	)
 end
@@ -125,9 +125,9 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 	local woodColor = Color3.fromRGB(105, 68, 42)
 	local lampGlow = Color3.fromRGB(255, 230, 120)
 
-	-- Central Plaza Roundabout
-	createStudPart(pathsFolder, "PlazaCenter", Vector3.new(28, 0.4, 28), CFrame.new(0, 1.0, 0), stoneColor)
-	createStudPart(pathsFolder, "PlazaBorder", Vector3.new(32, 0.3, 32), CFrame.new(0, 0.95, 0), stoneDark)
+	-- Central Plaza Roundabout resting at Y = 0.2 (top at Y = 0.4)
+	createStudPart(pathsFolder, "PlazaCenter", Vector3.new(28, 0.4, 28), CFrame.new(0, 0.2, 0), stoneColor)
+	createStudPart(pathsFolder, "PlazaBorder", Vector3.new(32, 0.3, 32), CFrame.new(0, 0.15, 0), stoneDark)
 
 	-- 4 Retro Wooden Lamp Posts on Plaza Corners
 	local lampOffsets = {
@@ -138,9 +138,9 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 	}
 	for _, offset in ipairs(lampOffsets) do
 		-- Post
-		createStudPart(pathsFolder, "LampPost", Vector3.new(1.4, 9, 1.4), CFrame.new(offset + Vector3.new(0, 5.5, 0)), woodColor)
+		createStudPart(pathsFolder, "LampPost", Vector3.new(1.4, 9, 1.4), CFrame.new(offset + Vector3.new(0, 4.5, 0)), woodColor)
 		-- Glowing Lantern Cube with Studs
-		local lamp = createStudPart(pathsFolder, "LampLantern", Vector3.new(2.4, 2.4, 2.4), CFrame.new(offset + Vector3.new(0, 10.5, 0)), lampGlow)
+		local lamp = createStudPart(pathsFolder, "LampLantern", Vector3.new(2.4, 2.4, 2.4), CFrame.new(offset + Vector3.new(0, 9.5, 0)), lampGlow)
 		lamp.Material = Enum.Material.Neon
 		
 		local light = Instance.new("PointLight")
@@ -151,16 +151,15 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 	end
 
 	-- 4 Connecting Pathways Leading from Plaza Directly to Tycoon Plot Entrances
-	-- Plot centers are at (+-60, 0, +-60), Claim pads are at Z = +-30 relative to plot
 	local pathTargets = {
-		{ name = "Path_Plot1", target = Vector3.new(-60, 1.0, -30) },
-		{ name = "Path_Plot2", target = Vector3.new(60, 1.0, -30) },
-		{ name = "Path_Plot3", target = Vector3.new(-60, 1.0, 30) },
-		{ name = "Path_Plot4", target = Vector3.new(60, 1.0, 30) },
+		{ name = "Path_Plot1", target = Vector3.new(-60, 0.2, -30) },
+		{ name = "Path_Plot2", target = Vector3.new(60, 0.2, -30) },
+		{ name = "Path_Plot3", target = Vector3.new(-60, 0.2, 30) },
+		{ name = "Path_Plot4", target = Vector3.new(60, 0.2, 30) },
 	}
 
 	for _, pt in ipairs(pathTargets) do
-		local origin = Vector3.new(0, 1.0, 0)
+		local origin = Vector3.new(0, 0.2, 0)
 		local diff = pt.target - origin
 		local length = diff.Magnitude
 		local midpoint = origin + (diff / 2)
@@ -169,7 +168,7 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 		createStudPart(
 			pathsFolder,
 			pt.name,
-			Vector3.new(7, 0.35, length),
+			Vector3.new(8, 0.35, length),
 			CFrame.new(midpoint) * CFrame.Angles(0, angle, 0),
 			stoneColor
 		)

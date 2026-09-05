@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local SoundService = game:GetService("SoundService")
 
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
@@ -28,6 +29,15 @@ local multiplierBadge: TextLabel
 local activeModal: Frame? = nil
 local activeDialogue: Frame? = nil
 local currentShopTab = "Shovel"
+
+-- Typewriter and RPG Dialogue State
+local dialogueTypingThread: thread? = nil
+local isTypingDialogue = false
+local activeTypingTarget: TextLabel? = nil
+local activeFullText = ""
+local activeOnComplete: (() -> ())? = nil
+local choiceAction1: (() -> ())? = nil
+local choiceAction2: (() -> ())? = nil
 
 -- Helper to create rounded styled frames
 local function createStyledFrame(parent: Instance, name: string, size: UDim2, pos: UDim2, bgColor: Color3): Frame
@@ -91,17 +101,100 @@ function UIController.updateHUD()
 end
 
 local function closeDialogue()
+	if dialogueTypingThread then
+		task.cancel(dialogueTypingThread)
+		dialogueTypingThread = nil
+	end
+	isTypingDialogue = false
+	activeTypingTarget = nil
+	activeFullText = ""
+	activeOnComplete = nil
+	choiceAction1 = nil
+	choiceAction2 = nil
+
 	if activeDialogue then
 		local target = activeDialogue
 		activeDialogue = nil
 		local tween = TweenService:Create(target, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(0.5, 0, 1, 240),
+			Position = UDim2.new(0.5, 0, 1, 280),
 		})
 		tween:Play()
 		tween.Completed:Connect(function()
 			target:Destroy()
 		end)
 	end
+end
+
+-- Fast-forwards / skips word-by-word typewriter to full text
+local function skipDialogueTyping()
+	if isTypingDialogue and activeTypingTarget and activeFullText ~= "" then
+		if dialogueTypingThread then
+			task.cancel(dialogueTypingThread)
+			dialogueTypingThread = nil
+		end
+		isTypingDialogue = false
+		activeTypingTarget.Text = activeFullText .. " <font color='#88B0E8'>▼</font>"
+		if activeOnComplete then
+			local cb = activeOnComplete
+			activeOnComplete = nil
+			cb()
+		end
+	end
+end
+
+-- Animates dialogue text word-by-word at a snappy, smooth RPG speed
+local function typewriteWords(targetLabel: TextLabel, fullText: string, wordDelay: number?, onComplete: (() -> ())?)
+	if dialogueTypingThread then
+		task.cancel(dialogueTypingThread)
+		dialogueTypingThread = nil
+	end
+
+	isTypingDialogue = true
+	activeTypingTarget = targetLabel
+	activeFullText = fullText
+	activeOnComplete = onComplete
+	targetLabel.Text = ""
+
+	local words = string.split(fullText, " ")
+	local delay = wordDelay or 0.045
+
+	dialogueTypingThread = task.spawn(function()
+		local displayed = ""
+		for i, word in ipairs(words) do
+			if not isTypingDialogue then break end
+			if i == 1 then
+				displayed = word
+			else
+				displayed = displayed .. " " .. word
+			end
+			targetLabel.Text = displayed .. " <font color='#F5C542'>▮</font>"
+
+			-- Subtle, soft retro chatter click every 2 words
+			if i % 2 == 1 then
+				local s = Instance.new("Sound")
+				s.SoundId = "rbxassetid://6895079853"
+				s.Volume = 0.035
+				s.PlaybackSpeed = 2.4 + (math.random() * 0.4)
+				s.Parent = SoundService
+				s:Play()
+				s.Ended:Connect(function()
+					s:Destroy()
+				end)
+			end
+
+			task.wait(delay)
+		end
+
+		if isTypingDialogue then
+			targetLabel.Text = fullText .. " <font color='#88B0E8'>▼</font>"
+			isTypingDialogue = false
+			if onComplete then
+				local cb = onComplete
+				activeOnComplete = nil
+				cb()
+			end
+		end
+	end)
 end
 
 local function closeModal()
@@ -492,8 +585,8 @@ local function openEquipmentShopModal()
 	title.BackgroundTransparency = 1
 	title.Text = "🛒 BARNABY'S EQUIPMENT SHOP 🛒"
 	title.TextColor3 = Color3.fromRGB(255, 215, 0)
-	title.Font = Enum.Font.GothamBlack
-	title.TextSize = 20
+	title.Font = Enum.Font.Antique
+	title.TextSize = 22
 	title.Parent = modal
 
 	local subTitle = Instance.new("TextLabel")
@@ -502,8 +595,8 @@ local function openEquipmentShopModal()
 	subTitle.BackgroundTransparency = 1
 	subTitle.Text = "Equip shovels for higher click rewards & backpacks for tycoon multipliers!"
 	subTitle.TextColor3 = Color3.fromRGB(180, 190, 210)
-	subTitle.Font = Enum.Font.GothamMedium
-	subTitle.TextSize = 12
+	subTitle.Font = Enum.Font.Antique
+	subTitle.TextSize = 14
 	subTitle.Parent = modal
 
 	-- Tab Switcher Bar
@@ -522,8 +615,8 @@ local function openEquipmentShopModal()
 	tabShovelBtn.Size = UDim2.new(0.5, -4, 1, -6)
 	tabShovelBtn.Position = UDim2.new(0, 3, 0, 3)
 	tabShovelBtn.Text = "⛏️ Shovels (Tools)"
-	tabShovelBtn.Font = Enum.Font.GothamBold
-	tabShovelBtn.TextSize = 13
+	tabShovelBtn.Font = Enum.Font.Antique
+	tabShovelBtn.TextSize = 15
 	tabShovelBtn.BorderSizePixel = 0
 	tabShovelBtn.Parent = tabBar
 
@@ -535,8 +628,8 @@ local function openEquipmentShopModal()
 	tabPackBtn.Size = UDim2.new(0.5, -4, 1, -6)
 	tabPackBtn.Position = UDim2.new(0.5, 1, 0, 3)
 	tabPackBtn.Text = "🎒 Backpacks (Boosts)"
-	tabPackBtn.Font = Enum.Font.GothamBold
-	tabPackBtn.TextSize = 13
+	tabPackBtn.Font = Enum.Font.Antique
+	tabPackBtn.TextSize = 15
 	tabPackBtn.BorderSizePixel = 0
 	tabPackBtn.Parent = tabBar
 
@@ -614,8 +707,8 @@ local function openEquipmentShopModal()
 			nameLabel.BackgroundTransparency = 1
 			nameLabel.Text = item.name
 			nameLabel.TextColor3 = item.color
-			nameLabel.Font = Enum.Font.GothamBold
-			nameLabel.TextSize = 14
+			nameLabel.Font = Enum.Font.Antique
+			nameLabel.TextSize = 16
 			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 			nameLabel.Parent = card
 
@@ -625,8 +718,8 @@ local function openEquipmentShopModal()
 			perkLabel.Position = UDim2.new(0, 52, 0, 34)
 			perkLabel.BackgroundTransparency = 1
 			perkLabel.TextColor3 = Color3.fromRGB(200, 210, 225)
-			perkLabel.Font = Enum.Font.GothamMedium
-			perkLabel.TextSize = 12
+			perkLabel.Font = Enum.Font.Antique
+			perkLabel.TextSize = 13
 			perkLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 			if item.category == "Shovel" then
@@ -644,8 +737,8 @@ local function openEquipmentShopModal()
 			local actionBtn = Instance.new("TextButton")
 			actionBtn.Size = UDim2.new(0.32, 0, 0, 42)
 			actionBtn.Position = UDim2.new(0.65, 0, 0.5, -21)
-			actionBtn.Font = Enum.Font.GothamBold
-			actionBtn.TextSize = 12
+			actionBtn.Font = Enum.Font.Antique
+			actionBtn.TextSize = 14
 			actionBtn.BorderSizePixel = 0
 			actionBtn.Parent = card
 
@@ -753,19 +846,37 @@ local function openDialogueModal(npcName: string)
 		return
 	end
 
-	local dlg = createStyledFrame(screenGui, "DialogueBox", UDim2.new(0, 620, 0, 190), UDim2.new(0.5, 0, 1, 40), Color3.fromRGB(22, 25, 34))
+	-- Roguelike Slate Dialogue Box (Spacious 720x230 frame)
+	local dlg = createStyledFrame(screenGui, "DialogueBox", UDim2.new(0, 720, 0, 230), UDim2.new(0.5, 0, 1, 40), Color3.fromRGB(15, 18, 26))
 	dlg.AnchorPoint = Vector2.new(0.5, 1)
 	dlg.ZIndex = 30
 	activeDialogue = dlg
 
+	-- Gilded Antique Gold Roguelike Border Trim
+	local borderStroke = dlg:FindFirstChildOfClass("UIStroke")
+	if borderStroke then
+		borderStroke.Color = Color3.fromRGB(220, 180, 75)
+		borderStroke.Thickness = 2.0
+	end
+
+	-- Ornate Top Accent Line
+	local topAccent = Instance.new("Frame")
+	topAccent.Size = UDim2.new(1, -40, 0, 2)
+	topAccent.Position = UDim2.new(0, 20, 0, 8)
+	topAccent.BackgroundColor3 = Color3.fromRGB(220, 180, 75)
+	topAccent.BackgroundTransparency = 0.6
+	topAccent.BorderSizePixel = 0
+	topAccent.ZIndex = 31
+	topAccent.Parent = dlg
+
 	-- Corner Close "✕" Button
 	local closeDlgBtn = Instance.new("TextButton")
-	closeDlgBtn.Size = UDim2.new(0, 28, 0, 28)
-	closeDlgBtn.Position = UDim2.new(1, -36, 0, 8)
+	closeDlgBtn.Size = UDim2.new(0, 30, 0, 30)
+	closeDlgBtn.Position = UDim2.new(1, -38, 0, 8)
 	closeDlgBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
 	closeDlgBtn.Text = "✕"
 	closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeDlgBtn.Font = Enum.Font.GothamBold
+	closeDlgBtn.Font = Enum.Font.GothamBlack
 	closeDlgBtn.TextSize = 14
 	closeDlgBtn.BorderSizePixel = 0
 	closeDlgBtn.ZIndex = 35
@@ -775,19 +886,25 @@ local function openDialogueModal(npcName: string)
 	cdCorner.CornerRadius = UDim.new(1, 0)
 	cdCorner.Parent = closeDlgBtn
 
+	closeDlgBtn.MouseEnter:Connect(function()
+		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+	end)
+	closeDlgBtn.MouseLeave:Connect(function()
+		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+	end)
 	closeDlgBtn.MouseButton1Click:Connect(closeDialogue)
 
 	-- Name Tag Banner
 	local nameBadge = Instance.new("Frame")
-	nameBadge.Size = UDim2.new(0, 240, 0, 32)
-	nameBadge.Position = UDim2.new(0, 20, 0, -16)
-	nameBadge.BackgroundColor3 = Color3.fromRGB(35, 42, 60)
+	nameBadge.Size = UDim2.new(0, 300, 0, 36)
+	nameBadge.Position = UDim2.new(0, 24, 0, -18)
+	nameBadge.BackgroundColor3 = Color3.fromRGB(25, 30, 44)
 	nameBadge.BorderSizePixel = 0
 	nameBadge.ZIndex = 32
 	nameBadge.Parent = dlg
 
 	local nbCorner = Instance.new("UICorner")
-	nbCorner.CornerRadius = UDim.new(0, 8)
+	nbCorner.CornerRadius = UDim.new(0, 10)
 	nbCorner.Parent = nameBadge
 
 	local nbStroke = Instance.new("UIStroke")
@@ -799,30 +916,46 @@ local function openDialogueModal(npcName: string)
 	nameLabel.Size = UDim2.new(1, 0, 1, 0)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = "🛒 Barnaby [Equipment Merchant]"
-	nameLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	nameLabel.Font = Enum.Font.GothamBold
-	nameLabel.TextSize = 13
+	nameLabel.TextColor3 = Color3.fromRGB(255, 220, 90)
+	nameLabel.Font = Enum.Font.Antique
+	nameLabel.TextSize = 17
+	nameLabel.TextStrokeTransparency = 0.3
 	nameLabel.ZIndex = 33
 	nameLabel.Parent = nameBadge
 
-	-- NPC Dialogue Speech Label
+	-- NPC Dialogue Speech Label (Large, crisp Roguelike Antique font)
 	local speechLabel = Instance.new("TextLabel")
-	speechLabel.Size = UDim2.new(1, -70, 0, 60)
-	speechLabel.Position = UDim2.new(0, 20, 0, 24)
+	speechLabel.Size = UDim2.new(1, -70, 0, 84)
+	speechLabel.Position = UDim2.new(0, 24, 0, 26)
 	speechLabel.BackgroundTransparency = 1
-	speechLabel.Text = "“Greetings, traveler! The ores beneath these mountains are rich, but you'll need the right gear to harvest them quickly. What can I do for you?”"
-	speechLabel.TextColor3 = Color3.fromRGB(235, 240, 250)
-	speechLabel.Font = Enum.Font.GothamMedium
-	speechLabel.TextSize = 14
+	speechLabel.Text = ""
+	speechLabel.TextColor3 = Color3.fromRGB(242, 245, 252)
+	speechLabel.TextStrokeColor3 = Color3.fromRGB(8, 10, 15)
+	speechLabel.TextStrokeTransparency = 0.4
+	speechLabel.Font = Enum.Font.Antique
+	speechLabel.TextSize = 20
 	speechLabel.TextWrapped = true
+	speechLabel.RichText = true
 	speechLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speechLabel.TextYAlignment = Enum.TextYAlignment.Top
 	speechLabel.ZIndex = 32
 	speechLabel.Parent = dlg
 
+	-- Invisible Click-to-Skip Button covering speech label area
+	local skipBtn = Instance.new("TextButton")
+	skipBtn.Name = "SkipDetector"
+	skipBtn.Size = UDim2.new(1, 0, 0, 118)
+	skipBtn.Position = UDim2.new(0, 0, 0, 0)
+	skipBtn.BackgroundTransparency = 1
+	skipBtn.Text = ""
+	skipBtn.ZIndex = 31
+	skipBtn.Parent = dlg
+	skipBtn.MouseButton1Click:Connect(skipDialogueTyping)
+
 	-- Choice Buttons Container
 	local choicesRow = Instance.new("Frame")
-	choicesRow.Size = UDim2.new(1, -40, 0, 60)
-	choicesRow.Position = UDim2.new(0, 20, 0, 95)
+	choicesRow.Size = UDim2.new(1, -48, 0, 72)
+	choicesRow.Position = UDim2.new(0, 24, 0, 126)
 	choicesRow.BackgroundTransparency = 1
 	choicesRow.ZIndex = 32
 	choicesRow.Parent = dlg
@@ -832,52 +965,82 @@ local function openDialogueModal(npcName: string)
 	choiceList.Padding = UDim.new(0, 12)
 	choiceList.Parent = choicesRow
 
-	local function makeChoice(text: string, color: Color3, onClick: () -> ()): TextButton
+	local function makeChoice(text: string, bgCol: Color3, strokeCol: Color3, onClick: () -> ()): TextButton
 		local cBtn = Instance.new("TextButton")
-		cBtn.Size = UDim2.new(0.31, 0, 0, 52)
-		cBtn.BackgroundColor3 = color
+		cBtn.Size = UDim2.new(0.314, 0, 0, 68)
+		cBtn.BackgroundColor3 = bgCol
 		cBtn.Text = text
 		cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		cBtn.Font = Enum.Font.GothamBold
-		cBtn.TextSize = 13
+		cBtn.Font = Enum.Font.Antique
+		cBtn.TextSize = 16
 		cBtn.TextWrapped = true
 		cBtn.BorderSizePixel = 0
-		cBtn.ZIndex = 33
+		cBtn.ZIndex = 34
 		cBtn.Parent = choicesRow
 
 		local cCorner = Instance.new("UICorner")
-		cCorner.CornerRadius = UDim.new(0, 8)
+		cCorner.CornerRadius = UDim.new(0, 10)
 		cCorner.Parent = cBtn
 
 		local cStroke = Instance.new("UIStroke")
-		cStroke.Color = Color3.fromRGB(255, 255, 255)
-		cStroke.Transparency = 0.8
+		cStroke.Color = strokeCol
+		cStroke.Thickness = 1.5
+		cStroke.Transparency = 0.3
 		cStroke.Parent = cBtn
 
-		cBtn.MouseButton1Click:Connect(onClick)
+		cBtn.MouseEnter:Connect(function()
+			TweenService:Create(cBtn, TweenInfo.new(0.15), {
+				BackgroundColor3 = bgCol:Lerp(Color3.fromRGB(255, 255, 255), 0.16),
+			}):Play()
+			TweenService:Create(cStroke, TweenInfo.new(0.15), {
+				Transparency = 0,
+				Thickness = 2.0,
+			}):Play()
+		end)
+		cBtn.MouseLeave:Connect(function()
+			TweenService:Create(cBtn, TweenInfo.new(0.15), {
+				BackgroundColor3 = bgCol,
+			}):Play()
+			TweenService:Create(cStroke, TweenInfo.new(0.15), {
+				Transparency = 0.3,
+				Thickness = 1.5,
+			}):Play()
+		end)
+
+		cBtn.MouseButton1Click:Connect(function()
+			skipDialogueTyping()
+			onClick()
+		end)
+
 		return cBtn
 	end
 
 	-- Choice 1: What do you have for sale?
-	makeChoice("🛒 What do you have for sale?", Color3.fromRGB(0, 170, 120), function()
+	choiceAction1 = function()
 		closeDialogue()
 		openEquipmentShopModal()
-	end)
+	end
+	makeChoice("🛒 [1] What do you have for sale?", Color3.fromRGB(16, 128, 88), Color3.fromRGB(50, 220, 155), choiceAction1)
 
 	-- Choice 2: Any advice for the mines?
-	makeChoice("📜 Tell me about this place.", Color3.fromRGB(55, 75, 130), function()
-		speechLabel.Text = "“Build out your tycoon droppers and upgrade fields! Upgraded ores yield heaps of cash. And buy a sturdy backpack from me to multiply every batch!”"
-	end)
+	choiceAction2 = function()
+		typewriteWords(speechLabel, "“Build out your tycoon droppers and upgrade fields! Upgraded ores yield heaps of cash. And buy a sturdy backpack from me to multiply every batch!”", 0.04)
+	end
+	makeChoice("📜 [2] Tell me about this place.", Color3.fromRGB(36, 55, 105), Color3.fromRGB(100, 155, 255), choiceAction2)
 
 	-- Choice 3: Leave
-	makeChoice("✕ Just browsing. [Leave]", Color3.fromRGB(75, 80, 90), function()
+	makeChoice("✕ [3] Just browsing. [Leave]", Color3.fromRGB(58, 62, 75), Color3.fromRGB(140, 150, 170), function()
 		closeDialogue()
 	end)
 
 	-- Animate up from bottom smoothly
 	TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 1, -24),
+		Position = UDim2.new(0.5, 0, 1, -26),
 	}):Play()
+
+	-- Start word-by-word dialogue typewriter animation
+	local greeting = "“Greetings, traveler! The ores beneath these mountains are rich, but you'll need the right gear to harvest them quickly. What can I do for you?”"
+	typewriteWords(speechLabel, greeting, 0.045)
 end
 
 function UIController.buildHUD()
@@ -1041,6 +1204,31 @@ function UIController.buildHUD()
 			if prompt.Name == "TalkPrompt" or prompt.ActionText == "Talk" or string.find(prompt.ObjectText, "Barnaby") then
 				print("🗣️ [UIController] ProximityPrompt triggered locally on client for Barnaby!")
 				openDialogueModal("Barnaby")
+			end
+		end
+	end)
+
+	-- Dialogue keyboard shortcuts [1], [2], [3], [Space], [E], [Esc]
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if not activeDialogue then return end
+		if gameProcessed then return end
+
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			if isTypingDialogue and (input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.E or input.KeyCode == Enum.KeyCode.Return) then
+				skipDialogueTyping()
+				return
+			end
+
+			if input.KeyCode == Enum.KeyCode.One or input.KeyCode == Enum.KeyCode.KeypadOne then
+				if choiceAction1 then
+					choiceAction1()
+				end
+			elseif input.KeyCode == Enum.KeyCode.Two or input.KeyCode == Enum.KeyCode.KeypadTwo then
+				if choiceAction2 then
+					choiceAction2()
+				end
+			elseif input.KeyCode == Enum.KeyCode.Three or input.KeyCode == Enum.KeyCode.KeypadThree or input.KeyCode == Enum.KeyCode.Escape then
+				closeDialogue()
 			end
 		end
 	end)

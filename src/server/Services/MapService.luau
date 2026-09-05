@@ -875,8 +875,8 @@ function MapService.buildShopStall(folder: Folder)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "🛒 BARNABY 🛒"
 	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 16
+	titleLabel.Font = Enum.Font.Antique
+	titleLabel.TextSize = 19
 	titleLabel.TextStrokeTransparency = 0.2
 	titleLabel.Parent = titleGui
 
@@ -886,8 +886,8 @@ function MapService.buildShopStall(folder: Folder)
 	subtitleLabel.BackgroundTransparency = 1
 	subtitleLabel.Text = "[Equipment Merchant]"
 	subtitleLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
-	subtitleLabel.Font = Enum.Font.GothamBold
-	subtitleLabel.TextSize = 13
+	subtitleLabel.Font = Enum.Font.Antique
+	subtitleLabel.TextSize = 14
 	subtitleLabel.TextStrokeTransparency = 0.2
 	subtitleLabel.Parent = titleGui
 	titleGui.Parent = head

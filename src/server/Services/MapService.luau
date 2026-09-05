@@ -1,5 +1,8 @@
 --!strict
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local DataService = require(script.Parent.DataService)
 
 local MapService = {}
 
@@ -173,6 +176,64 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 			stoneColor
 		)
 	end
+
+	-- GOLDEN DEV CHEAT PAD ON PLAZA (Resting on plaza at Y = 0.5)
+	local devPad = Instance.new("Part")
+	devPad.Name = "DevCheatPad"
+	devPad.Size = Vector3.new(7, 0.6, 7)
+	devPad.CFrame = CFrame.new(0, 0.7, 10)
+	devPad.Color = Color3.fromRGB(255, 215, 0)
+	devPad.Material = Enum.Material.Neon
+	devPad.TopSurface = Enum.SurfaceType.Studs
+	devPad.BottomSurface = Enum.SurfaceType.Inlet
+	devPad.Anchored = true
+	devPad.CanCollide = true
+	devPad.CanTouch = true
+	devPad.Parent = pathsFolder
+
+	local padGui = Instance.new("BillboardGui")
+	padGui.Name = "DevPadGui"
+	padGui.Size = UDim2.new(0, 240, 0, 60)
+	padGui.StudsOffset = Vector3.new(0, 4.0, 0)
+	padGui.AlwaysOnTop = true
+
+	local padTitle = Instance.new("TextLabel")
+	padTitle.Size = UDim2.new(1, 0, 0.5, 0)
+	padTitle.BackgroundTransparency = 1
+	padTitle.Text = "⚡ DEV CHEAT PAD ⚡"
+	padTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+	padTitle.Font = Enum.Font.GothamBlack
+	padTitle.TextSize = 16
+	padTitle.TextStrokeTransparency = 0.2
+	padTitle.Parent = padGui
+
+	local padSubtitle = Instance.new("TextLabel")
+	padSubtitle.Size = UDim2.new(1, 0, 0.5, 0)
+	padSubtitle.Position = UDim2.new(0, 0, 0.5, 0)
+	padSubtitle.BackgroundTransparency = 1
+	padSubtitle.Text = "Touch for +$10,000,000 & +50K 💎"
+	padSubtitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	padSubtitle.Font = Enum.Font.GothamBold
+	padSubtitle.TextSize = 13
+	padSubtitle.TextStrokeTransparency = 0.2
+	padSubtitle.Parent = padGui
+	padGui.Parent = devPad
+
+	local lastTouched: { [Player]: number } = {}
+	devPad.Touched:Connect(function(hit)
+		local char = hit.Parent
+		if not char then return end
+		local player = Players:GetPlayerFromCharacter(char)
+		if player then
+			local now = os.clock()
+			if not lastTouched[player] or (now - lastTouched[player]) > 1.0 then
+				lastTouched[player] = now
+				DataService.addCash(player, 10_000_000)
+				DataService.addGems(player, 50_000)
+				print(string.format("⚡ [DevCheatPad] Granted $10,000,000 and 50,000 Gems to %s!", player.Name))
+			end
+		end
+	end)
 end
 
 -- 4. Classic Retro Roblox Trees (2-3 tiered foliage blocks with studs)

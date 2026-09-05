@@ -13,7 +13,11 @@ local SOUNDS = {
 	Purchase = "rbxassetid://131886985",   -- Classic Tycoon Cash Register "Cha-Ching!"
 	Collect = "rbxassetid://6895079853",    -- Clean, crisp coin collect chime
 	Rebirth = "rbxassetid://5153737200",    -- Grand victory / level-up fanfare
+	BGM = "rbxassetid://1843404009",        -- Iconic upbeat simulator acoustic instrumental ("Happy Song")
 }
+
+local bgmSound: Sound? = nil
+local isMusicPlaying = true
 
 local function playSound(soundId: string, volume: number?, pitch: number?)
 	local sound = Instance.new("Sound")
@@ -27,7 +31,34 @@ local function playSound(soundId: string, volume: number?, pitch: number?)
 	end)
 end
 
+function TycoonClient.toggleMusic(): boolean
+	if bgmSound then
+		if isMusicPlaying then
+			bgmSound.Volume = 0
+			isMusicPlaying = false
+		else
+			bgmSound.Volume = 0.22
+			isMusicPlaying = true
+		end
+	end
+	return isMusicPlaying
+end
+
+function TycoonClient.isMusicEnabled(): boolean
+	return isMusicPlaying
+end
+
 function TycoonClient.init()
+	-- Background Simulator Instrumental Track (Cheerful, upbeat acoustic guitar/whistling APM track)
+	local bgm = Instance.new("Sound")
+	bgm.Name = "SimulatorBGM"
+	bgm.SoundId = SOUNDS.BGM
+	bgm.Volume = 0.22
+	bgm.Looped = true
+	bgm.Parent = SoundService
+	bgm:Play()
+	bgmSound = bgm
+
 	local buyEvent = Remotes.getEvent("ItemPurchased")
 	buyEvent.OnClientEvent:Connect(function(itemName: string, cost: number)
 		-- Classic pleasant cash register chime

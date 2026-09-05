@@ -9,6 +9,7 @@ local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
+local TycoonClient = require(script.Parent.TycoonClient)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
@@ -523,24 +524,24 @@ function UIController.buildHUD()
 	-- SIDE MENU BUTTONS
 	local sideMenu = Instance.new("Frame")
 	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 140, 0, 200)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, -100)
+	sideMenu.Size = UDim2.new(0, 148, 0, 290)
+	sideMenu.Position = UDim2.new(0, 16, 0.5, -145)
 	sideMenu.BackgroundTransparency = 1
 	sideMenu.Parent = screenGui
 
 	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 12)
+	list.Padding = UDim.new(0, 10)
 	list.Parent = sideMenu
 
 	local function createMenuButton(name: string, text: string, color: Color3, onClick: () -> ()): TextButton
 		local btn = Instance.new("TextButton")
 		btn.Name = name
-		btn.Size = UDim2.new(1, 0, 0, 48)
+		btn.Size = UDim2.new(1, 0, 0, 46)
 		btn.BackgroundColor3 = color
 		btn.Text = text
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		btn.Font = Enum.Font.GothamBold
-		btn.TextSize = 15
+		btn.TextSize = 14
 		btn.BorderSizePixel = 0
 		btn.Parent = sideMenu
 
@@ -575,6 +576,28 @@ function UIController.buildHUD()
 				local gemColor = if gemsEarned > 1 then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(0, 220, 255)
 				showFloatingPopup(gemText, gemColor, 35)
 			end
+		end
+	end)
+
+	-- DEV TESTING CHEAT BUTTON (+$10,000,000 & +50,000 Gems for easy upgrade testing)
+	createMenuButton("DevBtn", "⚡ +$10M (Dev)", Color3.fromRGB(147, 51, 234), function()
+		local devFn = Remotes.getFunction("DevAddCash")
+		local ok, success, addedCash, addedGems = pcall(function()
+			return devFn:InvokeServer()
+		end)
+		if ok and success then
+			showFloatingPopup("+$10,000,000!", Color3.fromRGB(255, 215, 0), -35)
+			showFloatingPopup("+50,000 💎!", Color3.fromRGB(0, 255, 220), 35)
+		end
+	end)
+
+	-- SIMULATOR BGM MUSIC MUTE / UNMUTE TOGGLE
+	local musicBtn: TextButton? = nil
+	musicBtn = createMenuButton("MusicBtn", "🎵 Music: ON", Color3.fromRGB(70, 80, 95), function()
+		local isPlaying = TycoonClient.toggleMusic()
+		if musicBtn then
+			musicBtn.Text = if isPlaying then "🎵 Music: ON" else "🔇 Music: OFF"
+			musicBtn.BackgroundColor3 = if isPlaying then Color3.fromRGB(70, 80, 95) else Color3.fromRGB(50, 55, 65)
 		end
 	end)
 

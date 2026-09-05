@@ -19,6 +19,7 @@ local REGISTERED_FUNCTIONS = {
 	"RequestBuyItem",
 	"HatchEgg",
 	"ToggleEquipPet",
+	"DevAddCash",
 }
 
 local function getRemotesFolder(): Folder

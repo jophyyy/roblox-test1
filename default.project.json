@@ -32,9 +32,9 @@
         "$properties": {
           "Anchored": true,
           "Color": [
-            0.38823,
-            0.37254,
-            0.38823
+            0.282,
+            0.588,
+            0.282
           ],
           "Locked": true,
           "Position": [
@@ -46,7 +46,10 @@
             512,
             20,
             512
-          ]
+          ],
+          "Material": "Plastic",
+          "TopSurface": "Studs",
+          "BottomSurface": "Inlet"
         }
       },
       "SpawnLocation": {
@@ -60,16 +63,17 @@
             0
           ],
           "Size": [
-            12,
+            16,
             1,
-            12
+            16
           ],
           "Color": [
-            0.15,
-            0.17,
-            0.22
+            0.65,
+            0.67,
+            0.70
           ],
-          "Material": "SmoothPlastic",
+          "Material": "Plastic",
+          "TopSurface": "Studs",
           "Duration": 0
         }
       }

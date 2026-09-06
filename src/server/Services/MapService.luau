@@ -1048,18 +1048,18 @@ function MapService.buildEggStand(folder: Folder)
 
 	local costLabel = Instance.new("TextLabel")
 	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
-	costLabel.Position = UDim2.new(0, 0, 0.38, 0)
+	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
 	costLabel.BackgroundTransparency = 1
-	costLabel.Text = "Cost: 100 Gems 💎"
+	costLabel.Text = "[E] 1x (100 💎)  •  [F] 3x (300 💎)"
 	costLabel.TextColor3 = Color3.fromRGB(0, 230, 255)
 	costLabel.Font = Enum.Font.GothamBold
-	costLabel.TextSize = 14
+	costLabel.TextSize = 13
 	costLabel.TextStrokeTransparency = 0.2
 	costLabel.Parent = eggGui
 
 	local chancesLabel = Instance.new("TextLabel")
-	chancesLabel.Size = UDim2.new(1, 0, 0.3, 0)
-	chancesLabel.Position = UDim2.new(0, 0, 0.70, 0)
+	chancesLabel.Size = UDim2.new(1, 0, 0.28, 0)
+	chancesLabel.Position = UDim2.new(0, 0, 0.68, 0)
 	chancesLabel.BackgroundTransparency = 1
 	chancesLabel.Text = "🐶 55%  •  🐱 35%  •  🐰 10%"
 	chancesLabel.TextColor3 = Color3.fromRGB(220, 230, 245)
@@ -1070,7 +1070,7 @@ function MapService.buildEggStand(folder: Folder)
 
 	eggGui.Parent = eggPart
 
-	-- Invisible Interaction Part & Proximity Prompt
+	-- Invisible Interaction Part & Proximity Prompts
 	local interactionPart = Instance.new("Part")
 	interactionPart.Name = "EggInteractionPart"
 	interactionPart.Size = Vector3.new(8, 6, 8)
@@ -1082,31 +1082,60 @@ function MapService.buildEggStand(folder: Folder)
 	interactionPart.Anchored = true
 	interactionPart.Parent = eggShrine
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "HatchPrompt"
-	prompt.ActionText = "Hatch"
-	prompt.ObjectText = "Prism Egg (100 💎)"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.ClickablePrompt = true
-	prompt.Parent = interactionPart
+	-- Prompt 1: [E] Hatch 1x
+	local prompt1 = Instance.new("ProximityPrompt")
+	prompt1.Name = "Hatch1Prompt"
+	prompt1.ActionText = "Hatch 1x"
+	prompt1.ObjectText = "Prism Egg (100 💎)"
+	prompt1.KeyboardKeyCode = Enum.KeyCode.E
+	prompt1.HoldDuration = 0
+	prompt1.MaxActivationDistance = 14
+	prompt1.RequiresLineOfSight = false
+	prompt1.ClickablePrompt = true
+	prompt1.Parent = interactionPart
+
+	-- Prompt 2: [F] Hatch 3x
+	local prompt3 = Instance.new("ProximityPrompt")
+	prompt3.Name = "Hatch3Prompt"
+	prompt3.ActionText = "Hatch 3x"
+	prompt3.ObjectText = "Prism Egg (300 💎)"
+	prompt3.KeyboardKeyCode = Enum.KeyCode.F
+	prompt3.HoldDuration = 0
+	prompt3.MaxActivationDistance = 14
+	prompt3.RequiresLineOfSight = false
+	prompt3.ClickablePrompt = true
+	prompt3.Parent = interactionPart
 
 	local lastHatchTime: { [Player]: number } = {}
-	prompt.Triggered:Connect(function(player)
+	prompt1.Triggered:Connect(function(player)
 		local now = os.clock()
 		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
 			return
 		end
 		lastHatchTime[player] = now
 
-		print("🥚 [MapService] ProximityPrompt Hatch triggered by " .. player.Name)
-		local ok, petId, errReason = PetService.hatchEgg(player, "BasicEgg")
-		if ok and petId then
-			print("✨ [MapService] " .. player.Name .. " hatched " .. tostring(petId))
+		print("🥚 [MapService] ProximityPrompt 1x Hatch triggered by " .. player.Name)
+		local ok, petIds, errReason = PetService.hatchEgg(player, "BasicEgg", 1)
+		if ok and petIds then
+			print("✨ [MapService] " .. player.Name .. " hatched 1x: " .. tostring(petIds[1]))
 		else
-			print("⚠️ [MapService] Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
+			print("⚠️ [MapService] 1x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
+		end
+	end)
+
+	prompt3.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
+			return
+		end
+		lastHatchTime[player] = now
+
+		print("🥚 [MapService] ProximityPrompt 3x Hatch triggered by " .. player.Name)
+		local ok, petIds, errReason = PetService.hatchEgg(player, "BasicEgg", 3)
+		if ok and petIds then
+			print("✨ [MapService] " .. player.Name .. " hatched 3x: " .. table.concat(petIds, ", "))
+		else
+			print("⚠️ [MapService] 3x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
 		end
 	end)
 

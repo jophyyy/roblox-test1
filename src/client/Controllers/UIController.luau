@@ -1988,11 +1988,11 @@ function UIController.buildHUD()
 	end)
 
 	local eggHatchedEvent = Remotes.getEvent("EggHatched")
-	eggHatchedEvent.OnClientEvent:Connect(function(success: boolean, petId: string?, reason: string?)
-		if success and petId then
+	eggHatchedEvent.OnClientEvent:Connect(function(success: boolean, petData: any, reason: string?)
+		if success and petData then
 			closeModal()
 			closeDialogue()
-			PetHatchAnimation.playHatch(petId)
+			PetHatchAnimation.playHatch(petData)
 		else
 			showFloatingPopup("❌ " .. tostring(reason or "Cannot hatch egg!"), Color3.fromRGB(255, 90, 80), 0)
 		end

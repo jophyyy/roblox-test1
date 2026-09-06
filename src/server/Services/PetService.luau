@@ -38,7 +38,8 @@ function PetService.getGemMultiplier(player: Player): number
 	return mult
 end
 
-function PetService.hatchEgg(player: Player, eggId: string): (boolean, string?, string?)
+function PetService.hatchEgg(player: Player, eggId: string, count: number?): (boolean, any, string?)
+	local hatchCount = if count and count > 0 then count else 1
 	local eggDef = PetConfig.EGGS[eggId]
 	if not eggDef then
 		local hatchEvent = Remotes.getEvent("EggHatched")
@@ -46,45 +47,50 @@ function PetService.hatchEgg(player: Player, eggId: string): (boolean, string?, 
 		return false, nil, "Invalid egg"
 	end
 
+	local totalCost = eggDef.cost * hatchCount
 	local data = DataService.get(player)
-	if not data or data.Gems < eggDef.cost then
+	if not data or data.Gems < totalCost then
 		local hatchEvent = Remotes.getEvent("EggHatched")
-		hatchEvent:FireClient(player, false, nil, "Not enough Gems! (Need " .. tostring(eggDef.cost) .. " 💎)")
+		hatchEvent:FireClient(player, false, nil, "Not enough Gems! (Need " .. tostring(totalCost) .. " 💎)")
 		return false, nil, "Not enough Gems"
 	end
 
 	-- Deduct gems
-	DataService.addGems(player, -eggDef.cost)
+	DataService.addGems(player, -totalCost)
 
-	-- Roll weighted table
+	-- Calculate total drop pool weight
 	local totalWeight = 0
 	for _, entry in eggDef.dropPool do
 		totalWeight += entry.weight
 	end
 
-	local roll = math.random() * totalWeight
-	local current = 0
-	local pickedPetId = eggDef.dropPool[1].petId
+	local pickedPetIds: { string } = {}
+	for _ = 1, hatchCount do
+		local roll = math.random() * totalWeight
+		local current = 0
+		local pickedPetId = eggDef.dropPool[1].petId
 
-	for _, entry in eggDef.dropPool do
-		current += entry.weight
-		if roll <= current then
-			pickedPetId = entry.petId
-			break
+		for _, entry in eggDef.dropPool do
+			current += entry.weight
+			if roll <= current then
+				pickedPetId = entry.petId
+				break
+			end
 		end
-	end
 
-	-- Add to inventory
-	data.OwnedPets[pickedPetId] = (data.OwnedPets[pickedPetId] or 0) + 1
+		-- Add to inventory
+		data.OwnedPets[pickedPetId] = (data.OwnedPets[pickedPetId] or 0) + 1
+		table.insert(pickedPetIds, pickedPetId)
+	end
 
 	-- Sync
 	local syncEvent = Remotes.getEvent("SyncPlayerData")
 	syncEvent:FireClient(player, data)
 
 	local hatchEvent = Remotes.getEvent("EggHatched")
-	hatchEvent:FireClient(player, true, pickedPetId, nil)
+	hatchEvent:FireClient(player, true, pickedPetIds, nil)
 
-	return true, pickedPetId, nil
+	return true, pickedPetIds, nil
 end
 
 function PetService.toggleEquip(player: Player, petId: string): boolean
@@ -226,8 +232,8 @@ end
 
 function PetService.init()
 	local hatchRemote = Remotes.getFunction("HatchEgg")
-	hatchRemote.OnServerInvoke = function(player: Player, eggId: string)
-		return PetService.hatchEgg(player, eggId)
+	hatchRemote.OnServerInvoke = function(player: Player, eggId: string, count: number?)
+		return PetService.hatchEgg(player, eggId, count)
 	end
 
 	local equipRemote = Remotes.getFunction("ToggleEquipPet")

@@ -12,7 +12,6 @@ local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local PetHatchAnimation = {}
 
 local player = Players.LocalPlayer
-local camera = Workspace.CurrentCamera
 local isHatching = false
 
 -- Verified crisp sounds
@@ -40,23 +39,16 @@ local function getHumanoid(): Humanoid?
 	return char:FindFirstChildOfClass("Humanoid")
 end
 
-local function getRootPart(): BasePart?
-	local char = player.Character
-	if not char then return nil end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	return if root and root:IsA("BasePart") then root else nil
-end
-
--- Builds a stylized, adorable 3D Pet model with ears, eyes, tail/horns, and glowing aura
-local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
+-- Builds a stylized, adorable 3D Pet model for the ViewportFrame
+local function buildPetModel(petDef: PetConfig.PetDef): Model
 	local model = Instance.new("Model")
 	model.Name = "HatchedPetPreview_" .. petDef.id
 
 	-- Primary Body
 	local body = Instance.new("Part")
 	body.Name = "PrimaryPart"
-	body.Size = Vector3.new(2.0, 2.0, 2.0)
-	body.CFrame = cf
+	body.Size = Vector3.new(2.4, 2.4, 2.4)
+	body.CFrame = CFrame.new(0, 0, 0)
 	body.Color = petDef.color
 	body.Material = Enum.Material.SmoothPlastic
 	body.Anchored = true
@@ -68,7 +60,7 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 	elseif petDef.meshType == "Diamond" then
 		local dMesh = Instance.new("SpecialMesh")
 		dMesh.MeshType = Enum.MeshType.Sphere
-		dMesh.Scale = Vector3.new(1.1, 1.4, 1.1)
+		dMesh.Scale = Vector3.new(1.1, 1.45, 1.1)
 		dMesh.Parent = body
 	end
 	body.Parent = model
@@ -76,14 +68,14 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 
 	-- Adorable Glossy Eyes (Left & Right)
 	local eyePositions = {
-		Vector3.new(-0.45, 0.2, -0.96),
-		Vector3.new(0.45, 0.2, -0.96),
+		Vector3.new(-0.55, 0.25, -1.18),
+		Vector3.new(0.55, 0.25, -1.18),
 	}
 	for i, eyeOffset in ipairs(eyePositions) do
 		local eye = Instance.new("Part")
 		eye.Name = "Eye_" .. i
-		eye.Size = Vector3.new(0.32, 0.36, 0.15)
-		eye.CFrame = cf * CFrame.new(eyeOffset)
+		eye.Size = Vector3.new(0.38, 0.44, 0.15)
+		eye.CFrame = CFrame.new(eyeOffset)
 		eye.Color = Color3.fromRGB(24, 24, 30)
 		eye.Material = Enum.Material.SmoothPlastic
 		eye.Anchored = true
@@ -97,8 +89,8 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 		-- Cute white sparkle glint inside each eye
 		local glint = Instance.new("Part")
 		glint.Name = "Glint_" .. i
-		glint.Size = Vector3.new(0.12, 0.14, 0.08)
-		glint.CFrame = eye.CFrame * CFrame.new(0.06, 0.08, -0.06)
+		glint.Size = Vector3.new(0.14, 0.16, 0.08)
+		glint.CFrame = eye.CFrame * CFrame.new(0.08, 0.1, -0.07)
 		glint.Color = Color3.fromRGB(255, 255, 255)
 		glint.Material = Enum.Material.Neon
 		glint.Anchored = true
@@ -109,8 +101,8 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 	-- Cute little button nose / muzzle
 	local nose = Instance.new("Part")
 	nose.Name = "Nose"
-	nose.Size = Vector3.new(0.24, 0.18, 0.15)
-	nose.CFrame = cf * CFrame.new(0, -0.08, -1.0)
+	nose.Size = Vector3.new(0.28, 0.22, 0.18)
+	nose.CFrame = CFrame.new(0, -0.1, -1.22)
 	nose.Color = Color3.fromRGB(45, 35, 35)
 	nose.Material = Enum.Material.SmoothPlastic
 	nose.Anchored = true
@@ -124,16 +116,16 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 	-- Ears / Feature Accents according to pet breed
 	if petDef.id == "CrystalDoge" then
 		-- Floppy Puppy Ears
-		local earOffsets = {
-			{ pos = Vector3.new(-1.05, 0.85, -0.2), rot = Vector3.new(0, 0, -25) },
-			{ pos = Vector3.new(1.05, 0.85, -0.2), rot = Vector3.new(0, 0, 25) },
+		local earConfigs = {
+			{ pos = Vector3.new(-1.25, 1.0, -0.2), rot = Vector3.new(0, 0, -28) },
+			{ pos = Vector3.new(1.25, 1.0, -0.2), rot = Vector3.new(0, 0, 28) },
 		}
-		for eIdx, eData in ipairs(earOffsets) do
+		for eIdx, eCfg in ipairs(earConfigs) do
 			local ear = Instance.new("Part")
 			ear.Name = "DogeEar_" .. eIdx
-			ear.Size = Vector3.new(0.4, 0.75, 0.5)
-			ear.CFrame = cf * CFrame.new(eData.pos) * CFrame.Angles(0, 0, math.rad(eData.rot.Z))
-			ear.Color = Color3.fromRGB(200, 160, 60)
+			ear.Size = Vector3.new(0.5, 0.9, 0.6)
+			ear.CFrame = CFrame.new(eCfg.pos) * CFrame.Angles(0, 0, math.rad(eCfg.rot.Z))
+			ear.Color = Color3.fromRGB(205, 165, 60)
 			ear.Material = Enum.Material.SmoothPlastic
 			ear.Anchored = true
 			ear.CanCollide = false
@@ -145,16 +137,16 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 		end
 	elseif petDef.id == "SparkleKitty" then
 		-- Pointed Cat Ears with Pink Inner Lining
-		local earOffsets = {
-			Vector3.new(-0.7, 1.15, -0.2),
-			Vector3.new(0.7, 1.15, -0.2),
+		local earConfigs = {
+			{ pos = Vector3.new(-0.85, 1.35, -0.2), rotZ = 16 },
+			{ pos = Vector3.new(0.85, 1.35, -0.2), rotZ = -16 },
 		}
-		for eIdx, ePos in ipairs(earOffsets) do
+		for eIdx, eCfg in ipairs(earConfigs) do
 			local ear = Instance.new("Part")
 			ear.Name = "KittyEar_" .. eIdx
-			ear.Size = Vector3.new(0.45, 0.65, 0.4)
-			ear.CFrame = cf * CFrame.new(ePos) * CFrame.Angles(math.rad(10), 0, if eIdx == 1 then math.rad(15) else math.rad(-15))
-			ear.Color = Color3.fromRGB(255, 170, 190)
+			ear.Size = Vector3.new(0.55, 0.8, 0.45)
+			ear.CFrame = CFrame.new(eCfg.pos) * CFrame.Angles(math.rad(10), 0, math.rad(eCfg.rotZ))
+			ear.Color = Color3.fromRGB(255, 175, 195)
 			ear.Material = Enum.Material.SmoothPlastic
 			ear.Anchored = true
 			ear.CanCollide = false
@@ -162,8 +154,8 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 
 			local innerEar = Instance.new("Part")
 			innerEar.Name = "InnerEar_" .. eIdx
-			innerEar.Size = Vector3.new(0.25, 0.45, 0.2)
-			innerEar.CFrame = ear.CFrame * CFrame.new(0, 0, -0.12)
+			innerEar.Size = Vector3.new(0.3, 0.55, 0.25)
+			innerEar.CFrame = ear.CFrame * CFrame.new(0, 0, -0.15)
 			innerEar.Color = Color3.fromRGB(255, 120, 150)
 			innerEar.Material = Enum.Material.SmoothPlastic
 			innerEar.Anchored = true
@@ -172,15 +164,15 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 		end
 	elseif petDef.id == "NeonBunny" then
 		-- Tall Upright Bunny Ears
-		local earOffsets = {
-			Vector3.new(-0.45, 1.45, -0.1),
-			Vector3.new(0.45, 1.45, -0.1),
+		local earConfigs = {
+			{ pos = Vector3.new(-0.55, 1.8, -0.1), rotZ = -6 },
+			{ pos = Vector3.new(0.55, 1.8, -0.1), rotZ = 6 },
 		}
-		for eIdx, ePos in ipairs(earOffsets) do
+		for eIdx, eCfg in ipairs(earConfigs) do
 			local ear = Instance.new("Part")
 			ear.Name = "BunnyEar_" .. eIdx
-			ear.Size = Vector3.new(0.35, 1.25, 0.35)
-			ear.CFrame = cf * CFrame.new(ePos) * CFrame.Angles(math.rad(-8), 0, if eIdx == 1 then math.rad(-6) else math.rad(6))
+			ear.Size = Vector3.new(0.42, 1.55, 0.42)
+			ear.CFrame = CFrame.new(eCfg.pos) * CFrame.Angles(math.rad(-8), 0, math.rad(eCfg.rotZ))
 			ear.Color = Color3.fromRGB(80, 240, 255)
 			ear.Material = Enum.Material.Neon
 			ear.Anchored = true
@@ -194,15 +186,15 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 		end
 	elseif petDef.id == "InfernoDragon" then
 		-- Curved Fiery Horns
-		local hornOffsets = {
-			Vector3.new(-0.7, 1.15, 0.2),
-			Vector3.new(0.7, 1.15, 0.2),
+		local hornConfigs = {
+			{ pos = Vector3.new(-0.85, 1.4, 0.2), rotZ = -25 },
+			{ pos = Vector3.new(0.85, 1.4, 0.2), rotZ = 25 },
 		}
-		for hIdx, hPos in ipairs(hornOffsets) do
+		for hIdx, hCfg in ipairs(hornConfigs) do
 			local horn = Instance.new("Part")
 			horn.Name = "DragonHorn_" .. hIdx
-			horn.Size = Vector3.new(0.4, 0.9, 0.4)
-			horn.CFrame = cf * CFrame.new(hPos) * CFrame.Angles(math.rad(-25), 0, if hIdx == 1 then math.rad(-25) else math.rad(25))
+			horn.Size = Vector3.new(0.5, 1.1, 0.5)
+			horn.CFrame = CFrame.new(hCfg.pos) * CFrame.Angles(math.rad(-25), 0, math.rad(hCfg.rotZ))
 			horn.Color = Color3.fromRGB(255, 100, 0)
 			horn.Material = Enum.Material.Neon
 			horn.Anchored = true
@@ -211,103 +203,138 @@ local function buildPetModel(petDef: PetConfig.PetDef, cf: CFrame): Model
 		end
 	end
 
-	-- Soft Glowing Aura Particles
-	local auraAttach = Instance.new("Attachment")
-	auraAttach.Parent = body
-
-	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Name = "PetAura"
-	sparkles.Color = ColorSequence.new(petDef.color)
-	sparkles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.4),
-		NumberSequenceKeypoint.new(0.5, 0.6),
-		NumberSequenceKeypoint.new(1, 0.1),
-	})
-	sparkles.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	sparkles.LightEmission = 0.9
-	sparkles.Lifetime = NumberRange.new(0.8, 1.4)
-	sparkles.Rate = 18
-	sparkles.Speed = NumberRange.new(1.0, 2.5)
-	sparkles.SpreadAngle = Vector2.new(180, 180)
-	sparkles.Parent = auraAttach
-
-	-- PointLight radiating from pet
-	local pLight = Instance.new("PointLight")
-	pLight.Color = petDef.color
-	pLight.Brightness = 2.5
-	pLight.Range = 14
-	pLight.Parent = body
-
 	return model
 end
 
--- Creates an egg shake animation over `duration` seconds with specified angle and hop
-local function shakeEgg(
-	eggParts: { BasePart },
-	baseCF: CFrame,
+-- Emits a 2D expanding shockwave ring in ScreenGui
+local function emitShockwave(parent: GuiObject, maxDiameter: number, duration: number, color: Color3)
+	local ring = Instance.new("Frame")
+	ring.Name = "Shockwave"
+	ring.Size = UDim2.new(0, 40, 0, 40)
+	ring.Position = UDim2.new(0.5, 0, 0.5, 0)
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.BackgroundTransparency = 1
+	ring.ZIndex = 8
+	ring.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = ring
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = 4
+	stroke.Transparency = 0.1
+	stroke.Parent = ring
+
+	TweenService:Create(ring, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, maxDiameter, 0, maxDiameter),
+	}):Play()
+
+	local strokeTween = TweenService:Create(stroke, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Transparency = 1,
+		Thickness = 1,
+	})
+	strokeTween:Play()
+	strokeTween.Completed:Connect(function()
+		ring:Destroy()
+	end)
+end
+
+-- Emits small 2D glowing spark chips bursting outward in the GUI
+local function emitSparks2D(parent: GuiObject, count: number, maxDist: number, color: Color3)
+	for i = 1, count do
+		local spark = Instance.new("Frame")
+		spark.Size = UDim2.new(0, 10, 0, 10)
+		spark.Position = UDim2.new(0.5, 0, 0.5, 0)
+		spark.AnchorPoint = Vector2.new(0.5, 0.5)
+		spark.BackgroundColor3 = color
+		spark.BorderSizePixel = 0
+		spark.ZIndex = 9
+		spark.Parent = parent
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.5, 0)
+		corner.Parent = spark
+
+		local angle = math.random() * math.pi * 2
+		local dist = maxDist * (0.5 + math.random() * 0.5)
+		local endX = math.cos(angle) * dist
+		local endY = math.sin(angle) * dist
+
+		local tween = TweenService:Create(spark, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, endX, 0.5, endY),
+			BackgroundTransparency = 1,
+			Size = UDim2.new(0, 2, 0, 2),
+		})
+		tween:Play()
+		tween.Completed:Connect(function()
+			spark:Destroy()
+		end)
+	end
+end
+
+-- Shakes the central EggHolder frame in Screen Space with rotation, offset, and squash/stretch
+local function shakeHolder(
+	holder: Frame,
+	baseY: number,
 	duration: number,
 	maxAngleDeg: number,
-	hopHeight: number
+	maxOffsetPx: number,
+	squash: number
 )
 	local steps = 5
 	local stepTime = duration / steps
 	for s = 1, steps do
-		local angle = math.rad((s % 2 == 1 and 1 or -1) * maxAngleDeg * (1 - (s - 1) / steps))
-		local hop = (s % 2 == 1) and hopHeight or 0
-		local rollOffset = CFrame.new(0, hop, 0) * CFrame.Angles(0, 0, angle)
+		local sign = (s % 2 == 1) and 1 or -1
+		local progress = (1 - (s - 1) / steps)
+		local angle = sign * maxAngleDeg * progress
+		local offsetX = sign * maxOffsetPx * progress
+		local offsetY = ((s % 2 == 1) and -maxOffsetPx * 0.5 or 0)
 
-		for _, p in ipairs(eggParts) do
-			local rel = p:GetAttribute("RelCF") :: CFrame?
-			if rel then
-				p.CFrame = baseCF * rollOffset * rel
-			end
-		end
+		local stretchX = 1 + ((s % 2 == 1) and squash or -squash * 0.5)
+		local stretchY = 1 + ((s % 2 == 1) and -squash or squash * 0.5)
+
+		holder.Rotation = angle
+		holder.Position = UDim2.new(0.5, offsetX, baseY, offsetY)
+		holder.Size = UDim2.new(0, 480 * stretchX, 0, 480 * stretchY)
 		task.wait(stepTime)
 	end
 
-	-- Reset to base
-	for _, p in ipairs(eggParts) do
-		local rel = p:GetAttribute("RelCF") :: CFrame?
-		if rel then
-			p.CFrame = baseCF * rel
-		end
-	end
+	-- Reset to center
+	holder.Rotation = 0
+	holder.Position = UDim2.new(0.5, 0, baseY, 0)
+	holder.Size = UDim2.new(0, 480, 0, 480)
 end
 
--- High-frequency vibration for final pre-explosion rattle
-local function vibrateEgg(eggParts: { BasePart }, baseCF: CFrame, duration: number, maxAngleDeg: number)
+-- Violent high-frequency jitter for final pre-explosion stage
+local function vibrateHolder(holder: Frame, baseY: number, duration: number, maxAngleDeg: number, maxOffsetPx: number)
 	local elapsed = 0
 	local dt = 0.02
 	while elapsed < duration do
-		local angleZ = math.rad((math.random() - 0.5) * 2 * maxAngleDeg)
-		local angleX = math.rad((math.random() - 0.5) * 2 * (maxAngleDeg * 0.5))
-		local hop = math.random() * 0.15
-		local offset = CFrame.new(0, hop, 0) * CFrame.Angles(angleX, 0, angleZ)
+		local angle = (math.random() - 0.5) * 2 * maxAngleDeg
+		local offsetX = (math.random() - 0.5) * 2 * maxOffsetPx
+		local offsetY = (math.random() - 0.5) * 2 * maxOffsetPx
 
-		for _, p in ipairs(eggParts) do
-			local rel = p:GetAttribute("RelCF") :: CFrame?
-			if rel then
-				p.CFrame = baseCF * offset * rel
-			end
-		end
+		local stretchX = 1 + (math.random() - 0.5) * 0.15
+		local stretchY = 1 + (math.random() - 0.5) * 0.15
+
+		holder.Rotation = angle
+		holder.Position = UDim2.new(0.5, offsetX, baseY, offsetY)
+		holder.Size = UDim2.new(0, 480 * stretchX, 0, 480 * stretchY)
+
 		task.wait(dt)
 		elapsed += dt
 	end
 
 	-- Reset
-	for _, p in ipairs(eggParts) do
-		local rel = p:GetAttribute("RelCF") :: CFrame?
-		if rel then
-			p.CFrame = baseCF * rel
-		end
-	end
+	holder.Rotation = 0
+	holder.Position = UDim2.new(0.5, 0, baseY, 0)
+	holder.Size = UDim2.new(0, 480, 0, 480)
 end
 
--- Explodes 3D shell shards outward into space
-local function explodeEggShards(centerPos: Vector3, container: Folder)
+-- Explodes 3D shell shards inside the ViewportFrame
+local function explodeShardsInViewport(worldModel: WorldModel)
 	local shardColors = {
 		Color3.fromRGB(245, 248, 255),
 		Color3.fromRGB(0, 220, 255),
@@ -318,12 +345,11 @@ local function explodeEggShards(centerPos: Vector3, container: Folder)
 	for i = 1, 14 do
 		local shard = Instance.new("Part")
 		shard.Name = "Shard_" .. i
-		shard.Size = Vector3.new(0.5 + math.random() * 0.4, 0.5 + math.random() * 0.4, 0.2)
+		shard.Size = Vector3.new(0.6 + math.random() * 0.4, 0.6 + math.random() * 0.4, 0.25)
 		shard.Color = shardColors[math.random(1, #shardColors)]
 		shard.Material = if math.random() > 0.5 then Enum.Material.Neon else Enum.Material.SmoothPlastic
 		shard.Anchored = true
 		shard.CanCollide = false
-		shard.CanTouch = false
 
 		local dir = Vector3.new(
 			(math.random() - 0.5) * 2,
@@ -331,20 +357,20 @@ local function explodeEggShards(centerPos: Vector3, container: Folder)
 			(math.random() - 0.5) * 2
 		).Unit
 
-		shard.CFrame = CFrame.new(centerPos + dir * 0.5) * CFrame.Angles(
+		shard.CFrame = CFrame.new(dir * 0.5) * CFrame.Angles(
 			math.random() * math.pi * 2,
 			math.random() * math.pi * 2,
 			math.random() * math.pi * 2
 		)
-		shard.Parent = container
+		shard.Parent = worldModel
 
-		local targetCF = CFrame.new(centerPos + dir * (6 + math.random() * 4)) * CFrame.Angles(
+		local targetCF = CFrame.new(dir * (7 + math.random() * 4)) * CFrame.Angles(
 			math.random() * math.pi * 2,
 			math.random() * math.pi * 2,
 			math.random() * math.pi * 2
 		)
 
-		local tween = TweenService:Create(shard, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		local tween = TweenService:Create(shard, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			CFrame = targetCF,
 			Transparency = 1,
 		})
@@ -355,180 +381,190 @@ local function explodeEggShards(centerPos: Vector3, container: Folder)
 	end
 end
 
--- Main Public Entrypoint: Plays the full hatching sequence
+-- Main Public Entrypoint: Plays full-screen prominent egg hatching cinematic
 function PetHatchAnimation.playHatch(petId: string)
 	if isHatching then return end
 	isHatching = true
 
 	local petDef = PetConfig.PETS[petId]
 	if not petDef then
-		-- Fallback to default
 		petDef = PetConfig.PETS.CrystalDoge
 	end
 
 	local hum = getHumanoid()
-	local rootPart = getRootPart()
-	if not hum or not rootPart then
-		isHatching = false
-		return
+	local origWalkSpeed = 16
+	local origJumpPower = 50
+	if hum then
+		origWalkSpeed = hum.WalkSpeed
+		origJumpPower = hum.JumpPower
+		hum.WalkSpeed = 0
+		hum.JumpPower = 0
 	end
 
-	-- 1. Lock player movement & store original speeds
-	local origWalkSpeed = hum.WalkSpeed
-	local origJumpPower = hum.JumpPower
-	hum.WalkSpeed = 0
-	hum.JumpPower = 0
-
-	-- 2. Stage Location: ~4.2 studs directly in front of the player's chest
-	local centerPos = rootPart.Position + rootPart.CFrame.LookVector * 4.2 + Vector3.new(0, 0.4, 0)
-	local eggBaseCF = CFrame.new(centerPos, rootPart.Position + Vector3.new(0, 0.4, 0))
-
-	-- Stage container in Workspace (client-only)
-	local stageFolder = Instance.new("Folder")
-	stageFolder.Name = "HatchAnimationStage"
-	stageFolder.Parent = Workspace
-
-	-- 3. ScreenGui Vignette & Cinematic Overlay
+	-- 1. Create Full-Screen Cinematic ScreenGui
 	local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
 	local hatchGui = Instance.new("ScreenGui")
 	hatchGui.Name = "HatchCinematicGui"
 	hatchGui.ResetOnSpawn = false
-	hatchGui.DisplayOrder = 100
+	hatchGui.DisplayOrder = 200
+	hatchGui.IgnoreGuiInset = true
 	hatchGui.Parent = playerGui
 
-	local vignette = Instance.new("Frame")
-	vignette.Name = "CinematicVignette"
-	vignette.Size = UDim2.new(1, 0, 1, 0)
-	vignette.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
-	vignette.BackgroundTransparency = 1
-	vignette.BorderSizePixel = 0
-	vignette.ZIndex = 1
-	vignette.Parent = hatchGui
+	-- 2. Dark Full-Screen Backdrop
+	local backdrop = Instance.new("Frame")
+	backdrop.Name = "CinematicBackdrop"
+	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
+	backdrop.BackgroundTransparency = 1
+	backdrop.BorderSizePixel = 0
+	backdrop.ZIndex = 1
+	backdrop.Parent = hatchGui
 
-	TweenService:Create(vignette, TweenInfo.new(0.35), { BackgroundTransparency = 0.45 }):Play()
+	TweenService:Create(backdrop, TweenInfo.new(0.35), { BackgroundTransparency = 0.35 }):Play()
 
-	-- 4. Build 3D Staged Egg
-	local eggParts: { BasePart } = {}
+	-- 3. Rotating Sunburst Rays in the background behind the egg
+	local rayContainer = Instance.new("Frame")
+	rayContainer.Name = "SunburstContainer"
+	rayContainer.Size = UDim2.new(0, 680, 0, 680)
+	rayContainer.Position = UDim2.new(0.5, 0, 0.46, 0)
+	rayContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	rayContainer.BackgroundTransparency = 1
+	rayContainer.ZIndex = 2
+	rayContainer.Parent = hatchGui
 
+	for r = 0, 7 do
+		local ray = Instance.new("Frame")
+		ray.Size = UDim2.new(0, 75, 0, 650)
+		ray.Position = UDim2.new(0.5, 0, 0.5, 0)
+		ray.AnchorPoint = Vector2.new(0.5, 0.5)
+		ray.Rotation = r * 45
+		ray.BackgroundColor3 = Color3.fromRGB(255, 235, 160)
+		ray.BackgroundTransparency = 0.94
+		ray.BorderSizePixel = 0
+		ray.ZIndex = 2
+		ray.Parent = rayContainer
+
+		local rayCorner = Instance.new("UICorner")
+		rayCorner.CornerRadius = UDim.new(0.5, 0)
+		rayCorner.Parent = ray
+	end
+
+	-- Slowly rotate rays
+	local rayRotConn: RBXScriptConnection? = nil
+	rayRotConn = RunService.RenderStepped:Connect(function(dt)
+		if rayContainer and rayContainer.Parent then
+			rayContainer.Rotation += dt * 18
+		end
+	end)
+
+	-- 4. Central Large Egg Holder Frame (480x480) in the middle of the screen
+	local eggHolder = Instance.new("Frame")
+	eggHolder.Name = "EggHolder"
+	eggHolder.Size = UDim2.new(0, 480, 0, 480)
+	eggHolder.Position = UDim2.new(0.5, 0, 0.46, 0)
+	eggHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+	eggHolder.BackgroundTransparency = 1
+	eggHolder.ZIndex = 5
+	eggHolder.Parent = hatchGui
+
+	-- 5. ViewportFrame for 3D Egg and Pet
+	local viewport = Instance.new("ViewportFrame")
+	viewport.Name = "EggViewport"
+	viewport.Size = UDim2.new(1, 0, 1, 0)
+	viewport.Position = UDim2.new(0.5, 0, 0.5, 0)
+	viewport.AnchorPoint = Vector2.new(0.5, 0.5)
+	viewport.BackgroundTransparency = 1
+	viewport.LightColor = Color3.fromRGB(255, 255, 255)
+	viewport.LightDirection = Vector3.new(0.5, -1, -1.2)
+	viewport.Ambient = Color3.fromRGB(160, 170, 195)
+	viewport.ZIndex = 6
+	viewport.Parent = eggHolder
+
+	local worldModel = Instance.new("WorldModel")
+	worldModel.Parent = viewport
+
+	local vCamera = Instance.new("Camera")
+	vCamera.FieldOfView = 48
+	vCamera.CFrame = CFrame.lookAt(Vector3.new(0, 0.2, 7.2), Vector3.new(0, 0.2, 0))
+	vCamera.Parent = viewport
+	viewport.CurrentCamera = vCamera
+
+	-- 6. Construct 3D Egg inside ViewportFrame
 	local eggPart = Instance.new("Part")
-	eggPart.Name = "HatchingEgg"
-	eggPart.Size = Vector3.new(2.4, 3.45, 2.4)
+	eggPart.Name = "ViewportEgg"
+	eggPart.Size = Vector3.new(2.8, 4.0, 2.8)
+	eggPart.CFrame = CFrame.new(0, 0, 0)
 	eggPart.Color = Color3.fromRGB(246, 248, 255)
 	eggPart.Material = Enum.Material.SmoothPlastic
 	eggPart.Anchored = true
 	eggPart.CanCollide = false
-	eggPart.CanTouch = false
-	eggPart:SetAttribute("RelCF", CFrame.new(0, 0, 0))
-	eggPart.Parent = stageFolder
+	eggPart.Parent = worldModel
 
 	local eggMesh = Instance.new("SpecialMesh")
 	eggMesh.MeshType = Enum.MeshType.Sphere
 	eggMesh.Parent = eggPart
-	table.insert(eggParts, eggPart)
 
 	-- Glowing Waist Band
 	local eggBand = Instance.new("Part")
 	eggBand.Name = "EggBand"
-	eggBand.Size = Vector3.new(2.48, 0.35, 2.48)
+	eggBand.Size = Vector3.new(2.88, 0.4, 2.88)
+	eggBand.CFrame = CFrame.new(0, -0.2, 0)
 	eggBand.Color = Color3.fromRGB(0, 220, 255)
 	eggBand.Material = Enum.Material.Neon
 	eggBand.Anchored = true
 	eggBand.CanCollide = false
-	eggBand.CanTouch = false
-	eggBand:SetAttribute("RelCF", CFrame.new(0, -0.15, 0))
-	eggBand.Parent = stageFolder
+	eggBand.Parent = worldModel
 
 	local bandMesh = Instance.new("SpecialMesh")
 	bandMesh.MeshType = Enum.MeshType.Sphere
 	bandMesh.Scale = Vector3.new(1.025, 0.18, 1.025)
 	bandMesh.Parent = eggBand
-	table.insert(eggParts, eggBand)
 
 	-- Inner Glowing Neon Core (shows through cracks)
 	local innerCore = Instance.new("Part")
 	innerCore.Name = "InnerCore"
-	innerCore.Size = Vector3.new(1.8, 2.6, 1.8)
-	innerCore.Color = Color3.fromRGB(255, 225, 100)
+	innerCore.Size = Vector3.new(2.2, 3.2, 2.2)
+	innerCore.CFrame = CFrame.new(0, 0, 0)
+	innerCore.Color = Color3.fromRGB(255, 225, 80)
 	innerCore.Material = Enum.Material.Neon
 	innerCore.Transparency = 1
 	innerCore.Anchored = true
 	innerCore.CanCollide = false
-	innerCore.CanTouch = false
-	innerCore:SetAttribute("RelCF", CFrame.new(0, 0, 0))
-	innerCore.Parent = stageFolder
+	innerCore.Parent = worldModel
 
 	local coreMesh = Instance.new("SpecialMesh")
 	coreMesh.MeshType = Enum.MeshType.Sphere
 	coreMesh.Parent = innerCore
-	table.insert(eggParts, innerCore)
 
 	-- 4 3D Crack Fracture Veins on the Egg Surface
 	local crackLines: { Part } = {}
 	local crackConfigs = {
-		{ rel = CFrame.new(0, 0.6, -1.18) * CFrame.Angles(0, 0, math.rad(35)), size = Vector3.new(0.9, 0.08, 0.08) },
-		{ rel = CFrame.new(0.6, -0.2, -1.12) * CFrame.Angles(0, 0, math.rad(-40)), size = Vector3.new(1.1, 0.08, 0.08) },
-		{ rel = CFrame.new(-0.7, 0.2, -1.08) * CFrame.Angles(0, 0, math.rad(55)), size = Vector3.new(0.95, 0.08, 0.08) },
-		{ rel = CFrame.new(0.1, -0.8, -1.15) * CFrame.Angles(0, 0, math.rad(-20)), size = Vector3.new(1.2, 0.08, 0.08) },
+		{ cf = CFrame.new(0, 0.7, 1.38) * CFrame.Angles(0, 0, math.rad(35)), size = Vector3.new(1.1, 0.1, 0.1) },
+		{ cf = CFrame.new(0.7, -0.2, 1.32) * CFrame.Angles(0, 0, math.rad(-40)), size = Vector3.new(1.3, 0.1, 0.1) },
+		{ cf = CFrame.new(-0.8, 0.2, 1.28) * CFrame.Angles(0, 0, math.rad(55)), size = Vector3.new(1.15, 0.1, 0.1) },
+		{ cf = CFrame.new(0.1, -0.9, 1.35) * CFrame.Angles(0, 0, math.rad(-20)), size = Vector3.new(1.4, 0.1, 0.1) },
 	}
 
 	for cIdx, cCfg in ipairs(crackConfigs) do
 		local cPart = Instance.new("Part")
 		cPart.Name = "Crack_" .. cIdx
 		cPart.Size = cCfg.size
+		cPart.CFrame = cCfg.cf
 		cPart.Color = Color3.fromRGB(255, 235, 120)
 		cPart.Material = Enum.Material.Neon
 		cPart.Transparency = 1 -- Hidden until cracked
 		cPart.Anchored = true
 		cPart.CanCollide = false
-		cPart.CanTouch = false
-		cPart:SetAttribute("RelCF", cCfg.rel)
-		cPart.Parent = stageFolder
+		cPart.Parent = worldModel
 		table.insert(crackLines, cPart)
-		table.insert(eggParts, cPart)
 	end
 
-	-- Ambient Light
-	local eggLight = Instance.new("PointLight")
-	eggLight.Color = Color3.fromRGB(0, 220, 255)
-	eggLight.Brightness = 2.0
-	eggLight.Range = 16
-	eggLight.Parent = eggPart
-
-	-- Shell Debris Particle Emitter
-	local debrisAttach = Instance.new("Attachment")
-	debrisAttach.Parent = eggPart
-
-	local debris = Instance.new("ParticleEmitter")
-	debris.Name = "ShellDebris"
-	debris.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 220, 255)),
-	})
-	debris.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.35),
-		NumberSequenceKeypoint.new(1, 0.05),
-	})
-	debris.Rate = 0
-	debris.Speed = NumberRange.new(5, 10)
-	debris.SpreadAngle = Vector2.new(180, 180)
-	debris.Acceleration = Vector3.new(0, -22, 0)
-	debris.Lifetime = NumberRange.new(0.6, 1.1)
-	debris.LightEmission = 0.8
-	debris.Parent = debrisAttach
-
-	-- Initial Spawn: Egg pops up from below with a bounce
-	for _, p in ipairs(eggParts) do
-		local rel = p:GetAttribute("RelCF") :: CFrame? or CFrame.new()
-		p.CFrame = eggBaseCF * CFrame.new(0, -1.4, 0) * rel
-	end
-
-	playSound(SOUNDS.Thud, 0.45, 1.25)
-	for _, p in ipairs(eggParts) do
-		local rel = p:GetAttribute("RelCF") :: CFrame? or CFrame.new()
-		TweenService:Create(p, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			CFrame = eggBaseCF * rel,
-		}):Play()
-	end
+	-- Pop Egg onto screen with a bounce
+	eggHolder.Size = UDim2.new(0, 50, 0, 50)
+	playSound(SOUNDS.Thud, 0.5, 1.25)
+	TweenService:Create(eggHolder, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, 480, 0, 480),
+	}):Play()
 	task.wait(0.45)
 
 	-- ==========================================
@@ -537,56 +573,60 @@ function PetHatchAnimation.playHatch(petId: string)
 
 	-- STAGE 1: First Hairline Crack
 	playSound(SOUNDS.Thud, 0.5, 0.85)
-	debris:Emit(10)
 	if crackLines[1] then crackLines[1].Transparency = 0 end
-	shakeEgg(eggParts, eggBaseCF, 0.26, 8, 0.08)
-	task.wait(0.24)
-
-	-- STAGE 2: Second Crack, wider wobble
-	playSound(SOUNDS.Thud, 0.55, 1.0)
-	debris:Emit(16)
-	if crackLines[2] then crackLines[2].Transparency = 0 end
-	shakeEgg(eggParts, eggBaseCF, 0.28, 14, 0.15)
+	emitSparks2D(hatchGui, 8, 120, Color3.fromRGB(255, 240, 160))
+	shakeHolder(eggHolder, 0.46, 0.26, 9, 8, 0.05)
 	task.wait(0.22)
+
+	-- STAGE 2: Second Crack, wider wobble & shockwave
+	playSound(SOUNDS.Thud, 0.55, 1.0)
+	if crackLines[2] then crackLines[2].Transparency = 0 end
+	emitShockwave(eggHolder, 280, 0.35, Color3.fromRGB(0, 220, 255))
+	emitSparks2D(hatchGui, 14, 180, Color3.fromRGB(0, 230, 255))
+	shakeHolder(eggHolder, 0.46, 0.28, 16, 16, 0.09)
+	task.wait(0.20)
 
 	-- STAGE 3: Third Deep Fracture, Inner Core begins shining
 	playSound(SOUNDS.Thud, 0.65, 1.18)
-	debris:Emit(24)
 	if crackLines[3] then crackLines[3].Transparency = 0 end
 	innerCore.Transparency = 0.5
-	eggLight.Brightness = 3.5
-	shakeEgg(eggParts, eggBaseCF, 0.32, 22, 0.22)
-	task.wait(0.20)
+	emitShockwave(eggHolder, 380, 0.4, Color3.fromRGB(255, 230, 100))
+	emitSparks2D(hatchGui, 20, 240, Color3.fromRGB(255, 220, 120))
+	shakeHolder(eggHolder, 0.46, 0.32, 24, 24, 0.14)
+	task.wait(0.18)
 
-	-- STAGE 4: Violent Final Rattle, Energy overflows
+	-- STAGE 4: Violent Final Rattle & Blinding Energy
 	playSound(SOUNDS.Thud, 0.75, 1.42)
-	debris:Emit(35)
 	if crackLines[4] then crackLines[4].Transparency = 0 end
 	for _, cl in ipairs(crackLines) do
 		cl.Color = Color3.fromRGB(255, 255, 255)
 	end
-	innerCore.Transparency = 0.15
-	eggLight.Brightness = 6.0
-	eggLight.Color = Color3.fromRGB(255, 255, 255)
-
-	vibrateEgg(eggParts, eggBaseCF, 0.42, 28)
+	innerCore.Transparency = 0.1
+	innerCore.Color = Color3.fromRGB(255, 255, 255)
+	emitShockwave(eggHolder, 480, 0.45, Color3.fromRGB(255, 255, 255))
+	emitSparks2D(hatchGui, 30, 300, Color3.fromRGB(255, 255, 255))
+	vibrateHolder(eggHolder, 0.46, 0.42, 30, 25)
 	task.wait(0.12)
 
 	-- STAGE 5: THE BIG BURST & REVEAL!
-	-- Explode 3D Shards
-	explodeEggShards(centerPos, stageFolder)
+	-- Explode 3D Shards in Viewport
+	explodeShardsInViewport(worldModel)
 
-	-- Grand Fanfare sound
+	-- Grand Screen Shockwave & Sparks
+	emitShockwave(hatchGui, 900, 0.55, Color3.fromRGB(255, 240, 150))
+	emitSparks2D(hatchGui, 36, 400, petDef.color)
+
+	-- Triumphant Fanfare Sound
 	playSound(SOUNDS.Fanfare, 0.65, 1.0)
 
-	-- White flash in GUI
+	-- White screen flash
 	local flash = Instance.new("Frame")
 	flash.Name = "Flash"
 	flash.Size = UDim2.new(1, 0, 1, 0)
 	flash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	flash.BackgroundTransparency = 0.2
+	flash.BackgroundTransparency = 0.15
 	flash.BorderSizePixel = 0
-	flash.ZIndex = 5
+	flash.ZIndex = 25
 	flash.Parent = hatchGui
 
 	TweenService:Create(flash, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
@@ -597,34 +637,36 @@ function PetHatchAnimation.playHatch(petId: string)
 		flash:Destroy()
 	end)
 
-	-- Remove original egg parts
-	for _, p in ipairs(eggParts) do
-		p:Destroy()
+	-- Destroy original egg parts
+	eggPart:Destroy()
+	eggBand:Destroy()
+	innerCore:Destroy()
+	for _, cl in ipairs(crackLines) do
+		cl:Destroy()
 	end
 
 	-- ==========================================
-	-- PET MODEL SHOWCASE & REVEAL CARD
+	-- PET MODEL SHOWCASE IN VIEWPORTFRAME
 	-- ==========================================
-	local petModel = buildPetModel(petDef, CFrame.new(centerPos + Vector3.new(0, 0.8, 0)))
-	petModel.Parent = stageFolder
+	local petModel = buildPetModel(petDef)
+	petModel.Parent = worldModel
 
-	-- Elastic bounce entrance for pet
 	local primary = petModel.PrimaryPart :: BasePart
-	primary.CFrame = CFrame.new(centerPos + Vector3.new(0, 2.0, 0))
+	primary.CFrame = CFrame.new(0, 3.5, 0)
 	TweenService:Create(primary, TweenInfo.new(0.65, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
-		CFrame = CFrame.new(centerPos),
+		CFrame = CFrame.new(0, 0, 0),
 	}):Play()
 
-	-- Modern Glassmorphism Pet Showcase Card (Top/Center)
+	-- Modern Glassmorphism Pet Showcase Card (Positioned neatly below the big egg viewport)
 	local cardFrame = Instance.new("Frame")
 	cardFrame.Name = "PetShowcaseCard"
-	cardFrame.Size = UDim2.new(0, 380, 0, 150)
-	cardFrame.Position = UDim2.new(0.5, 0, 0.15, 0)
+	cardFrame.Size = UDim2.new(0, 420, 0, 150)
+	cardFrame.Position = UDim2.new(0.5, 0, 0.78, 0)
 	cardFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	cardFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
 	cardFrame.BackgroundTransparency = 0.1
 	cardFrame.BorderSizePixel = 0
-	cardFrame.ZIndex = 10
+	cardFrame.ZIndex = 15
 	cardFrame.Parent = hatchGui
 
 	local cardCorner = Instance.new("UICorner")
@@ -633,44 +675,44 @@ function PetHatchAnimation.playHatch(petId: string)
 
 	local cardStroke = Instance.new("UIStroke")
 	cardStroke.Color = petDef.color
-	cardStroke.Thickness = 2
+	cardStroke.Thickness = 2.5
 	cardStroke.Transparency = 0.2
 	cardStroke.Parent = cardFrame
 
 	-- Top "HATCHED!" Header
 	local headerLabel = Instance.new("TextLabel")
-	headerLabel.Size = UDim2.new(1, 0, 0, 26)
-	headerLabel.Position = UDim2.new(0, 0, 0, 12)
+	headerLabel.Size = UDim2.new(1, 0, 0, 24)
+	headerLabel.Position = UDim2.new(0, 0, 0, 10)
 	headerLabel.BackgroundTransparency = 1
 	headerLabel.Text = "✨ HATCHED! ✨"
 	headerLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 	headerLabel.Font = Enum.Font.GothamBold
 	headerLabel.TextSize = 14
-	headerLabel.ZIndex = 11
+	headerLabel.ZIndex = 16
 	headerLabel.Parent = cardFrame
 
 	-- Pet Name
 	local nameLabel = Instance.new("TextLabel")
 	nameLabel.Size = UDim2.new(1, 0, 0, 36)
-	nameLabel.Position = UDim2.new(0, 0, 0, 36)
+	nameLabel.Position = UDim2.new(0, 0, 0, 34)
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.Text = string.upper(petDef.name)
 	nameLabel.TextColor3 = petDef.color
 	nameLabel.Font = Enum.Font.GothamBlack
-	nameLabel.TextSize = 24
+	nameLabel.TextSize = 25
 	nameLabel.TextStrokeTransparency = 0.2
-	nameLabel.ZIndex = 11
+	nameLabel.ZIndex = 16
 	nameLabel.Parent = cardFrame
 
 	-- Rarity Pill Badge
 	local rarityBadge = Instance.new("Frame")
-	rarityBadge.Size = UDim2.new(0, 110, 0, 22)
-	rarityBadge.Position = UDim2.new(0.5, 0, 0, 78)
+	rarityBadge.Size = UDim2.new(0, 115, 0, 22)
+	rarityBadge.Position = UDim2.new(0.5, 0, 0, 76)
 	rarityBadge.AnchorPoint = Vector2.new(0.5, 0)
 	rarityBadge.BackgroundColor3 = petDef.color
 	rarityBadge.BackgroundTransparency = 0.2
 	rarityBadge.BorderSizePixel = 0
-	rarityBadge.ZIndex = 11
+	rarityBadge.ZIndex = 16
 	rarityBadge.Parent = cardFrame
 
 	local rCorner = Instance.new("UICorner")
@@ -684,7 +726,7 @@ function PetHatchAnimation.playHatch(petId: string)
 	rarityLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	rarityLabel.Font = Enum.Font.GothamBold
 	rarityLabel.TextSize = 12
-	rarityLabel.ZIndex = 12
+	rarityLabel.ZIndex = 17
 	rarityLabel.Parent = rarityBadge
 
 	-- Stat Boosts
@@ -693,13 +735,13 @@ function PetHatchAnimation.playHatch(petId: string)
 
 	local statsLabel = Instance.new("TextLabel")
 	statsLabel.Size = UDim2.new(1, 0, 0, 24)
-	statsLabel.Position = UDim2.new(0, 0, 0, 108)
+	statsLabel.Position = UDim2.new(0, 0, 0, 106)
 	statsLabel.BackgroundTransparency = 1
 	statsLabel.Text = "💵 +" .. cashBoostPct .. "% Cash   •   💎 +" .. gemBoostPct .. "% Gems"
 	statsLabel.TextColor3 = Color3.fromRGB(220, 235, 255)
 	statsLabel.Font = Enum.Font.GothamMedium
 	statsLabel.TextSize = 13
-	statsLabel.ZIndex = 11
+	statsLabel.ZIndex = 16
 	statsLabel.Parent = cardFrame
 
 	-- Tap / Click anywhere button to dismiss
@@ -708,31 +750,38 @@ function PetHatchAnimation.playHatch(petId: string)
 	clickCatcher.Size = UDim2.new(1, 0, 1, 0)
 	clickCatcher.BackgroundTransparency = 1
 	clickCatcher.Text = ""
-	clickCatcher.ZIndex = 20
+	clickCatcher.ZIndex = 30
 	clickCatcher.Parent = hatchGui
 
 	local hintLabel = Instance.new("TextLabel")
-	hintLabel.Size = UDim2.new(1, 0, 0, 28)
-	hintLabel.Position = UDim2.new(0, 0, 0.88, 0)
+	hintLabel.Size = UDim2.new(1, 0, 0, 26)
+	hintLabel.Position = UDim2.new(0, 0, 0.94, 0)
 	hintLabel.BackgroundTransparency = 1
 	hintLabel.Text = "[ Click anywhere to collect ]"
 	hintLabel.TextColor3 = Color3.fromRGB(180, 195, 215)
 	hintLabel.Font = Enum.Font.GothamMedium
 	hintLabel.TextSize = 14
-	hintLabel.ZIndex = 21
+	hintLabel.ZIndex = 31
 	hintLabel.Parent = hatchGui
 
-	-- Continuous pet slow idle spin & gentle bobbing
+	-- Continuous pet slow idle spin & gentle bobbing in ViewportFrame
 	local rotAngle = 0
 	local rotConn: RBXScriptConnection? = nil
 	rotConn = RunService.RenderStepped:Connect(function(dt)
 		if not primary or not primary.Parent then return end
-		rotAngle += dt * 2.2
+		rotAngle += dt * 2.4
 		local bob = math.sin(rotAngle * 2) * 0.15
-		primary.CFrame = CFrame.new(centerPos + Vector3.new(0, bob, 0)) * CFrame.Angles(0, rotAngle, 0)
+		for _, part in ipairs(petModel:GetDescendants()) do
+			if part:IsA("BasePart") then
+				-- Keep relative offsets around primary while rotating
+				-- Primary part handles base pivot
+			end
+		end
+		-- Rotate pet model around Y
+		petModel:PivotTo(CFrame.new(0, bob, 0) * CFrame.Angles(0, rotAngle, 0))
 	end)
 
-	-- Wait for click dismiss or 3.0s auto-dismiss
+	-- Wait for click dismiss or 3.2s auto-dismiss
 	local dismissed = false
 	local function doDismiss()
 		if dismissed then return end
@@ -742,39 +791,37 @@ function PetHatchAnimation.playHatch(petId: string)
 			rotConn:Disconnect()
 			rotConn = nil
 		end
+		if rayRotConn then
+			rayRotConn:Disconnect()
+			rayRotConn = nil
+		end
 
 		playSound(SOUNDS.Collect, 0.5, 1.25)
 
-		-- Pet zooms toward player rootPart while shrinking
-		if primary and rootPart then
-			local flyTween = TweenService:Create(primary, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				CFrame = rootPart.CFrame,
-				Size = Vector3.new(0.2, 0.2, 0.2),
-				Transparency = 1,
-			})
-			flyTween:Play()
-		end
+		-- Zoom out / shrink eggHolder & fade card
+		TweenService:Create(eggHolder, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+			Size = UDim2.new(0, 10, 0, 10),
+		}):Play()
+		TweenService:Create(backdrop, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(cardFrame, TweenInfo.new(0.3), { Position = UDim2.new(0.5, 0, 0.9, 0), BackgroundTransparency = 1 }):Play()
 
-		-- Fade out GUI
-		TweenService:Create(vignette, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
-		TweenService:Create(cardFrame, TweenInfo.new(0.3), { Position = UDim2.new(0.5, 0, 0.05, 0), BackgroundTransparency = 1 }):Play()
-
-		task.wait(0.35)
+		task.wait(0.32)
 
 		-- Cleanup
-		stageFolder:Destroy()
 		hatchGui:Destroy()
 
 		-- Restore Humanoid speed
-		hum.WalkSpeed = origWalkSpeed
-		hum.JumpPower = origJumpPower
+		if hum then
+			hum.WalkSpeed = origWalkSpeed
+			hum.JumpPower = origJumpPower
+		end
 
 		isHatching = false
 	end
 
 	clickCatcher.MouseButton1Click:Connect(doDismiss)
 
-	task.delay(3.2, function()
+	task.delay(3.5, function()
 		if not dismissed then
 			doDismiss()
 		end
@@ -782,14 +829,11 @@ function PetHatchAnimation.playHatch(petId: string)
 end
 
 function PetHatchAnimation.init()
-	-- Listen for character death to safely cleanup if interrupted
 	local function bindChar(char: Model)
 		local hum = char:WaitForChild("Humanoid") :: Humanoid
 		hum.Died:Connect(function()
 			if isHatching then
 				isHatching = false
-				local existingStage = Workspace:FindFirstChild("HatchAnimationStage")
-				if existingStage then existingStage:Destroy() end
 				local existingGui = player.PlayerGui:FindFirstChild("HatchCinematicGui")
 				if existingGui then existingGui:Destroy() end
 			end

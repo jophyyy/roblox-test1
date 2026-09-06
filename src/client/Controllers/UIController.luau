@@ -13,6 +13,7 @@ local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local TycoonClient = require(script.Parent.TycoonClient)
 
 local player = Players.LocalPlayer
@@ -30,6 +31,8 @@ local multiplierBadge: TextLabel
 local activeModal: Frame? = nil
 local activeDialogue: Frame? = nil
 local currentShopTab = "Shovel"
+local isSpinningWheel = false
+local wheelFreeBadge: Frame? = nil
 
 -- Typewriter and RPG Dialogue State
 local dialogueTypingThread: thread? = nil
@@ -104,6 +107,13 @@ function UIController.updateHUD()
 	if multiplierBadge then
 		local rebirthMult = RebirthConfig.getMultiplier(cachedData.Rebirths or 0)
 		multiplierBadge.Text = string.format("⚡ %.1fx Boost", rebirthMult)
+	end
+	if wheelFreeBadge then
+		local now = os.time()
+		local lastSpin = cachedData.LastWheelSpin or 0
+		local elapsed = now - lastSpin
+		local hasFree = (cachedData.FreeSpins and cachedData.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
+		wheelFreeBadge.Visible = hasFree
 	end
 end
 
@@ -958,6 +968,507 @@ local function openEquipmentShopModal()
 	}):Play()
 end
 
+local function openWheelModal()
+	closeModal()
+	closeDialogue()
+
+	if not screenGui then return end
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		end
+	end
+
+	local modal = createStyledFrame(screenGui, "WheelModal", UDim2.new(0, 480, 0, 560), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(16, 18, 26))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -44, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.ZIndex = 20
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.Parent = closeBtn
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 34)
+	title.Position = UDim2.new(0, 0, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "🎡 LUCKY WHEEL OF FORTUNE 🎡"
+	title.TextColor3 = Color3.fromRGB(255, 215, 0)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 19
+	title.ZIndex = 10
+	title.Parent = modal
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 18)
+	subTitle.Position = UDim2.new(0, 0, 0, 42)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Spin to win massive Cash, Gem Boosts %, or Mythic Pets!"
+	subTitle.TextColor3 = Color3.fromRGB(180, 190, 210)
+	subTitle.Font = Enum.Font.GothamMedium
+	subTitle.TextSize = 12
+	subTitle.ZIndex = 10
+	subTitle.Parent = modal
+
+	-- WHEEL CONTAINER (Circular frame)
+	local wheelContainer = Instance.new("Frame")
+	wheelContainer.Name = "WheelContainer"
+	wheelContainer.Size = UDim2.new(0, 340, 0, 340)
+	wheelContainer.Position = UDim2.new(0.5, 0, 0, 238)
+	wheelContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	wheelContainer.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	wheelContainer.BorderSizePixel = 0
+	wheelContainer.ZIndex = 5
+	wheelContainer.Parent = modal
+
+	local wCorner = Instance.new("UICorner")
+	wCorner.CornerRadius = UDim.new(1, 0)
+	wCorner.Parent = wheelContainer
+
+	-- Golden outer ring stroke
+	local wStroke = Instance.new("UIStroke")
+	wStroke.Thickness = 6
+	wStroke.Color = Color3.fromRGB(255, 205, 50)
+	wStroke.Parent = wheelContainer
+
+	-- Glowing outer rim accent
+	local glowRim = Instance.new("Frame")
+	glowRim.Size = UDim2.new(1, 14, 1, 14)
+	glowRim.Position = UDim2.new(0.5, 0, 0.5, 0)
+	glowRim.AnchorPoint = Vector2.new(0.5, 0.5)
+	glowRim.BackgroundTransparency = 1
+	glowRim.ZIndex = 4
+	glowRim.Parent = wheelContainer
+
+	local glowCorner = Instance.new("UICorner")
+	glowCorner.CornerRadius = UDim.new(1, 0)
+	glowCorner.Parent = glowRim
+
+	local glowStroke = Instance.new("UIStroke")
+	glowStroke.Thickness = 2
+	glowStroke.Color = Color3.fromRGB(255, 140, 0)
+	glowStroke.Transparency = 0.4
+	glowStroke.Parent = glowRim
+
+	-- ROTATING DISC
+	local wheelDisc = Instance.new("Frame")
+	wheelDisc.Name = "WheelDisc"
+	wheelDisc.Size = UDim2.new(1, 0, 1, 0)
+	wheelDisc.Position = UDim2.new(0.5, 0, 0.5, 0)
+	wheelDisc.AnchorPoint = Vector2.new(0.5, 0.5)
+	wheelDisc.BackgroundTransparency = 1
+	wheelDisc.ZIndex = 6
+	wheelDisc.Rotation = 0
+	wheelDisc.Parent = wheelContainer
+
+	local sliceWedges: { [number]: Frame } = {}
+
+	-- Populate 8 Slices
+	for i = 1, 8 do
+		local sliceDef = WheelConfig.SLICES[i]
+		local angle = (i - 1) * 45
+
+		local sliceHolder = Instance.new("Frame")
+		sliceHolder.Name = "SliceHolder_" .. i
+		sliceHolder.Size = UDim2.new(1, 0, 1, 0)
+		sliceHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
+		sliceHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+		sliceHolder.BackgroundTransparency = 1
+		sliceHolder.Rotation = angle
+		sliceHolder.ZIndex = 7
+		sliceHolder.Parent = wheelDisc
+
+		-- Wedge card positioned radially at top of rotation
+		local wedge = Instance.new("Frame")
+		wedge.Name = "Wedge"
+		wedge.Size = UDim2.new(0, 86, 0, 64)
+		wedge.Position = UDim2.new(0.5, 0, 0, 14)
+		wedge.AnchorPoint = Vector2.new(0.5, 0)
+		wedge.BackgroundColor3 = sliceDef.color
+		wedge.BorderSizePixel = 0
+		wedge.ZIndex = 8
+		wedge.Parent = sliceHolder
+
+		local wedgeCorner = Instance.new("UICorner")
+		wedgeCorner.CornerRadius = UDim.new(0, 8)
+		wedgeCorner.Parent = wedge
+
+		local wedgeStroke = Instance.new("UIStroke")
+		wedgeStroke.Thickness = 1.5
+		wedgeStroke.Color = Color3.fromRGB(255, 255, 255)
+		wedgeStroke.Transparency = 0.45
+		wedgeStroke.Parent = wedge
+
+		local iconLabel = Instance.new("TextLabel")
+		iconLabel.Size = UDim2.new(1, 0, 0, 22)
+		iconLabel.Position = UDim2.new(0, 0, 0, 4)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Text = sliceDef.icon
+		iconLabel.TextSize = 17
+		iconLabel.ZIndex = 9
+		iconLabel.Parent = wedge
+
+		local valLabel = Instance.new("TextLabel")
+		valLabel.Size = UDim2.new(1, -6, 0, 18)
+		valLabel.Position = UDim2.new(0, 3, 0, 26)
+		valLabel.BackgroundTransparency = 1
+		valLabel.Text = sliceDef.label
+		valLabel.TextColor3 = sliceDef.textColor
+		valLabel.Font = Enum.Font.GothamBlack
+		valLabel.TextSize = 11
+		valLabel.TextWrapped = true
+		valLabel.ZIndex = 9
+		valLabel.Parent = wedge
+
+		local textStroke = Instance.new("UIStroke")
+		textStroke.Thickness = 1.5
+		textStroke.Color = Color3.fromRGB(0, 0, 0)
+		textStroke.Transparency = 0.35
+		textStroke.Parent = valLabel
+
+		local rarityLabel = Instance.new("TextLabel")
+		rarityLabel.Size = UDim2.new(1, 0, 0, 14)
+		rarityLabel.Position = UDim2.new(0, 0, 1, -16)
+		rarityLabel.BackgroundTransparency = 1
+		rarityLabel.Text = string.upper(sliceDef.rarity)
+		rarityLabel.TextColor3 = sliceDef.textColor
+		rarityLabel.Font = Enum.Font.GothamBold
+		rarityLabel.TextSize = 8
+		rarityLabel.ZIndex = 9
+		rarityLabel.Parent = wedge
+
+		sliceWedges[i] = wedge
+	end
+
+	-- Center Hub
+	local centerHub = Instance.new("Frame")
+	centerHub.Name = "CenterHub"
+	centerHub.Size = UDim2.new(0, 60, 0, 60)
+	centerHub.Position = UDim2.new(0.5, 0, 0.5, 0)
+	centerHub.AnchorPoint = Vector2.new(0.5, 0.5)
+	centerHub.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	centerHub.BorderSizePixel = 0
+	centerHub.ZIndex = 12
+	centerHub.Parent = wheelContainer
+
+	local hubCorner = Instance.new("UICorner")
+	hubCorner.CornerRadius = UDim.new(1, 0)
+	hubCorner.Parent = centerHub
+
+	local hubStroke = Instance.new("UIStroke")
+	hubStroke.Thickness = 3
+	hubStroke.Color = Color3.fromRGB(255, 255, 255)
+	hubStroke.Parent = centerHub
+
+	local hubIcon = Instance.new("TextLabel")
+	hubIcon.Size = UDim2.new(1, 0, 1, 0)
+	hubIcon.BackgroundTransparency = 1
+	hubIcon.Text = "🌟"
+	hubIcon.TextSize = 26
+	hubIcon.ZIndex = 13
+	hubIcon.Parent = centerHub
+
+	-- Pointer / Ticker Arrow (Top center pointing downward into slice)
+	local pointer = Instance.new("TextLabel")
+	pointer.Name = "WheelPointer"
+	pointer.Size = UDim2.new(0, 36, 0, 36)
+	pointer.Position = UDim2.new(0.5, 0, 0, -14)
+	pointer.AnchorPoint = Vector2.new(0.5, 0)
+	pointer.BackgroundTransparency = 1
+	pointer.Text = "▼"
+	pointer.TextColor3 = Color3.fromRGB(255, 50, 50)
+	pointer.TextSize = 34
+	pointer.Font = Enum.Font.GothamBlack
+	pointer.ZIndex = 15
+	pointer.Parent = wheelContainer
+
+	local pStroke = Instance.new("UIStroke")
+	pStroke.Thickness = 2.5
+	pStroke.Color = Color3.fromRGB(255, 255, 255)
+	pStroke.Parent = pointer
+
+	-- Status / Cooldown Text
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Size = UDim2.new(1, 0, 0, 20)
+	statusLabel.Position = UDim2.new(0, 0, 1, -114)
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.Text = "Checking spin status..."
+	statusLabel.TextColor3 = Color3.fromRGB(200, 210, 230)
+	statusLabel.Font = Enum.Font.GothamBold
+	statusLabel.TextSize = 13
+	statusLabel.ZIndex = 10
+	statusLabel.Parent = modal
+
+	-- Main Spin Button
+	local spinBtn = Instance.new("TextButton")
+	spinBtn.Name = "SpinActionBtn"
+	spinBtn.Size = UDim2.new(0, 240, 0, 48)
+	spinBtn.Position = UDim2.new(0.5, -120, 1, -88)
+	spinBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	spinBtn.Text = "🎡 SPIN! (FREE)"
+	spinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	spinBtn.Font = Enum.Font.GothamBlack
+	spinBtn.TextSize = 16
+	spinBtn.BorderSizePixel = 0
+	spinBtn.ZIndex = 10
+	spinBtn.Parent = modal
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 12)
+	sCorner.Parent = spinBtn
+
+	local sStroke = Instance.new("UIStroke")
+	sStroke.Thickness = 2
+	sStroke.Color = Color3.fromRGB(255, 255, 255)
+	sStroke.Transparency = 0.5
+	sStroke.Parent = spinBtn
+
+	-- Dev / Fast Test Spin Button (Simulator test aspect as requested)
+	local testSpinBtn = Instance.new("TextButton")
+	testSpinBtn.Name = "TestSpinBtn"
+	testSpinBtn.Size = UDim2.new(0, 140, 0, 26)
+	testSpinBtn.Position = UDim2.new(0.5, -70, 1, -34)
+	testSpinBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 75)
+	testSpinBtn.Text = "⚡ Test Spin (Free)"
+	testSpinBtn.TextColor3 = Color3.fromRGB(220, 225, 240)
+	testSpinBtn.Font = Enum.Font.GothamBold
+	testSpinBtn.TextSize = 11
+	testSpinBtn.BorderSizePixel = 0
+	testSpinBtn.ZIndex = 10
+	testSpinBtn.Parent = modal
+
+	local tsCorner = Instance.new("UICorner")
+	tsCorner.CornerRadius = UDim.new(0, 8)
+	tsCorner.Parent = testSpinBtn
+
+	-- State update function for buttons & countdown
+	local function updateSpinStatus()
+		if not modal.Parent then return end
+		local now = os.time()
+		local lastSpin = (cachedData and cachedData.LastWheelSpin) or 0
+		local elapsed = now - lastSpin
+		local hasFree = (cachedData and cachedData.FreeSpins and cachedData.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
+
+		if hasFree then
+			statusLabel.Text = "✨ FREE SPIN AVAILABLE!"
+			statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+			spinBtn.Text = "🎡 SPIN! (FREE)"
+			spinBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+		else
+			local remaining = math.max(0, WheelConfig.COOLDOWN_SECONDS - elapsed)
+			local mins = math.floor(remaining / 60)
+			local secs = remaining % 60
+			statusLabel.Text = string.format("⏳ Next free spin in: %02d:%02d", mins, secs)
+			statusLabel.TextColor3 = Color3.fromRGB(241, 196, 15)
+			spinBtn.Text = "💎 SPIN (50 Gems)"
+			spinBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 230)
+		end
+	end
+
+	updateSpinStatus()
+
+	-- Live status refresh loop while modal is open
+	task.spawn(function()
+		while modal.Parent and not isSpinningWheel do
+			task.wait(1)
+			updateSpinStatus()
+		end
+	end)
+
+	-- Execute Spin Action
+	local function doSpin(bypassCost: boolean?)
+		if isSpinningWheel then return end
+		isSpinningWheel = true
+		spinBtn.AutoButtonColor = false
+		spinBtn.Text = "SPINNING..."
+		testSpinBtn.Visible = false
+
+		local now = os.time()
+		local lastSpin = (cachedData and cachedData.LastWheelSpin) or 0
+		local elapsed = now - lastSpin
+		local hasFree = (cachedData and cachedData.FreeSpins and cachedData.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
+		local useGems = not hasFree and not bypassCost
+
+		local spinFn = Remotes.getFunction("SpinWheel")
+		local ok, result, errMsg = pcall(function()
+			return spinFn:InvokeServer(useGems)
+		end)
+
+		if not ok or not result or not result.success then
+			showFloatingPopup(errMsg or "Failed to spin wheel!", Color3.fromRGB(255, 80, 80))
+			isSpinningWheel = false
+			spinBtn.AutoButtonColor = true
+			testSpinBtn.Visible = true
+			updateSpinStatus()
+			return
+		end
+
+		-- SUCCESS: Animate the wheel to target slice!
+		local sliceIndex = result.sliceIndex :: number
+		local targetOffset = 360 - ((sliceIndex - 1) * 45)
+		local currentRot = wheelDisc.Rotation % 360
+		local totalSpins = 5 * 360 -- 5 full revolutions
+		local targetRotation = currentRot + totalSpins + targetOffset
+
+		-- Sound effect & Pointer bounce during spin
+		local spinDuration = 4.2
+		local lastTickAngle = currentRot
+		local tickConnection: RBXScriptConnection? = nil
+
+		tickConnection = RunService.RenderStepped:Connect(function()
+			local current = wheelDisc.Rotation
+			if math.abs(current - lastTickAngle) >= 45 then
+				lastTickAngle = current
+				-- Play click sound
+				local s = Instance.new("Sound")
+				s.SoundId = "rbxassetid://6895079853"
+				s.Volume = 0.05
+				s.PlaybackSpeed = 2.0 + (math.random() * 0.4)
+				s.Parent = SoundService
+				s:Play()
+				s.Ended:Connect(function() s:Destroy() end)
+
+				-- Pointer flick
+				pointer.Rotation = -16
+				TweenService:Create(pointer, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Rotation = 0,
+				}):Play()
+			end
+		end)
+
+		local spinTween = TweenService:Create(wheelDisc, TweenInfo.new(spinDuration, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+			Rotation = targetRotation,
+		})
+
+		spinTween:Play()
+		spinTween.Completed:Connect(function()
+			if tickConnection then
+				tickConnection:Disconnect()
+				tickConnection = nil
+			end
+			pointer.Rotation = 0
+
+			-- Winning wedge pulse
+			local winningWedge = sliceWedges[sliceIndex]
+			if winningWedge then
+				TweenService:Create(winningWedge, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 3, true), {
+					Size = UDim2.new(0, 96, 0, 72),
+				}):Play()
+			end
+
+			-- Play victory sound
+			local winSound = Instance.new("Sound")
+			winSound.SoundId = "rbxassetid://6895079853"
+			winSound.Volume = 0.12
+			winSound.PlaybackSpeed = 1.0
+			winSound.Parent = SoundService
+			winSound:Play()
+			winSound.Ended:Connect(function() winSound:Destroy() end)
+
+			showFloatingPopup("🎉 " .. result.rewardDisplay, Color3.fromRGB(255, 215, 0), 0)
+
+			-- Celebration Winner Overlay inside modal
+			local winCard = Instance.new("Frame")
+			winCard.Name = "WinCard"
+			winCard.Size = UDim2.new(0, 360, 0, 160)
+			winCard.Position = UDim2.new(0.5, 0, 0.5, 0)
+			winCard.AnchorPoint = Vector2.new(0.5, 0.5)
+			winCard.BackgroundColor3 = Color3.fromRGB(20, 24, 36)
+			winCard.BorderSizePixel = 0
+			winCard.ZIndex = 25
+			winCard.Parent = modal
+
+			local wcCorner = Instance.new("UICorner")
+			wcCorner.CornerRadius = UDim.new(0, 16)
+			wcCorner.Parent = winCard
+
+			local wcStroke = Instance.new("UIStroke")
+			wcStroke.Thickness = 3
+			wcStroke.Color = Color3.fromRGB(255, 215, 0)
+			wcStroke.Parent = winCard
+
+			local winTitle = Instance.new("TextLabel")
+			winTitle.Size = UDim2.new(1, 0, 0, 32)
+			winTitle.Position = UDim2.new(0, 0, 0, 16)
+			winTitle.BackgroundTransparency = 1
+			winTitle.Text = "🎉 YOU WON! 🎉"
+			winTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+			winTitle.Font = Enum.Font.GothamBlack
+			winTitle.TextSize = 22
+			winTitle.ZIndex = 26
+			winTitle.Parent = winCard
+
+			local winReward = Instance.new("TextLabel")
+			winReward.Size = UDim2.new(1, -20, 0, 40)
+			winReward.Position = UDim2.new(0, 10, 0, 52)
+			winReward.BackgroundTransparency = 1
+			winReward.Text = result.rewardDisplay
+			winReward.TextColor3 = Color3.fromRGB(255, 255, 255)
+			winReward.Font = Enum.Font.GothamBold
+			winReward.TextSize = 18
+			winReward.TextWrapped = true
+			winReward.ZIndex = 26
+			winReward.Parent = winCard
+
+			local okBtn = Instance.new("TextButton")
+			okBtn.Size = UDim2.new(0, 140, 0, 36)
+			okBtn.Position = UDim2.new(0.5, -70, 1, -48)
+			okBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+			okBtn.Text = "AWESOME!"
+			okBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			okBtn.Font = Enum.Font.GothamBold
+			okBtn.TextSize = 14
+			okBtn.BorderSizePixel = 0
+			okBtn.ZIndex = 26
+			okBtn.Parent = winCard
+
+			local okCorner = Instance.new("UICorner")
+			okCorner.CornerRadius = UDim.new(0, 10)
+			okCorner.Parent = okBtn
+
+			okBtn.MouseButton1Click:Connect(function()
+				winCard:Destroy()
+				isSpinningWheel = false
+				spinBtn.AutoButtonColor = true
+				testSpinBtn.Visible = true
+				updateSpinStatus()
+			end)
+		end)
+	end
+
+	spinBtn.MouseButton1Click:Connect(function()
+		doSpin(false)
+	end)
+
+	testSpinBtn.MouseButton1Click:Connect(function()
+		doSpin(true)
+	end)
+
+	-- Entrance animation
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
 local function openDialogueModal(npcName: string)
 	print("🗣️ [UIController] openDialogueModal initiated for " .. tostring(npcName or "Barnaby"))
 	closeModal()
@@ -1301,6 +1812,96 @@ function UIController.buildHUD()
 			musicBtn.BackgroundColor3 = if isPlaying then Color3.fromRGB(70, 80, 95) else Color3.fromRGB(50, 55, 65)
 		end
 	end)
+
+	-- RIGHT-SIDE SIMULATOR ACTION BUTTONS (Lucky Wheel)
+	local rightSideMenu = Instance.new("Frame")
+	rightSideMenu.Name = "RightSideMenu"
+	rightSideMenu.Size = UDim2.new(0, 80, 0, 100)
+	rightSideMenu.Position = UDim2.new(1, -96, 0.5, -50)
+	rightSideMenu.BackgroundTransparency = 1
+	rightSideMenu.Parent = screenGui
+
+	local wheelBtn = Instance.new("TextButton")
+	wheelBtn.Name = "WheelSpinBtn"
+	wheelBtn.Size = UDim2.new(0, 74, 0, 74)
+	wheelBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
+	wheelBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+	wheelBtn.BackgroundColor3 = Color3.fromRGB(140, 45, 225)
+	wheelBtn.Text = ""
+	wheelBtn.BorderSizePixel = 0
+	wheelBtn.Parent = rightSideMenu
+
+	local wBtnCorner = Instance.new("UICorner")
+	wBtnCorner.CornerRadius = UDim.new(0, 20)
+	wBtnCorner.Parent = wheelBtn
+
+	local wBtnStroke = Instance.new("UIStroke")
+	wBtnStroke.Thickness = 3
+	wBtnStroke.Color = Color3.fromRGB(255, 215, 0)
+	wBtnStroke.Parent = wheelBtn
+
+	local wBtnGrad = Instance.new("UIGradient")
+	wBtnGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(195, 60, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 20, 180)),
+	})
+	wBtnGrad.Rotation = 45
+	wBtnGrad.Parent = wheelBtn
+
+	local wBtnIcon = Instance.new("TextLabel")
+	wBtnIcon.Size = UDim2.new(1, 0, 0, 36)
+	wBtnIcon.Position = UDim2.new(0, 0, 0, 6)
+	wBtnIcon.BackgroundTransparency = 1
+	wBtnIcon.Text = "🎡"
+	wBtnIcon.TextSize = 28
+	wBtnIcon.Parent = wheelBtn
+
+	local wBtnText = Instance.new("TextLabel")
+	wBtnText.Size = UDim2.new(1, 0, 0, 20)
+	wBtnText.Position = UDim2.new(0, 0, 1, -24)
+	wBtnText.BackgroundTransparency = 1
+	wBtnText.Text = "SPIN"
+	wBtnText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	wBtnText.Font = Enum.Font.GothamBlack
+	wBtnText.TextSize = 13
+	wBtnText.Parent = wheelBtn
+
+	-- "FREE!" Badge on top-right corner
+	local freeBadge = Instance.new("Frame")
+	freeBadge.Name = "FreeBadge"
+	freeBadge.Size = UDim2.new(0, 42, 0, 20)
+	freeBadge.Position = UDim2.new(1, -22, 0, -8)
+	freeBadge.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	freeBadge.BorderSizePixel = 0
+	freeBadge.ZIndex = 5
+	freeBadge.Parent = wheelBtn
+	wheelFreeBadge = freeBadge
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(1, 0)
+	bCorner.Parent = freeBadge
+
+	local bStroke = Instance.new("UIStroke")
+	bStroke.Thickness = 1.5
+	bStroke.Color = Color3.fromRGB(255, 255, 255)
+	bStroke.Parent = freeBadge
+
+	local bText = Instance.new("TextLabel")
+	bText.Size = UDim2.new(1, 0, 1, 0)
+	bText.BackgroundTransparency = 1
+	bText.Text = "FREE!"
+	bText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	bText.Font = Enum.Font.GothamBlack
+	bText.TextSize = 10
+	bText.ZIndex = 6
+	bText.Parent = freeBadge
+
+	-- Idle breathing animation
+	TweenService:Create(wheelBtn, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+		Size = UDim2.new(0, 78, 0, 78),
+	}):Play()
+
+	wheelBtn.MouseButton1Click:Connect(openWheelModal)
 
 	-- Instantaneous local client prompt response when pressing E near Barnaby
 	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)

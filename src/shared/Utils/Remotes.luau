@@ -23,6 +23,7 @@ local REGISTERED_FUNCTIONS = {
 	"DevAddCash",
 	"BuyShopItem",
 	"EquipShopItem",
+	"SpinWheel",
 }
 
 local function getRemotesFolder(): Folder

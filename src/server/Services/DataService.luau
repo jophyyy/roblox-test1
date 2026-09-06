@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 
 local DATA_STORE_NAME = "TycoonSave_v1"
@@ -22,6 +23,8 @@ export type PlayerData = {
 	EquippedShovel: string?,
 	OwnedBackpacks: { [string]: boolean },
 	EquippedBackpack: string?,
+	LastWheelSpin: number?,
+	FreeSpins: number?,
 	LastSaved: number,
 }
 
@@ -53,6 +56,8 @@ local function getDefaultData(): PlayerData
 		EquippedShovel = "shovel_rusty",
 		OwnedBackpacks = { ["pack_canvas"] = true },
 		EquippedBackpack = "pack_canvas",
+		LastWheelSpin = 0,
+		FreeSpins = 1,
 		LastSaved = os.time(),
 	}
 end
@@ -172,6 +177,8 @@ function DataService.load(player: Player)
 	data.EquippedShovel = data.EquippedShovel or "shovel_rusty"
 	data.OwnedBackpacks = data.OwnedBackpacks or { ["pack_canvas"] = true }
 	data.EquippedBackpack = data.EquippedBackpack or "pack_canvas"
+	data.LastWheelSpin = data.LastWheelSpin or 0
+	data.FreeSpins = data.FreeSpins or 1
 
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
@@ -230,6 +237,74 @@ function DataService.equipShopItem(player: Player, category: string, itemId: str
 	return false, "Unknown category"
 end
 
+function DataService.spinWheel(player: Player, useGems: boolean?): (boolean, any, string?)
+	local data = playerDataCache[player]
+	if not data then return false, nil, "No player data" end
+
+	local now = os.time()
+	local lastSpin = data.LastWheelSpin or 0
+	local elapsed = now - lastSpin
+	local hasFreeSpin = (data.FreeSpins and data.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
+
+	if not hasFreeSpin then
+		if useGems then
+			if data.Gems < WheelConfig.GEM_SPIN_COST then
+				return false, nil, "Not enough Gems to spin!"
+			end
+			DataService.addGems(player, -WheelConfig.GEM_SPIN_COST)
+		else
+			local remaining = WheelConfig.COOLDOWN_SECONDS - elapsed
+			return false, nil, string.format("Free spin ready in %ds!", math.max(1, remaining))
+		end
+	else
+		if data.FreeSpins and data.FreeSpins > 0 then
+			data.FreeSpins -= 1
+		end
+	end
+
+	data.LastWheelSpin = now
+
+	-- Roll slice
+	local slice, sliceIndex = WheelConfig.rollSlice()
+	local rewardDisplay = ""
+
+	if slice.rewardType == "Cash" then
+		local amount = slice.value :: number
+		DataService.addCash(player, amount)
+		rewardDisplay = "+$" .. tostring(amount)
+	elseif slice.rewardType == "GemsFlat" then
+		local amount = slice.value :: number
+		DataService.addGems(player, amount)
+		rewardDisplay = "+" .. tostring(amount) .. " 💎"
+	elseif slice.rewardType == "GemsPercent" then
+		local pct = slice.value.percent
+		local minGems = slice.value.min
+		local granted = math.max(minGems, math.floor(data.Gems * pct))
+		DataService.addGems(player, granted)
+		rewardDisplay = string.format("+%d 💎 (+%d%%)!", granted, math.floor(pct * 100))
+	elseif slice.rewardType == "Pet" then
+		local petId = slice.value :: string
+		data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + 1
+		rewardDisplay = "🐾 Won " .. slice.name .. "!"
+	elseif slice.rewardType == "Jackpot" then
+		local bonusGems = math.max(slice.value.minGems, data.Gems)
+		DataService.addGems(player, bonusGems)
+		local petId = slice.value.petId
+		data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + 1
+		rewardDisplay = string.format("👑 JACKPOT! +%d 💎 & %s!", bonusGems, petId)
+	end
+
+	syncToClient(player, data)
+	print(string.format("🎡 [Wheel] %s spun slice %d (%s) -> %s", player.Name, sliceIndex, slice.name, rewardDisplay))
+
+	return true, {
+		sliceIndex = sliceIndex,
+		slice = slice,
+		rewardDisplay = rewardDisplay,
+		nextSpinTime = data.LastWheelSpin + WheelConfig.COOLDOWN_SECONDS,
+	}, nil
+end
+
 function DataService.init()
 	Players.PlayerAdded:Connect(function(player)
 		DataService.load(player)
@@ -267,6 +342,11 @@ function DataService.init()
 	local equipFn = Remotes.getFunction("EquipShopItem")
 	equipFn.OnServerInvoke = function(player: Player, category: string, itemId: string)
 		return DataService.equipShopItem(player, category, itemId)
+	end
+
+	local spinFn = Remotes.getFunction("SpinWheel")
+	spinFn.OnServerInvoke = function(player: Player, useGems: boolean?)
+		return DataService.spinWheel(player, useGems)
 	end
 
 	-- Periodic auto-save loop

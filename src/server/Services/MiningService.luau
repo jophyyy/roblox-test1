@@ -17,6 +17,7 @@ local PetService = require(script.Parent.PetService)
 export type ActiveOre = {
 	id: string,
 	oreType: string,
+	zone: "Zone1" | "Zone2",
 	maxHealth: number,
 	health: number,
 	model: Model,
@@ -172,6 +173,7 @@ function MiningService.spawnOre(oreDef: OreConfig.OreDef, position: Vector3): Ac
 	local activeOre: ActiveOre = {
 		id = oreId,
 		oreType = oreDef.id,
+		zone = oreDef.zone,
 		maxHealth = oreDef.maxHealth,
 		health = oreDef.maxHealth,
 		model = model,
@@ -298,10 +300,11 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 		activeOres[oreId] = nil
 		ore.model:Destroy()
 
-		-- Schedule random respawn across the map
+		-- Schedule random respawn within the corresponding zone
+		local oreZone = ore.zone or oreDef.zone or "Zone1"
 		task.delay(OreConfig.RESPAWN_DELAY, function()
-			local newOreDef = OreConfig.getRandomOreType()
-			local newPos = OreConfig.getRandomPosition()
+			local newOreDef = OreConfig.getRandomOreTypeForZone(oreZone)
+			local newPos = OreConfig.getRandomPositionForZone(oreZone)
 			MiningService.spawnOre(newOreDef, newPos)
 		end)
 	end
@@ -325,11 +328,16 @@ function MiningService.init()
 	oresFolder.Name = "ActiveOres"
 	oresFolder.Parent = Workspace
 
-	-- 2. Populate Map with Initial Active Ores
-	print(string.format("⛏️ [MiningService] Spawning initial %d random 3D breakable ores...", OreConfig.TOTAL_ACTIVE_ORES))
-	for _ = 1, OreConfig.TOTAL_ACTIVE_ORES do
-		local oreDef = OreConfig.getRandomOreType()
-		local pos = OreConfig.getRandomPosition()
+	-- 2. Populate Map with Initial Active Ores for Zone 1 and Zone 2
+	print(string.format("⛏️ [MiningService] Spawning initial %d Zone 1 ores and %d Zone 2 ores...", OreConfig.TOTAL_ACTIVE_ORES_ZONE1, OreConfig.TOTAL_ACTIVE_ORES_ZONE2))
+	for _ = 1, OreConfig.TOTAL_ACTIVE_ORES_ZONE1 do
+		local oreDef = OreConfig.getRandomOreTypeForZone("Zone1")
+		local pos = OreConfig.getRandomPositionForZone("Zone1")
+		MiningService.spawnOre(oreDef, pos)
+	end
+	for _ = 1, OreConfig.TOTAL_ACTIVE_ORES_ZONE2 do
+		local oreDef = OreConfig.getRandomOreTypeForZone("Zone2")
+		local pos = OreConfig.getRandomPositionForZone("Zone2")
 		MiningService.spawnOre(oreDef, pos)
 	end
 

@@ -193,16 +193,15 @@ function MapService.buildMountains(folder: Folder)
 		end
 	end
 
-	-- 4 Perimeter Mountain Walls
-	createRidge(-210, 210, -210, -210, false) -- North Wall
+	-- 3 Perimeter Mountain Walls for Zone 1
 	createRidge(-210, 210, 210, 210, false)   -- South Wall
-	createRidge(-210, -210, -210, 210, true)  -- West Wall
-	createRidge(210, 210, -210, 210, true)    -- East Wall
+	createRidge(-210, -210, -140, 210, true)  -- West Wall
+	createRidge(210, 210, -140, 210, true)    -- East Wall
 
 	-- Corner Bastions (Grand diagonal corner peaks)
 	local corners = {
-		Vector3.new(-210, 0, -210),
-		Vector3.new(210, 0, -210),
+		Vector3.new(-210, 0, -140),
+		Vector3.new(210, 0, -140),
 		Vector3.new(-210, 0, 210),
 		Vector3.new(210, 0, 210),
 	}
@@ -238,7 +237,7 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 
 	-- 4 Main Exploration Pathways Leading from Plaza outward into the Mining Fields
 	local pathTargets = {
-		{ name = "Path_North", target = Vector3.new(0, 0.2, -60) },
+		{ name = "Path_North", target = Vector3.new(0, 0.2, -140) },
 		{ name = "Path_South", target = Vector3.new(0, 0.2, 60) },
 		{ name = "Path_West", target = Vector3.new(-60, 0.2, 0) },
 		{ name = "Path_East", target = Vector3.new(60, 0.2, 0) },
@@ -260,9 +259,11 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 		)
 	end
 
-	-- 4 Pathway Dungeon Braziers lighting the way to the exploration zones
+	-- Pathway Dungeon Braziers lighting the way to the exploration zones
 	local pathMidBraziers = {
 		Vector3.new(0, 0, -35),
+		Vector3.new(0, 0, -75),
+		Vector3.new(0, 0, -110),
 		Vector3.new(0, 0, 35),
 		Vector3.new(-35, 0, 0),
 		Vector3.new(35, 0, 0),
@@ -408,12 +409,12 @@ function MapService.buildTrees(folder: Folder)
 		Vector3.new(68, 0, 8),
 
 		-- Foothill groves along North & South borders
-		Vector3.new(-120, 0, -145),
-		Vector3.new(-70, 0, -150),
-		Vector3.new(-20, 0, -145),
-		Vector3.new(30, 0, -150),
-		Vector3.new(85, 0, -145),
-		Vector3.new(130, 0, -150),
+		Vector3.new(-120, 0, -125),
+		Vector3.new(-70, 0, -128),
+		Vector3.new(-20, 0, -125),
+		Vector3.new(30, 0, -128),
+		Vector3.new(85, 0, -125),
+		Vector3.new(130, 0, -128),
 
 		Vector3.new(-120, 0, 145),
 		Vector3.new(-70, 0, 150),
@@ -660,63 +661,9 @@ function MapService.buildDungeonRuins(folder: Folder)
 	spawnRunestone(Vector3.new(-32, 0, 0), runePurple, "West")
 	spawnRunestone(Vector3.new(32, 0, 0), runePurple, "East")
 
-	-- 7. MONUMENTAL NORTHERN DUNGEON GATE (At North Mountains, Z = -188)
-	local gateModel = Instance.new("Model")
-	gateModel.Name = "NorthernDungeonGate"
-
-	local gateZ = -188
-	-- Flanking Gate Towers with tactile studs
-	createStudPart(gateModel, "TowerLeft", Vector3.new(12, 38, 12), CFrame.new(-22, 19, gateZ), stoneDark)
-	createStudPart(gateModel, "TowerRight", Vector3.new(12, 38, 12), CFrame.new(22, 19, gateZ), stoneDark)
-	createStudPart(gateModel, "TowerCapL", Vector3.new(14, 3, 14), CFrame.new(-22, 39.5, gateZ), stoneMid)
-	createStudPart(gateModel, "TowerCapR", Vector3.new(14, 3, 14), CFrame.new(22, 39.5, gateZ), stoneMid)
-
-	-- Spiked Battlements with Studs
-	for b = -2, 2 do
-		createStudPart(gateModel, "MerlonL", Vector3.new(2.4, 3, 2.4), CFrame.new(-22 + (b * 2.8), 42.5, gateZ + 5), stoneDark)
-		createStudPart(gateModel, "MerlonR", Vector3.new(2.4, 3, 2.4), CFrame.new(22 + (b * 2.8), 42.5, gateZ + 5), stoneDark)
-	end
-
-	-- Grand Overhead Stone Lintel
-	createStudPart(gateModel, "GateArch", Vector3.new(36, 8, 10), CFrame.new(0, 34, gateZ), stoneMid)
-
-	-- Deep Cavern Abyss (Pitch-black dungeon interior behind the iron bars)
-	createStudPart(gateModel, "DungeonAbyss", Vector3.new(30, 28, 4), CFrame.new(0, 14, gateZ - 3), Color3.fromRGB(6, 6, 10))
-
-	-- Heavy Iron Portcullis Spiked Bars
-	for bar = -5, 5 do
-		local ironBar = createStudPart(gateModel, "PortcullisBar", Vector3.new(0.8, 26, 0.8), CFrame.new(bar * 2.6, 14, gateZ + 1), Color3.fromRGB(35, 38, 42))
-		ironBar.Material = Enum.Material.Metal
-	end
-	for hBar = 1, 4 do
-		local crossBar = createStudPart(gateModel, "PortcullisCross", Vector3.new(29, 0.8, 0.8), CFrame.new(0, hBar * 6, gateZ + 1.2), Color3.fromRGB(35, 38, 42))
-		crossBar.Material = Enum.Material.Metal
-	end
-
-	-- Braziers flanking the dungeon gate
-	createDungeonBrazier(gateModel, "GateTorchL", CFrame.new(-14, 0, gateZ + 7))
-	createDungeonBrazier(gateModel, "GateTorchR", CFrame.new(14, 0, gateZ + 7))
-
-	-- Ominous Stone Plaque: "⚔️ THE FORGOTTEN DEPTHS ⚔️"
-	local plaque = createStudPart(gateModel, "GatePlaque", Vector3.new(24, 3.4, 1.2), CFrame.new(0, 34, gateZ + 5.2), stoneDark)
-	local plaqueGui = Instance.new("BillboardGui")
-	plaqueGui.Name = "DungeonPlaqueGui"
-	plaqueGui.Size = UDim2.new(0, 320, 0, 50)
-	plaqueGui.StudsOffset = Vector3.new(0, 0, 1)
-	plaqueGui.AlwaysOnTop = true
-
-	local plaqueText = Instance.new("TextLabel")
-	plaqueText.Size = UDim2.new(1, 0, 1, 0)
-	plaqueText.BackgroundTransparency = 1
-	plaqueText.Text = "⚔️ THE FORGOTTEN DEPTHS ⚔️"
-	plaqueText.TextColor3 = Color3.fromRGB(255, 90, 80)
-	plaqueText.Font = Enum.Font.GothamBlack
-	plaqueText.TextSize = 17
-	plaqueText.TextStrokeTransparency = 0.2
-	plaqueText.Parent = plaqueGui
-	plaqueGui.Parent = plaque
-
-	gateModel.Parent = ruinsFolder
+	-- Northern gateway pillars
+	spawnRuinPillar(Vector3.new(-18, 0, -132), 16, false)
+	spawnRuinPillar(Vector3.new(18, 0, -132), 16, false)
 end
 
 -- 8. Atmospheric Lighting & Post-Processing Setup (High Visibility Roguelike Mist & Dusk)
@@ -1489,6 +1436,522 @@ function MapService.buildVIPThrone(folder: Folder)
 	vipModel.Parent = folder
 end
 
+-- 13. Grand Magma Gate to Zone 2 (At Z = -140, requiring 5 Rebirths)
+function MapService.buildMagmaGate(folder: Folder)
+	local gateModel = Instance.new("Model")
+	gateModel.Name = "MagmaGate"
+
+	local gateZ = -140
+	local basaltDark = Color3.fromRGB(28, 22, 24)
+	local basaltTrim = Color3.fromRGB(48, 36, 38)
+	local magmaGlow = Color3.fromRGB(255, 65, 10)
+	local magmaGold = Color3.fromRGB(255, 180, 20)
+
+	-- Flanking Grand Gate Pillars (X = -16 and X = 16)
+	createStudPart(gateModel, "GatePillarL", Vector3.new(8, 30, 8), CFrame.new(-16, 15, gateZ), basaltDark)
+	createStudPart(gateModel, "GatePillarR", Vector3.new(8, 30, 8), CFrame.new(16, 15, gateZ), basaltDark)
+	createStudPart(gateModel, "PillarCapL", Vector3.new(10, 2.5, 10), CFrame.new(-16, 31.25, gateZ), basaltTrim)
+	createStudPart(gateModel, "PillarCapR", Vector3.new(10, 2.5, 10), CFrame.new(16, 31.25, gateZ), basaltTrim)
+
+	-- Spiked Horn Finials on Gate Towers
+	for s = -1, 1 do
+		createStudPart(gateModel, "SpikeL", Vector3.new(1.8, 3.5, 1.8), CFrame.new(-16 + (s * 3.2), 34, gateZ), basaltDark)
+		createStudPart(gateModel, "SpikeR", Vector3.new(1.8, 3.5, 1.8), CFrame.new(16 + (s * 3.2), 34, gateZ), basaltDark)
+	end
+
+	-- Tower Fire Braziers on top
+	createDungeonBrazier(gateModel, "TowerBrazierL", CFrame.new(-16, 32.5, gateZ))
+	createDungeonBrazier(gateModel, "TowerBrazierR", CFrame.new(16, 32.5, gateZ))
+
+	-- Grand Overhead Basalt Arch Lintel
+	createStudPart(gateModel, "GateArchBase", Vector3.new(40, 6, 8), CFrame.new(0, 28, gateZ), basaltDark)
+	local archGlow = createStudPart(gateModel, "GateArchVein", Vector3.new(32, 1.2, 8.2), CFrame.new(0, 28, gateZ), magmaGlow)
+	archGlow.Material = Enum.Material.Neon
+
+	-- Overhead Stone Keystone Plaque
+	local plaque = createStudPart(gateModel, "GatePlaque", Vector3.new(28, 4.5, 1.6), CFrame.new(0, 34, gateZ + 4.1), basaltDark)
+	local plaqueGui = Instance.new("BillboardGui")
+	plaqueGui.Name = "MagmaGatePlaqueGui"
+	plaqueGui.Size = UDim2.new(0, 360, 0, 70)
+	plaqueGui.StudsOffset = Vector3.new(0, 0.5, 1)
+	plaqueGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "🔥 ZONE 2: MAGMA CAVERNS 🔥"
+	titleLabel.TextColor3 = magmaGold
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.15
+	titleLabel.Parent = plaqueGui
+
+	local reqLabel = Instance.new("TextLabel")
+	reqLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	reqLabel.Position = UDim2.new(0, 0, 0.55, 0)
+	reqLabel.BackgroundTransparency = 1
+	reqLabel.Text = "🔒 Requires 5 Rebirths to Enter"
+	reqLabel.TextColor3 = Color3.fromRGB(255, 110, 80)
+	reqLabel.Font = Enum.Font.GothamBold
+	reqLabel.TextSize = 14
+	reqLabel.TextStrokeTransparency = 0.2
+	reqLabel.Parent = plaqueGui
+	plaqueGui.Parent = plaque
+
+	-- PHYSICAL GATEKEEPING BARRIER PART (Toggled client-side based on Rebirths)
+	local barrier = Instance.new("Part")
+	barrier.Name = "MagmaGateBarrier"
+	barrier.Size = Vector3.new(24, 25, 2.5)
+	barrier.CFrame = CFrame.new(0, 12.5, gateZ)
+	barrier.Color = magmaGlow
+	barrier.Material = Enum.Material.ForceField
+	barrier.Transparency = 0.35
+	barrier.Anchored = true
+	barrier.CanCollide = true -- Server default safe, ZoneClient sets to false if Rebirths >= 5
+	barrier.CanTouch = true
+	barrier.TopSurface = Enum.SurfaceType.Smooth
+	barrier.BottomSurface = Enum.SurfaceType.Smooth
+
+	local barrierAttach = Instance.new("Attachment")
+	barrierAttach.Parent = barrier
+
+	local barrierSparks = Instance.new("ParticleEmitter")
+	barrierSparks.Name = "GateSparks"
+	barrierSparks.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 80)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 80, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 20, 0)),
+	})
+	barrierSparks.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	barrierSparks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	barrierSparks.LightEmission = 0.95
+	barrierSparks.Lifetime = NumberRange.new(1.0, 2.0)
+	barrierSparks.Rate = 16
+	barrierSparks.Speed = NumberRange.new(3, 7)
+	barrierSparks.SpreadAngle = Vector2.new(15, 15)
+	barrierSparks.Acceleration = Vector3.new(0, 5, 0)
+	barrierSparks.Parent = barrierAttach
+
+	local barrierLight = Instance.new("PointLight")
+	barrierLight.Color = magmaGlow
+	barrierLight.Brightness = 2.4
+	barrierLight.Range = 26
+	barrierLight.Parent = barrier
+
+	barrier.Parent = gateModel
+
+	-- Flanking Ground Torches
+	createDungeonBrazier(gateModel, "PathBrazierL", CFrame.new(-10, 0, gateZ + 6))
+	createDungeonBrazier(gateModel, "PathBrazierR", CFrame.new(10, 0, gateZ + 6))
+
+	-- Stone Threshold Road through the gate
+	createStudPart(gateModel, "GateThreshold", Vector3.new(18, 0.4, 16), CFrame.new(0, 0.2, gateZ), Color3.fromRGB(60, 50, 52))
+
+	gateModel.Parent = folder
+end
+
+-- 14. Zone 2: Magma Caverns Terrain, Molten Lava Rivers, Basalt Spire Columns, and Boundary Mountains
+function MapService.buildZone2Terrain(folder: Folder)
+	local zone2Folder = Instance.new("Folder")
+	zone2Folder.Name = "Zone2_MagmaCaverns"
+	zone2Folder.Parent = folder
+
+	local basaltFloor = Color3.fromRGB(32, 26, 28)
+	local basaltWall = Color3.fromRGB(40, 32, 36)
+	local basaltPeak = Color3.fromRGB(56, 44, 48)
+	local lavaColor = Color3.fromRGB(255, 65, 10)
+	local basaltTrim = Color3.fromRGB(48, 36, 38)
+
+	-- 1. Main Volcanic Basalt Base Ground (Y = -5 to 0.2, covers Z = -138 to -300)
+	createStudPart(
+		zone2Folder,
+		"BasaltGround",
+		Vector3.new(245, 10.2, 162),
+		CFrame.new(0, -4.9, -219),
+		basaltFloor
+	)
+
+	-- 2. Massive Dividing Wall Cliffs at Z = -140 (Connecting the Outer Mountains to Magma Gate)
+	-- West Wall: X = -210 to -16 (Width 194)
+	createStudPart(zone2Folder, "DividingCliffWest", Vector3.new(194, 28, 18), CFrame.new(-113, 14, -140), basaltWall)
+	-- East Wall: X = 16 to 210 (Width 194)
+	createStudPart(zone2Folder, "DividingCliffEast", Vector3.new(194, 28, 18), CFrame.new(113, 14, -140), basaltWall)
+
+	-- Jagged peaks on top of the dividing walls
+	for i = 1, 6 do
+		local xW = -28 - (i * 26)
+		local xE = 28 + (i * 26)
+		local h = 10 + ((i * 5) % 12)
+		createStudPart(zone2Folder, "CliffPeakW_" .. i, Vector3.new(20, h, 14), CFrame.new(xW, 28 + (h / 2), -140), basaltPeak)
+		createStudPart(zone2Folder, "CliffPeakE_" .. i, Vector3.new(20, h, 14), CFrame.new(xE, 28 + (h / 2), -140), basaltPeak)
+	end
+
+	-- 3. Perimeter Mountain Ridges Enclosing Zone 2
+	local function createMagmaRidge(startX: number, endX: number, startZ: number, endZ: number, isZAxis: boolean)
+		local count = 6
+		for i = 1, count do
+			local alpha = (i - 0.5) / count
+			local cx = startX + (endX - startX) * alpha
+			local cz = startZ + (endZ - startZ) * alpha
+
+			createStudPart(
+				zone2Folder,
+				"MagmaRockBase",
+				if isZAxis then Vector3.new(40, 22, 45) else Vector3.new(45, 22, 40),
+				CFrame.new(cx, 11, cz),
+				basaltWall
+			)
+
+			local midOffset = if i % 2 == 0 then 4 else -4
+			createStudPart(
+				zone2Folder,
+				"MagmaRockMid",
+				if isZAxis then Vector3.new(30, 26, 36) else Vector3.new(36, 26, 30),
+				CFrame.new(cx + (if isZAxis then midOffset else 0), 24, cz + (if not isZAxis then midOffset else 0)),
+				basaltPeak
+			)
+		end
+	end
+
+	-- North Wall of Magma Caverns at Z = -298
+	createMagmaRidge(-120, 120, -298, -298, false)
+	-- West Wall of Magma Caverns at X = -120 (Z = -140 to -298)
+	createMagmaRidge(-120, -120, -140, -298, true)
+	-- East Wall of Magma Caverns at X = 120 (Z = -140 to -298)
+	createMagmaRidge(120, 120, -140, -298, true)
+
+	-- Magma Corner Bastions
+	createStudPart(zone2Folder, "MagmaCornerL", Vector3.new(45, 55, 45), CFrame.new(-120, 27.5, -298), basaltWall)
+	createStudPart(zone2Folder, "MagmaCornerR", Vector3.new(45, 55, 45), CFrame.new(120, 27.5, -298), basaltWall)
+
+	-- 4. Molten Lava River Channels with Heat Glow
+	local lavaChannels = {
+		{ name = "LavaWest", size = Vector3.new(16, 0.45, 75), pos = Vector3.new(-50, 0.25, -215) },
+		{ name = "LavaEast", size = Vector3.new(16, 0.45, 75), pos = Vector3.new(50, 0.25, -215) },
+		{ name = "LavaNorthCurve", size = Vector3.new(85, 0.45, 14), pos = Vector3.new(0, 0.25, -255) },
+	}
+
+	for _, ch in ipairs(lavaChannels) do
+		local lavaPart = createStudPart(zone2Folder, ch.name, ch.size, CFrame.new(ch.pos), lavaColor)
+		lavaPart.Material = Enum.Material.Neon
+		lavaPart.TopSurface = Enum.SurfaceType.Smooth
+
+		local lLight = Instance.new("PointLight")
+		lLight.Color = Color3.fromRGB(255, 80, 10)
+		lLight.Brightness = 2.0
+		lLight.Range = 22
+		lLight.Parent = lavaPart
+
+		local lAttach = Instance.new("Attachment")
+		lAttach.Parent = lavaPart
+
+		local smoke = Instance.new("ParticleEmitter")
+		smoke.Name = "LavaSmoke"
+		smoke.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 140, 40)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180, 50, 20)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 25, 25)),
+		})
+		smoke.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1.0),
+			NumberSequenceKeypoint.new(0.5, 2.5),
+			NumberSequenceKeypoint.new(1, 4.0),
+		})
+		smoke.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		smoke.Lifetime = NumberRange.new(1.5, 2.8)
+		smoke.Rate = 10
+		smoke.Speed = NumberRange.new(2, 4.5)
+		smoke.SpreadAngle = Vector2.new(20, 20)
+		smoke.Acceleration = Vector3.new(0, 3, 0)
+		smoke.LightEmission = 0.7
+		smoke.Parent = lAttach
+	end
+
+	-- Basalt Bridges over Lava Channels (for smooth navigation)
+	createStudPart(zone2Folder, "BasaltBridgeW", Vector3.new(22, 0.6, 12), CFrame.new(-50, 0.45, -215), basaltTrim)
+	createStudPart(zone2Folder, "BasaltBridgeE", Vector3.new(22, 0.6, 12), CFrame.new(50, 0.45, -215), basaltTrim)
+
+	-- 5. Central Basalt Avenue leading from Gate (Z = -140) to Magma Egg (Z = -210)
+	createStudPart(zone2Folder, "MagmaAvenue", Vector3.new(12, 0.35, 68), CFrame.new(0, 0.25, -175), Color3.fromRGB(45, 38, 42))
+
+	-- Avenue Dungeon Braziers lighting the way
+	createDungeonBrazier(zone2Folder, "AvenueBrazier_1", CFrame.new(-8, 0.3, -165))
+	createDungeonBrazier(zone2Folder, "AvenueBrazier_2", CFrame.new(8, 0.3, -165))
+	createDungeonBrazier(zone2Folder, "AvenueBrazier_3", CFrame.new(-8, 0.3, -190))
+	createDungeonBrazier(zone2Folder, "AvenueBrazier_4", CFrame.new(8, 0.3, -190))
+
+	-- 6. Hexagonal Basalt Column Formations (Spire clusters)
+	local columnSpirePositions = {
+		Vector3.new(-75, 0.2, -170),
+		Vector3.new(-82, 0.2, -182),
+		Vector3.new(-70, 0.2, -260),
+		Vector3.new(-80, 0.2, -245),
+		Vector3.new(75, 0.2, -170),
+		Vector3.new(82, 0.2, -182),
+		Vector3.new(70, 0.2, -260),
+		Vector3.new(80, 0.2, -245),
+	}
+	for sIdx, sPos in ipairs(columnSpirePositions) do
+		local height = 10 + ((sIdx * 4) % 14)
+		local spire = createStudPart(zone2Folder, "BasaltSpire_" .. sIdx, Vector3.new(5.5, height, 5.5), CFrame.new(sPos + Vector3.new(0, height / 2, 0)), basaltWall)
+		-- Glowing magma veins on spires
+		local vein = createStudPart(zone2Folder, "SpireVein_" .. sIdx, Vector3.new(1.2, height * 0.8, 1.2), CFrame.new(sPos + Vector3.new(0, height / 2, 0)), lavaColor)
+		vein.Material = Enum.Material.Neon
+		vein.CanCollide = false
+	end
+end
+
+-- 15. Zone 2: Ancient Magma Egg Hatching Shrine
+function MapService.buildMagmaEggStand(folder: Folder)
+	local eggShrine = Instance.new("Model")
+	eggShrine.Name = "MagmaEggHatchShrine"
+
+	-- Positioned prominently in the heart of Magma Caverns at Z = -210
+	local shrineCF = CFrame.new(0, 0.4, -210)
+
+	local obsidian = Color3.fromRGB(22, 18, 20)
+	local basaltMid = Color3.fromRGB(42, 34, 36)
+	local magmaGold = Color3.fromRGB(255, 170, 20)
+	local magmaRed = Color3.fromRGB(255, 60, 10)
+
+	-- 1. Tiered Carved Basalt Pedestal Base
+	createStudPart(eggShrine, "MagmaPedestalBase", Vector3.new(7.5, 0.6, 7.5), shrineCF * CFrame.new(0, 0.3, 0), obsidian)
+	createStudPart(eggShrine, "MagmaPedestalStep", Vector3.new(6.0, 0.6, 6.0), shrineCF * CFrame.new(0, 0.9, 0), basaltMid)
+
+	-- 2. Carved Central Pillar Column with Studs
+	createStudPart(eggShrine, "MagmaPedestalColumn", Vector3.new(3.8, 2.2, 3.8), shrineCF * CFrame.new(0, 2.3, 0), obsidian)
+
+	-- 3. Inscribed Molten Gold Trim Capital
+	local capital = createStudPart(eggShrine, "MagmaPedestalCapital", Vector3.new(5.0, 0.6, 5.0), shrineCF * CFrame.new(0, 3.7, 0), magmaGold)
+	capital.Material = Enum.Material.SmoothPlastic
+
+	-- 4. Obsidian Nest Bowl
+	local bowl = createStudPart(eggShrine, "MagmaNestBowl", Vector3.new(4.4, 0.4, 4.4), shrineCF * CFrame.new(0, 4.1, 0), Color3.fromRGB(18, 14, 16))
+	bowl.Material = Enum.Material.SmoothPlastic
+
+	-- 5. Glowing Magma Rune Core Disc beneath egg
+	local runeCore = createStudPart(eggShrine, "MagmaRuneCore", Vector3.new(3.2, 0.25, 3.2), shrineCF * CFrame.new(0, 4.35, 0), magmaRed)
+	runeCore.Material = Enum.Material.Neon
+
+	-- 6. 3D Physical Magma Egg
+	local eggPart = Instance.new("Part")
+	eggPart.Name = "MagmaEggPart"
+	eggPart.Size = Vector3.new(2.6, 3.6, 2.6)
+	eggPart.CFrame = shrineCF * CFrame.new(0, 6.0, 0)
+	eggPart.Color = magmaRed
+	eggPart.Material = Enum.Material.SmoothPlastic
+	eggPart.Anchored = true
+	eggPart.CanCollide = true
+	eggPart.CanTouch = true
+	eggPart.Parent = eggShrine
+
+	local eggMesh = Instance.new("SpecialMesh")
+	eggMesh.MeshType = Enum.MeshType.Sphere
+	eggMesh.Scale = Vector3.new(1.0, 1.0, 1.0)
+	eggMesh.Parent = eggPart
+
+	-- Molten Gold Neon Waist Band
+	local eggBand = Instance.new("Part")
+	eggBand.Name = "EggWaistBand"
+	eggBand.Size = Vector3.new(2.7, 0.38, 2.7)
+	eggBand.CFrame = shrineCF * CFrame.new(0, 5.85, 0)
+	eggBand.Color = magmaGold
+	eggBand.Material = Enum.Material.Neon
+	eggBand.Anchored = true
+	eggBand.CanCollide = false
+	eggBand.Parent = eggShrine
+
+	local bandMesh = Instance.new("SpecialMesh")
+	bandMesh.MeshType = Enum.MeshType.Sphere
+	bandMesh.Scale = Vector3.new(1.02, 0.18, 1.02)
+	bandMesh.Parent = eggBand
+
+	-- Fiery PointLight radiating from the Magma Egg
+	local eggLight = Instance.new("PointLight")
+	eggLight.Color = Color3.fromRGB(255, 120, 20)
+	eggLight.Brightness = 2.8
+	eggLight.Range = 20
+	eggLight.Parent = eggPart
+
+	-- Rising Fire Embers Particles
+	local eggAttach = Instance.new("Attachment")
+	eggAttach.Parent = eggPart
+
+	local eggSparks = Instance.new("ParticleEmitter")
+	eggSparks.Name = "MagmaEggSparks"
+	eggSparks.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 100)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 90, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 20, 0)),
+	})
+	eggSparks.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(0.5, 0.6),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	eggSparks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	eggSparks.LightEmission = 0.95
+	eggSparks.Lifetime = NumberRange.new(1.0, 1.8)
+	eggSparks.Rate = 12
+	eggSparks.Speed = NumberRange.new(1.2, 3.0)
+	eggSparks.SpreadAngle = Vector2.new(30, 30)
+	eggSparks.Acceleration = Vector3.new(0, 3.5, 0)
+	eggSparks.Parent = eggAttach
+
+	-- Overhead Info Billboard
+	local eggGui = Instance.new("BillboardGui")
+	eggGui.Name = "MagmaEggTitleGui"
+	eggGui.Size = UDim2.new(0, 280, 0, 78)
+	eggGui.StudsOffset = Vector3.new(0, 3.6, 0)
+	eggGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "🔥 MAGMA EGG 🔥"
+	titleLabel.TextColor3 = magmaGold
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = eggGui
+
+	local costLabel = Instance.new("TextLabel")
+	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
+	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
+	costLabel.BackgroundTransparency = 1
+	costLabel.Text = "[E] 1x (1,500 💎)  •  [F] 3x (4,500 💎)"
+	costLabel.TextColor3 = Color3.fromRGB(255, 120, 60)
+	costLabel.Font = Enum.Font.GothamBold
+	costLabel.TextSize = 13
+	costLabel.TextStrokeTransparency = 0.2
+	costLabel.Parent = eggGui
+
+	local chancesLabel = Instance.new("TextLabel")
+	chancesLabel.Size = UDim2.new(1, 0, 0.28, 0)
+	chancesLabel.Position = UDim2.new(0, 0, 0.68, 0)
+	chancesLabel.BackgroundTransparency = 1
+	chancesLabel.Text = "🐕 Hound 55%  •  🗿 Golem 35%  •  🐉 Drake 10%"
+	chancesLabel.TextColor3 = Color3.fromRGB(255, 230, 200)
+	chancesLabel.Font = Enum.Font.GothamMedium
+	chancesLabel.TextSize = 12
+	chancesLabel.TextStrokeTransparency = 0.25
+	chancesLabel.Parent = eggGui
+
+	eggGui.Parent = eggPart
+
+	-- Visual rune indicator pads on pedestal step (Magma Red on Left for 1x, Gold on Right for 3x)
+	local padLeft = createStudPart(eggShrine, "HatchPad_Magma1x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(-3.0, 0.45, 1.2), magmaRed)
+	padLeft.Material = Enum.Material.Neon
+	padLeft.CanCollide = false
+
+	local padRight = createStudPart(eggShrine, "HatchPad_Magma3x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(3.0, 0.45, 1.2), magmaGold)
+	padRight.Material = Enum.Material.Neon
+	padRight.CanCollide = false
+
+	-- Distinct Interaction Parts to place [E] on LEFT and [F] on RIGHT
+	local leftPart = Instance.new("Part")
+	leftPart.Name = "MagmaEggInteractionPart_Left"
+	leftPart.Size = Vector3.new(3.5, 5, 4.5)
+	leftPart.CFrame = shrineCF * CFrame.new(-3.0, 3.0, 1.0)
+	leftPart.Transparency = 1
+	leftPart.CanCollide = false
+	leftPart.CanTouch = true
+	leftPart.CanQuery = true
+	leftPart.Anchored = true
+	leftPart.Parent = eggShrine
+
+	local rightPart = Instance.new("Part")
+	rightPart.Name = "MagmaEggInteractionPart_Right"
+	rightPart.Size = Vector3.new(3.5, 5, 4.5)
+	rightPart.CFrame = shrineCF * CFrame.new(3.0, 3.0, 1.0)
+	rightPart.Transparency = 1
+	rightPart.CanCollide = false
+	rightPart.CanTouch = true
+	rightPart.CanQuery = true
+	rightPart.Anchored = true
+	rightPart.Parent = eggShrine
+
+	-- Prompt 1: [E] Hatch 1x
+	local prompt1 = Instance.new("ProximityPrompt")
+	prompt1.Name = "MagmaHatch1Prompt"
+	prompt1.ActionText = "Hatch 1x"
+	prompt1.ObjectText = "Magma Egg (1,500 💎)"
+	prompt1.KeyboardKeyCode = Enum.KeyCode.E
+	prompt1.HoldDuration = 0
+	prompt1.MaxActivationDistance = 14
+	prompt1.RequiresLineOfSight = false
+	prompt1.ClickablePrompt = true
+	prompt1.UIOffset = Vector2.new(-25, 0)
+	prompt1.Parent = leftPart
+
+	-- Prompt 2: [F] Hatch 3x
+	local prompt3 = Instance.new("ProximityPrompt")
+	prompt3.Name = "MagmaHatch3Prompt"
+	prompt3.ActionText = "Hatch 3x"
+	prompt3.ObjectText = "Magma Egg (4,500 💎)"
+	prompt3.KeyboardKeyCode = Enum.KeyCode.F
+	prompt3.HoldDuration = 0
+	prompt3.MaxActivationDistance = 14
+	prompt3.RequiresLineOfSight = false
+	prompt3.ClickablePrompt = true
+	prompt3.UIOffset = Vector2.new(25, 0)
+	prompt3.Parent = rightPart
+
+	local lastHatchTime: { [Player]: number } = {}
+	prompt1.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
+			return
+		end
+		lastHatchTime[player] = now
+
+		print("🔥 [MapService] ProximityPrompt 1x Magma Egg Hatch triggered by " .. player.Name)
+		local ok, petIds, errReason = PetService.hatchEgg(player, "MagmaEgg", 1)
+		if ok and petIds then
+			print("✨ [MapService] " .. player.Name .. " hatched Magma 1x: " .. tostring(petIds[1]))
+		else
+			print("⚠️ [MapService] Magma 1x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
+		end
+	end)
+
+	prompt3.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
+			return
+		end
+		lastHatchTime[player] = now
+
+		print("🔥 [MapService] ProximityPrompt 3x Magma Egg Hatch triggered by " .. player.Name)
+		local ok, petIds, errReason = PetService.hatchEgg(player, "MagmaEgg", 3)
+		if ok and petIds then
+			print("✨ [MapService] " .. player.Name .. " hatched Magma 3x: " .. table.concat(petIds, ", "))
+		else
+			print("⚠️ [MapService] Magma 3x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
+		end
+	end)
+
+	-- 4 Dungeon Braziers surrounding the Magma Egg Shrine
+	createDungeonBrazier(eggShrine, "MagmaBrazier_1", shrineCF * CFrame.new(-6, 0, -6))
+	createDungeonBrazier(eggShrine, "MagmaBrazier_2", shrineCF * CFrame.new(6, 0, -6))
+	createDungeonBrazier(eggShrine, "MagmaBrazier_3", shrineCF * CFrame.new(-6, 0, 6))
+	createDungeonBrazier(eggShrine, "MagmaBrazier_4", shrineCF * CFrame.new(6, 0, 6))
+
+	eggShrine.Parent = folder
+end
+
 -- Service Initialization
 function MapService.init()
 	-- Clean up existing map container if it exists
@@ -1512,9 +1975,12 @@ function MapService.init()
 	MapService.buildRobuxEggStand(mapFolder)
 	MapService.buildVIPThrone(mapFolder)
 	MapService.buildDungeonRuins(mapFolder)
+	MapService.buildZone2Terrain(mapFolder)
+	MapService.buildMagmaGate(mapFolder)
+	MapService.buildMagmaEggStand(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)
-	print("✅ [MapService] Retro Roguelike Map Generation Complete! (All parts anchored with Studs)")
+	print("✅ [MapService] Retro Roguelike Map Generation Complete! (Zone 1 Meadow & Zone 2 Magma Caverns Active)")
 end
 
 return MapService

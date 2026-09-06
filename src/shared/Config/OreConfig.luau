@@ -2,6 +2,7 @@
 export type OreDef = {
 	id: string,
 	name: string,
+	zone: "Zone1" | "Zone2",
 	maxHealth: number,
 	cashReward: number,
 	gemsReward: number,
@@ -14,14 +15,19 @@ export type OreDef = {
 
 local OreConfig = {}
 
-OreConfig.TOTAL_ACTIVE_ORES = 24
+OreConfig.TOTAL_ACTIVE_ORES_ZONE1 = 20
+OreConfig.TOTAL_ACTIVE_ORES_ZONE2 = 16
 OreConfig.RESPAWN_DELAY = 1.8
 OreConfig.MAX_MINE_DISTANCE = 14
 
 OreConfig.ORES = {
+	-- ==========================================
+	-- ZONE 1: SPAWN MEADOW ORES
+	-- ==========================================
 	Stone = {
 		id = "Stone",
 		name = "Stone Boulder",
+		zone = "Zone1",
 		maxHealth = 25,
 		cashReward = 25,
 		gemsReward = 1,
@@ -34,6 +40,7 @@ OreConfig.ORES = {
 	Copper = {
 		id = "Copper",
 		name = "Copper Vein",
+		zone = "Zone1",
 		maxHealth = 60,
 		cashReward = 80,
 		gemsReward = 2,
@@ -46,6 +53,7 @@ OreConfig.ORES = {
 	Iron = {
 		id = "Iron",
 		name = "Iron Ore",
+		zone = "Zone1",
 		maxHealth = 140,
 		cashReward = 240,
 		gemsReward = 4,
@@ -58,6 +66,7 @@ OreConfig.ORES = {
 	Gold = {
 		id = "Gold",
 		name = "Gilded Gold Vein",
+		zone = "Zone1",
 		maxHealth = 320,
 		cashReward = 750,
 		gemsReward = 10,
@@ -70,6 +79,7 @@ OreConfig.ORES = {
 	Diamond = {
 		id = "Diamond",
 		name = "Diamond Crystal",
+		zone = "Zone1",
 		maxHealth = 750,
 		cashReward = 2200,
 		gemsReward = 25,
@@ -82,6 +92,7 @@ OreConfig.ORES = {
 	CosmicVoid = {
 		id = "CosmicVoid",
 		name = "Cosmic Void Geode",
+		zone = "Zone1",
 		maxHealth = 1800,
 		cashReward = 7500,
 		gemsReward = 75,
@@ -91,45 +102,121 @@ OreConfig.ORES = {
 		weight = 2,
 		icon = "🌌",
 	},
+
+	-- ==========================================
+	-- ZONE 2: MAGMA CAVERNS ORES
+	-- ==========================================
+	MagmaBasalt = {
+		id = "MagmaBasalt",
+		name = "Magma Basalt Node",
+		zone = "Zone2",
+		maxHealth = 2500,
+		cashReward = 15000,
+		gemsReward = 100,
+		color = Color3.fromRGB(35, 25, 25),
+		accentColor = Color3.fromRGB(255, 80, 10),
+		scale = 1.65,
+		weight = 35,
+		icon = "🌋",
+	},
+	ThunderQuartz = {
+		id = "ThunderQuartz",
+		name = "Thunder Quartz Vein",
+		zone = "Zone2",
+		maxHealth = 6000,
+		cashReward = 45000,
+		gemsReward = 250,
+		color = Color3.fromRGB(255, 225, 60),
+		accentColor = Color3.fromRGB(255, 255, 180),
+		scale = 1.75,
+		weight = 25,
+		icon = "⚡",
+	},
+	MoltenCrystal = {
+		id = "MoltenCrystal",
+		name = "Molten Core Crystal",
+		zone = "Zone2",
+		maxHealth = 15000,
+		cashReward = 140000,
+		gemsReward = 650,
+		color = Color3.fromRGB(255, 50, 20),
+		accentColor = Color3.fromRGB(255, 170, 40),
+		scale = 1.9,
+		weight = 15,
+		icon = "🔥",
+	},
+	InfernalGeode = {
+		id = "InfernalGeode",
+		name = "Infernal Dragon Geode",
+		zone = "Zone2",
+		maxHealth = 40000,
+		cashReward = 500000,
+		gemsReward = 2000,
+		color = Color3.fromRGB(180, 20, 80),
+		accentColor = Color3.fromRGB(255, 215, 0),
+		scale = 2.1,
+		weight = 5,
+		icon = "👑",
+	},
 } :: { [string]: OreDef }
 
--- Spawning boundaries (Meadow quadrants surrounding the central plaza)
--- Baseplate is 320x320 studs: [-130, 130] in X and Z
--- Plaza is [-24, 24] in X and Z
-OreConfig.SPAWN_ZONES = {
-	-- North-West Quadrant
+-- Spawning boundaries for Zone 1 (Meadow quadrants surrounding plaza)
+OreConfig.SPAWN_ZONES_1 = {
 	{ minX = -125, maxX = -28, minZ = -125, maxZ = -28 },
-	-- North-East Quadrant
 	{ minX = 28, maxX = 125, minZ = -125, maxZ = -28 },
-	-- South-West Quadrant
 	{ minX = -125, maxX = -28, minZ = 28, maxZ = 125 },
-	-- South-East Quadrant
 	{ minX = 28, maxX = 125, minZ = 28, maxZ = 125 },
 }
 
-function OreConfig.getRandomOreType(): OreDef
+-- Spawning boundaries for Zone 2 (Magma Caverns: Z = -165 to -275)
+OreConfig.SPAWN_ZONES_2 = {
+	{ minX = -100, maxX = -20, minZ = -275, maxZ = -165 },
+	{ minX = 20, maxX = 100, minZ = -275, maxZ = -165 },
+}
+
+function OreConfig.getRandomOreTypeForZone(zone: "Zone1" | "Zone2"): OreDef
+	local pool = {}
 	local totalWeight = 0
 	for _, ore in OreConfig.ORES do
-		totalWeight += ore.weight
+		if ore.zone == zone then
+			table.insert(pool, ore)
+			totalWeight += ore.weight
+		end
 	end
 
 	local roll = math.random() * totalWeight
 	local current = 0
-	for _, ore in OreConfig.ORES do
+	for _, ore in pool do
 		current += ore.weight
 		if roll <= current then
 			return ore
 		end
 	end
 
-	return OreConfig.ORES.Stone
+	return if zone == "Zone2" then OreConfig.ORES.MagmaBasalt else OreConfig.ORES.Stone
+end
+
+function OreConfig.getRandomPositionForZone(zone: "Zone1" | "Zone2"): Vector3
+	if zone == "Zone2" then
+		local bounds = OreConfig.SPAWN_ZONES_2[math.random(1, #OreConfig.SPAWN_ZONES_2)]
+		local x = math.random(bounds.minX, bounds.maxX)
+		local z = math.random(bounds.minZ, bounds.maxZ)
+		return Vector3.new(x, 0.4, z)
+	else
+		local bounds = OreConfig.SPAWN_ZONES_1[math.random(1, #OreConfig.SPAWN_ZONES_1)]
+		local x = math.random(bounds.minX, bounds.maxX)
+		local z = math.random(bounds.minZ, bounds.maxZ)
+		return Vector3.new(x, 0.4, z)
+	end
+end
+
+-- Backward compatibility helpers
+function OreConfig.getRandomOreType(): OreDef
+	return OreConfig.getRandomOreTypeForZone("Zone1")
 end
 
 function OreConfig.getRandomPosition(): Vector3
-	local zone = OreConfig.SPAWN_ZONES[math.random(1, #OreConfig.SPAWN_ZONES)]
-	local x = math.random(zone.minX, zone.maxX)
-	local z = math.random(zone.minZ, zone.maxZ)
-	return Vector3.new(x, 0.4, z)
+	return OreConfig.getRandomPositionForZone("Zone1")
 end
 
 return OreConfig

@@ -67,6 +67,33 @@ local PetConfig = {
 			color = Color3.fromRGB(186, 85, 211),
 			meshType = "Diamond",
 		},
+		MagmaHound = {
+			id = "MagmaHound",
+			name = "Magma Hound",
+			rarity = "Rare",
+			cashMultiplier = 4.5,
+			gemMultiplier = 3.0,
+			color = Color3.fromRGB(255, 120, 20),
+			meshType = "Sphere",
+		},
+		VolcanicGolem = {
+			id = "VolcanicGolem",
+			name = "Volcanic Golem",
+			rarity = "Epic",
+			cashMultiplier = 8.0,
+			gemMultiplier = 5.5,
+			color = Color3.fromRGB(50, 32, 32),
+			meshType = "Block",
+		},
+		ElderMagmaDrake = {
+			id = "ElderMagmaDrake",
+			name = "Elder Magma Drake",
+			rarity = "Legendary",
+			cashMultiplier = 16.0,
+			gemMultiplier = 10.0,
+			color = Color3.fromRGB(255, 40, 0),
+			meshType = "Diamond",
+		},
 	} :: { [string]: PetDef },
 
 	EGGS = {
@@ -90,6 +117,17 @@ local PetConfig = {
 				{ petId = "NeonBunny", weight = 60 },
 				{ petId = "InfernoDragon", weight = 35 },
 				{ petId = "VoidPhoenix", weight = 5 },
+			},
+		},
+		MagmaEgg = {
+			id = "MagmaEgg",
+			name = "Magma Egg",
+			cost = 1500,
+			currency = "Gems",
+			dropPool = {
+				{ petId = "MagmaHound", weight = 55 },
+				{ petId = "VolcanicGolem", weight = 35 },
+				{ petId = "ElderMagmaDrake", weight = 10 },
 			},
 		},
 		RobuxEgg = {

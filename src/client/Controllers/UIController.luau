@@ -553,18 +553,18 @@ local function openPetModal()
 	eggSecTitle.TextSize = 13
 	eggSecTitle.Parent = eggSection
 
-	local eggList = {"BasicEgg", "CosmicEgg"}
+	local eggList = {"BasicEgg", "CosmicEgg", "MagmaEgg"}
 	for i, eggId in ipairs(eggList) do
 		local eggDef = PetConfig.EGGS[eggId]
 		if eggDef then
 			local eggBtn = Instance.new("TextButton")
-			eggBtn.Size = UDim2.new(0.46, 0, 0, 75)
-			eggBtn.Position = UDim2.new(0.03 + (i - 1) * 0.49, 0, 0, 35)
-			eggBtn.BackgroundColor3 = Color3.fromRGB(40, 48, 68)
+			eggBtn.Size = UDim2.new(0.30, 0, 0, 75)
+			eggBtn.Position = UDim2.new(0.025 + (i - 1) * 0.325, 0, 0, 35)
+			eggBtn.BackgroundColor3 = if eggId == "MagmaEgg" then Color3.fromRGB(60, 32, 28) else Color3.fromRGB(40, 48, 68)
 			eggBtn.Text = eggDef.name .. "\n💎 " .. eggDef.cost .. " Gems"
-			eggBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			eggBtn.TextColor3 = if eggId == "MagmaEgg" then Color3.fromRGB(255, 150, 60) else Color3.fromRGB(255, 255, 255)
 			eggBtn.Font = Enum.Font.GothamBold
-			eggBtn.TextSize = 14
+			eggBtn.TextSize = 13
 			eggBtn.BorderSizePixel = 0
 			eggBtn.Parent = eggSection
 
@@ -574,9 +574,10 @@ local function openPetModal()
 
 			eggBtn.MouseButton1Click:Connect(function()
 				local hatchFn = Remotes.getFunction("HatchEgg")
-				local ok, petId, err = hatchFn:InvokeServer(eggId)
-				if ok and petId and PetConfig.PETS[petId] then
-					eggBtn.Text = "HATCHED!\n" .. PetConfig.PETS[petId].name
+				local ok, petIds, err = hatchFn:InvokeServer(eggId, 1)
+				local firstId = if typeof(petIds) == "table" then petIds[1] else petIds
+				if ok and firstId and PetConfig.PETS[firstId] then
+					eggBtn.Text = "HATCHED!\n" .. PetConfig.PETS[firstId].name
 					task.wait(1.5)
 					openPetModal() -- refresh
 				end

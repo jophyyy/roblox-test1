@@ -115,8 +115,8 @@ local function closeDialogue()
 	if activeDialogue then
 		local target = activeDialogue
 		activeDialogue = nil
-		local tween = TweenService:Create(target, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(0.5, 0, 1, 280),
+		local tween = TweenService:Create(target, TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.In), {
+			Position = UDim2.new(1, 40, 0, 80),
 		})
 		tween:Play()
 		tween.Completed:Connect(function()
@@ -846,38 +846,28 @@ local function openDialogueModal(npcName: string)
 		return
 	end
 
-	-- Roguelike Slate Dialogue Box (Spacious 720x230 frame)
-	local dlg = createStyledFrame(screenGui, "DialogueBox", UDim2.new(0, 720, 0, 230), UDim2.new(0.5, 0, 1, 40), Color3.fromRGB(15, 18, 26))
-	dlg.AnchorPoint = Vector2.new(0.5, 1)
+	-- Top-Right Transparent Dialogue Container (No box around it, borderless floating RPG text)
+	local dlg = Instance.new("Frame")
+	dlg.Name = "DialogueContainer"
+	dlg.Size = UDim2.new(0, 520, 0, 340)
+	dlg.Position = UDim2.new(1, 30, 0, 80)
+	dlg.AnchorPoint = Vector2.new(1, 0)
+	dlg.BackgroundTransparency = 1
+	dlg.BorderSizePixel = 0
 	dlg.ZIndex = 30
+	dlg.Parent = screenGui
 	activeDialogue = dlg
 
-	-- Gilded Antique Gold Roguelike Border Trim
-	local borderStroke = dlg:FindFirstChildOfClass("UIStroke")
-	if borderStroke then
-		borderStroke.Color = Color3.fromRGB(220, 180, 75)
-		borderStroke.Thickness = 2.0
-	end
-
-	-- Ornate Top Accent Line
-	local topAccent = Instance.new("Frame")
-	topAccent.Size = UDim2.new(1, -40, 0, 2)
-	topAccent.Position = UDim2.new(0, 20, 0, 8)
-	topAccent.BackgroundColor3 = Color3.fromRGB(220, 180, 75)
-	topAccent.BackgroundTransparency = 0.6
-	topAccent.BorderSizePixel = 0
-	topAccent.ZIndex = 31
-	topAccent.Parent = dlg
-
-	-- Corner Close "✕" Button
+	-- Discreet Corner Close "✕" Button
 	local closeDlgBtn = Instance.new("TextButton")
-	closeDlgBtn.Size = UDim2.new(0, 30, 0, 30)
-	closeDlgBtn.Position = UDim2.new(1, -38, 0, 8)
-	closeDlgBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+	closeDlgBtn.Size = UDim2.new(0, 26, 0, 26)
+	closeDlgBtn.Position = UDim2.new(1, -26, 0, -4)
+	closeDlgBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 48)
+	closeDlgBtn.BackgroundTransparency = 0.4
 	closeDlgBtn.Text = "✕"
-	closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeDlgBtn.Font = Enum.Font.GothamBlack
-	closeDlgBtn.TextSize = 14
+	closeDlgBtn.TextColor3 = Color3.fromRGB(200, 210, 230)
+	closeDlgBtn.Font = Enum.Font.GothamBold
+	closeDlgBtn.TextSize = 13
 	closeDlgBtn.BorderSizePixel = 0
 	closeDlgBtn.ZIndex = 35
 	closeDlgBtn.Parent = dlg
@@ -888,52 +878,24 @@ local function openDialogueModal(npcName: string)
 
 	closeDlgBtn.MouseEnter:Connect(function()
 		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+		closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	end)
 	closeDlgBtn.MouseLeave:Connect(function()
-		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 48)
+		closeDlgBtn.TextColor3 = Color3.fromRGB(200, 210, 230)
 	end)
 	closeDlgBtn.MouseButton1Click:Connect(closeDialogue)
 
-	-- Name Tag Banner
-	local nameBadge = Instance.new("Frame")
-	nameBadge.Size = UDim2.new(0, 300, 0, 36)
-	nameBadge.Position = UDim2.new(0, 24, 0, -18)
-	nameBadge.BackgroundColor3 = Color3.fromRGB(25, 30, 44)
-	nameBadge.BorderSizePixel = 0
-	nameBadge.ZIndex = 32
-	nameBadge.Parent = dlg
-
-	local nbCorner = Instance.new("UICorner")
-	nbCorner.CornerRadius = UDim.new(0, 10)
-	nbCorner.Parent = nameBadge
-
-	local nbStroke = Instance.new("UIStroke")
-	nbStroke.Color = Color3.fromRGB(255, 215, 0)
-	nbStroke.Thickness = 1.5
-	nbStroke.Parent = nameBadge
-
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, 0, 1, 0)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = "🛒 Barnaby [Equipment Merchant]"
-	nameLabel.TextColor3 = Color3.fromRGB(255, 220, 90)
-	nameLabel.Font = Enum.Font.Antique
-	nameLabel.TextSize = 17
-	nameLabel.TextStrokeTransparency = 0.3
-	nameLabel.ZIndex = 33
-	nameLabel.Parent = nameBadge
-
-	-- NPC Dialogue Speech Label (Large, crisp Roguelike Antique font)
+	-- NPC Dialogue Speech Label (Much bigger Antique Roguelike Font, no box around it)
 	local speechLabel = Instance.new("TextLabel")
-	speechLabel.Size = UDim2.new(1, -70, 0, 84)
-	speechLabel.Position = UDim2.new(0, 24, 0, 26)
+	speechLabel.Name = "SpeechLabel"
+	speechLabel.Size = UDim2.new(1, -32, 0, 130)
+	speechLabel.Position = UDim2.new(0, 0, 0, 0)
 	speechLabel.BackgroundTransparency = 1
 	speechLabel.Text = ""
-	speechLabel.TextColor3 = Color3.fromRGB(242, 245, 252)
-	speechLabel.TextStrokeColor3 = Color3.fromRGB(8, 10, 15)
-	speechLabel.TextStrokeTransparency = 0.4
+	speechLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	speechLabel.Font = Enum.Font.Antique
-	speechLabel.TextSize = 20
+	speechLabel.TextSize = 28 -- Much bigger font!
 	speechLabel.TextWrapped = true
 	speechLabel.RichText = true
 	speechLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -941,10 +903,17 @@ local function openDialogueModal(npcName: string)
 	speechLabel.ZIndex = 32
 	speechLabel.Parent = dlg
 
-	-- Invisible Click-to-Skip Button covering speech label area
+	-- Crisp dark stroke around the letters so text is 100% readable over 3D world geometry without a box
+	local speechStroke = Instance.new("UIStroke")
+	speechStroke.Thickness = 2.5
+	speechStroke.Color = Color3.fromRGB(8, 10, 16)
+	speechStroke.Transparency = 0
+	speechStroke.Parent = speechLabel
+
+	-- Invisible Click-to-Skip Button covering speech area
 	local skipBtn = Instance.new("TextButton")
 	skipBtn.Name = "SkipDetector"
-	skipBtn.Size = UDim2.new(1, 0, 0, 118)
+	skipBtn.Size = UDim2.new(1, 0, 0, 135)
 	skipBtn.Position = UDim2.new(0, 0, 0, 0)
 	skipBtn.BackgroundTransparency = 1
 	skipBtn.Text = ""
@@ -952,45 +921,56 @@ local function openDialogueModal(npcName: string)
 	skipBtn.Parent = dlg
 	skipBtn.MouseButton1Click:Connect(skipDialogueTyping)
 
-	-- Choice Buttons Container
-	local choicesRow = Instance.new("Frame")
-	choicesRow.Size = UDim2.new(1, -48, 0, 72)
-	choicesRow.Position = UDim2.new(0, 24, 0, 126)
-	choicesRow.BackgroundTransparency = 1
-	choicesRow.ZIndex = 32
-	choicesRow.Parent = dlg
+	-- Choice Buttons Column (Stacked vertically on top of each other, right below speech)
+	local choicesCol = Instance.new("Frame")
+	choicesCol.Name = "ChoicesColumn"
+	choicesCol.Size = UDim2.new(1, 0, 0, 175)
+	choicesCol.Position = UDim2.new(0, 0, 0, 140)
+	choicesCol.BackgroundTransparency = 1
+	choicesCol.ZIndex = 32
+	choicesCol.Parent = dlg
 
 	local choiceList = Instance.new("UIListLayout")
-	choiceList.FillDirection = Enum.FillDirection.Horizontal
-	choiceList.Padding = UDim.new(0, 12)
-	choiceList.Parent = choicesRow
+	choiceList.FillDirection = Enum.FillDirection.Vertical -- Stacked vertically!
+	choiceList.Padding = UDim.new(0, 8)
+	choiceList.SortOrder = Enum.SortOrder.LayoutOrder
+	choiceList.Parent = choicesCol
 
-	local function makeChoice(text: string, bgCol: Color3, strokeCol: Color3, onClick: () -> ()): TextButton
+	local function makeChoice(order: number, text: string, strokeCol: Color3, onClick: () -> ()): TextButton
 		local cBtn = Instance.new("TextButton")
-		cBtn.Size = UDim2.new(0.314, 0, 0, 68)
-		cBtn.BackgroundColor3 = bgCol
+		cBtn.LayoutOrder = order
+		cBtn.Size = UDim2.new(1, 0, 0, 48)
+		cBtn.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
+		cBtn.BackgroundTransparency = 0.25
 		cBtn.Text = text
-		cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		cBtn.TextColor3 = Color3.fromRGB(240, 245, 255)
 		cBtn.Font = Enum.Font.Antique
-		cBtn.TextSize = 16
+		cBtn.TextSize = 18
 		cBtn.TextWrapped = true
+		cBtn.TextXAlignment = Enum.TextXAlignment.Left
 		cBtn.BorderSizePixel = 0
 		cBtn.ZIndex = 34
-		cBtn.Parent = choicesRow
+		cBtn.Parent = choicesCol
+
+		local cPad = Instance.new("UIPadding")
+		cPad.PaddingLeft = UDim.new(0, 16)
+		cPad.PaddingRight = UDim.new(0, 16)
+		cPad.Parent = cBtn
 
 		local cCorner = Instance.new("UICorner")
-		cCorner.CornerRadius = UDim.new(0, 10)
+		cCorner.CornerRadius = UDim.new(0, 8)
 		cCorner.Parent = cBtn
 
 		local cStroke = Instance.new("UIStroke")
 		cStroke.Color = strokeCol
 		cStroke.Thickness = 1.5
-		cStroke.Transparency = 0.3
+		cStroke.Transparency = 0.4
 		cStroke.Parent = cBtn
 
 		cBtn.MouseEnter:Connect(function()
 			TweenService:Create(cBtn, TweenInfo.new(0.15), {
-				BackgroundColor3 = bgCol:Lerp(Color3.fromRGB(255, 255, 255), 0.16),
+				BackgroundTransparency = 0.05,
+				TextColor3 = Color3.fromRGB(255, 225, 110),
 			}):Play()
 			TweenService:Create(cStroke, TweenInfo.new(0.15), {
 				Transparency = 0,
@@ -999,10 +979,11 @@ local function openDialogueModal(npcName: string)
 		end)
 		cBtn.MouseLeave:Connect(function()
 			TweenService:Create(cBtn, TweenInfo.new(0.15), {
-				BackgroundColor3 = bgCol,
+				BackgroundTransparency = 0.25,
+				TextColor3 = Color3.fromRGB(240, 245, 255),
 			}):Play()
 			TweenService:Create(cStroke, TweenInfo.new(0.15), {
-				Transparency = 0.3,
+				Transparency = 0.4,
 				Thickness = 1.5,
 			}):Play()
 		end)
@@ -1020,22 +1001,22 @@ local function openDialogueModal(npcName: string)
 		closeDialogue()
 		openEquipmentShopModal()
 	end
-	makeChoice("🛒 [1] What do you have for sale?", Color3.fromRGB(16, 128, 88), Color3.fromRGB(50, 220, 155), choiceAction1)
+	makeChoice(1, "🛒 [1] What do you have for sale?", Color3.fromRGB(50, 220, 155), choiceAction1)
 
 	-- Choice 2: Any advice for the mines?
 	choiceAction2 = function()
 		typewriteWords(speechLabel, "“Build out your tycoon droppers and upgrade fields! Upgraded ores yield heaps of cash. And buy a sturdy backpack from me to multiply every batch!”", 0.04)
 	end
-	makeChoice("📜 [2] Tell me about this place.", Color3.fromRGB(36, 55, 105), Color3.fromRGB(100, 155, 255), choiceAction2)
+	makeChoice(2, "📜 [2] Tell me about this place.", Color3.fromRGB(100, 165, 255), choiceAction2)
 
 	-- Choice 3: Leave
-	makeChoice("✕ [3] Just browsing. [Leave]", Color3.fromRGB(58, 62, 75), Color3.fromRGB(140, 150, 170), function()
+	makeChoice(3, "✕ [3] Just browsing. [Leave]", Color3.fromRGB(160, 165, 180), function()
 		closeDialogue()
 	end)
 
-	-- Animate up from bottom smoothly
-	TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 1, -26),
+	-- Animate in smoothly from right
+	TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+		Position = UDim2.new(1, -36, 0, 80),
 	}):Play()
 
 	-- Start word-by-word dialogue typewriter animation

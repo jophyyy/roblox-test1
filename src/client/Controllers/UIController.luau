@@ -1347,16 +1347,21 @@ local function openWheelModal()
 			return
 		end
 
-		-- SUCCESS: Animate the wheel to target slice!
+		-- SUCCESS: Animate the wheel to target slice with full power every time!
 		local sliceIndex = result.sliceIndex :: number
-		local targetOffset = 360 - ((sliceIndex - 1) * 45)
-		local currentRot = wheelDisc.Rotation % 360
-		local totalSpins = 5 * 360 -- 5 full revolutions
-		local targetRotation = currentRot + totalSpins + targetOffset
+		local targetAngle = (360 - ((sliceIndex - 1) * 45)) % 360
+		local currentAngle = wheelDisc.Rotation % 360
+		local deltaAngle = (targetAngle - currentAngle) % 360
+		if deltaAngle <= 0 then
+			deltaAngle += 360
+		end
+
+		local fullRotations = 6 * 360 -- 6 full high-power revolutions (2,160 degrees)
+		local targetRotation = wheelDisc.Rotation + fullRotations + deltaAngle
 
 		-- Sound effect & Pointer bounce during spin
-		local spinDuration = 4.2
-		local lastTickAngle = currentRot
+		local spinDuration = 3.8
+		local lastTickAngle = wheelDisc.Rotation
 		local tickConnection: RBXScriptConnection? = nil
 
 		tickConnection = RunService.RenderStepped:Connect(function()

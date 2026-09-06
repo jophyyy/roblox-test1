@@ -1070,19 +1070,39 @@ function MapService.buildEggStand(folder: Folder)
 
 	eggGui.Parent = eggPart
 
-	-- Invisible Interaction Part & Proximity Prompts
-	local interactionPart = Instance.new("Part")
-	interactionPart.Name = "EggInteractionPart"
-	interactionPart.Size = Vector3.new(8, 6, 8)
-	interactionPart.CFrame = shrineCF * CFrame.new(0, 3.5, 0)
-	interactionPart.Transparency = 1
-	interactionPart.CanCollide = false
-	interactionPart.CanTouch = true
-	interactionPart.CanQuery = true
-	interactionPart.Anchored = true
-	interactionPart.Parent = eggShrine
+	-- Visual rune indicator pads on the pedestal step (Cyan for 1x on Left, Gold for 3x on Right)
+	local padLeft = createStudPart(eggShrine, "HatchPad_1x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(-3.0, 0.45, 1.2), Color3.fromRGB(0, 200, 255))
+	padLeft.Material = Enum.Material.Neon
+	padLeft.CanCollide = false
 
-	-- Prompt 1: [E] Hatch 1x
+	local padRight = createStudPart(eggShrine, "HatchPad_3x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(3.0, 0.45, 1.2), Color3.fromRGB(255, 215, 0))
+	padRight.Material = Enum.Material.Neon
+	padRight.CanCollide = false
+
+	-- Distinct Interaction Parts to place [E] on the LEFT and [F] on the RIGHT with zero overlap
+	local leftPart = Instance.new("Part")
+	leftPart.Name = "EggInteractionPart_Left"
+	leftPart.Size = Vector3.new(3.5, 5, 4.5)
+	leftPart.CFrame = shrineCF * CFrame.new(-3.0, 3.0, 1.0)
+	leftPart.Transparency = 1
+	leftPart.CanCollide = false
+	leftPart.CanTouch = true
+	leftPart.CanQuery = true
+	leftPart.Anchored = true
+	leftPart.Parent = eggShrine
+
+	local rightPart = Instance.new("Part")
+	rightPart.Name = "EggInteractionPart_Right"
+	rightPart.Size = Vector3.new(3.5, 5, 4.5)
+	rightPart.CFrame = shrineCF * CFrame.new(3.0, 3.0, 1.0)
+	rightPart.Transparency = 1
+	rightPart.CanCollide = false
+	rightPart.CanTouch = true
+	rightPart.CanQuery = true
+	rightPart.Anchored = true
+	rightPart.Parent = eggShrine
+
+	-- Prompt 1: [E] Hatch 1x (Anchored on the LEFT)
 	local prompt1 = Instance.new("ProximityPrompt")
 	prompt1.Name = "Hatch1Prompt"
 	prompt1.ActionText = "Hatch 1x"
@@ -1092,9 +1112,10 @@ function MapService.buildEggStand(folder: Folder)
 	prompt1.MaxActivationDistance = 14
 	prompt1.RequiresLineOfSight = false
 	prompt1.ClickablePrompt = true
-	prompt1.Parent = interactionPart
+	prompt1.UIOffset = Vector2.new(-25, 0)
+	prompt1.Parent = leftPart
 
-	-- Prompt 2: [F] Hatch 3x
+	-- Prompt 2: [F] Hatch 3x (Anchored on the RIGHT)
 	local prompt3 = Instance.new("ProximityPrompt")
 	prompt3.Name = "Hatch3Prompt"
 	prompt3.ActionText = "Hatch 3x"
@@ -1104,7 +1125,8 @@ function MapService.buildEggStand(folder: Folder)
 	prompt3.MaxActivationDistance = 14
 	prompt3.RequiresLineOfSight = false
 	prompt3.ClickablePrompt = true
-	prompt3.Parent = interactionPart
+	prompt3.UIOffset = Vector2.new(25, 0)
+	prompt3.Parent = rightPart
 
 	local lastHatchTime: { [Player]: number } = {}
 	prompt1.Triggered:Connect(function(player)

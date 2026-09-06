@@ -16,7 +16,7 @@ export type BackpackDef = {
 	name: string,
 	category: "Backpack",
 	cost: number,
-	multiplier: number, -- e.g. 1.15 = +15% Tycoon Cash
+	multiplier: number, -- e.g. 1.15 = +15% Mining Cash
 	bonusGems: number,
 	description: string,
 	color: Color3,
@@ -124,7 +124,7 @@ ShopConfig.BACKPACKS = {
 		cost = 350000,
 		multiplier = 2.50, -- +150%
 		bonusGems = 2,
-		description = "Enchanted with dungeon runes to multiply tycoon output dramatically.",
+		description = "Enchanted with dungeon runes to multiply mining output dramatically.",
 		color = Color3.fromRGB(140, 40, 220),
 		icon = "🔮",
 	},

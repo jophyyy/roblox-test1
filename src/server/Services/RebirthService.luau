@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
-local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local DataService = require(script.Parent.DataService)
 
@@ -28,8 +28,7 @@ function RebirthService.rebirth(player: Player): boolean
 
 	-- Execute rebirth
 	data.Rebirths += 1
-	data.Cash = TycoonConfig.STARTER_CASH
-	data.UnlockedItems = {} -- Reset tycoon unlocks
+	data.Cash = GameConfig.STARTER_CASH
 	
 	local bonusGems = RebirthConfig.getRewardGems(data.Rebirths)
 	data.Gems += bonusGems
@@ -53,10 +52,6 @@ function RebirthService.rebirth(player: Player): boolean
 
 	local rebirthEvent = Remotes.getEvent("PlayerRebirthed")
 	rebirthEvent:FireAllClients(player.Name, data.Rebirths, bonusGems)
-
-	-- Signal TycoonService to rebuild plot for player
-	local TycoonService = require(script.Parent.TycoonService)
-	TycoonService.resetPlotForPlayer(player)
 
 	return true
 end

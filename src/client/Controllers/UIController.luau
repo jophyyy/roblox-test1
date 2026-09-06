@@ -9,13 +9,13 @@ local RunService = game:GetService("RunService")
 
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
-local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local GamepassConfig = require(ReplicatedStorage.Shared.Config.GamepassConfig)
-local TycoonClient = require(script.Parent.TycoonClient)
+local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 
 local player = Players.LocalPlayer
@@ -396,7 +396,7 @@ local function openRebirthModal()
 	info.TextSize = 14
 	info.TextWrapped = true
 	info.Text = string.format(
-		"Reset your Tycoon progress in exchange for permanent cosmic power!\n\n" ..
+		"Reset your Cash in exchange for permanent cosmic power!\n\n" ..
 		"• Current Multiplier: %.1fx\n" ..
 		"• Next Multiplier: %.1fx (+50%% Cash & Mine Boost!)\n" ..
 		"• Bonus Gems: +%d Gems 💎\n" ..
@@ -1134,7 +1134,7 @@ local function openEquipmentShopModal()
 	subTitle.Size = UDim2.new(1, 0, 0, 20)
 	subTitle.Position = UDim2.new(0, 0, 0, 38)
 	subTitle.BackgroundTransparency = 1
-	subTitle.Text = "Equip shovels for higher click rewards & backpacks for tycoon multipliers!"
+	subTitle.Text = "Equip pickaxes for higher mining power & backpacks for bonus multipliers!"
 	subTitle.TextColor3 = Color3.fromRGB(180, 190, 210)
 	subTitle.Font = Enum.Font.Antique
 	subTitle.TextSize = 14
@@ -1270,7 +1270,7 @@ local function openEquipmentShopModal()
 			else
 				local bp = item :: ShopConfig.BackpackDef
 				local gemBonusText = if bp.bonusGems > 0 then string.format(" • +%d 💎/Ore", bp.bonusGems) else ""
-				perkLabel.Text = string.format("+%.0f%% Tycoon Cash%s", (bp.multiplier - 1) * 100, gemBonusText)
+				perkLabel.Text = string.format("+%.0f%% Mining Cash%s", (bp.multiplier - 1) * 100, gemBonusText)
 			end
 			perkLabel.Parent = card
 
@@ -2063,7 +2063,7 @@ local function openDialogueModal(npcName: string)
 
 	-- Choice 2: Any advice for the mines?
 	choiceAction2 = function()
-		local tip = "Build out your tycoon droppers and upgrade fields. Upgraded ores yield heaps of cash. Buy a sturdy backpack from me to multiply every batch."
+		local tip = "Swing your pickaxe at glowing ore veins across the map. Rarer ores yield heaps of cash and gems. Buy a sturdy backpack from me to multiply every batch."
 		typewriteWords(speechLabel, tip, 0.04, function()
 			typewriteChoices(function()
 				startIdleBounce(choicesCol)
@@ -2099,7 +2099,7 @@ end
 
 function UIController.buildHUD()
 	screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "TycoonHUD"
+	screenGui.Name = "MiningHUD"
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = playerGui
 
@@ -2263,7 +2263,7 @@ function UIController.buildHUD()
 	-- SIMULATOR BGM MUSIC MUTE / UNMUTE TOGGLE
 	local musicBtn: TextButton? = nil
 	musicBtn = createMenuButton("MusicBtn", "🎵 Music: ON", Color3.fromRGB(70, 80, 95), function()
-		local isPlaying = TycoonClient.toggleMusic()
+		local isPlaying = AudioController.toggleMusic()
 		if musicBtn then
 			musicBtn.Text = if isPlaying then "🎵 Music: ON" else "🔇 Music: OFF"
 			musicBtn.BackgroundColor3 = if isPlaying then Color3.fromRGB(70, 80, 95) else Color3.fromRGB(50, 55, 65)

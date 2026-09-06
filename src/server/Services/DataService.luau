@@ -4,12 +4,12 @@ local DataStoreService = game:GetService("DataStoreService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local TycoonConfig = require(ReplicatedStorage.Shared.Config.TycoonConfig)
+local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 
-local DATA_STORE_NAME = "TycoonSave_v1"
+local DATA_STORE_NAME = "MiningSave_v1"
 local AUTOSAVE_INTERVAL = 60
 
 export type PlayerData = {
@@ -46,8 +46,8 @@ end
 
 local function getDefaultData(): PlayerData
 	return {
-		Cash = TycoonConfig.STARTER_CASH,
-		Gems = TycoonConfig.STARTER_GEMS,
+		Cash = GameConfig.STARTER_CASH,
+		Gems = GameConfig.STARTER_GEMS,
 		Rebirths = 0,
 		UnlockedItems = {},
 		OwnedPets = {},
@@ -363,6 +363,17 @@ function DataService.init()
 	local spinFn = Remotes.getFunction("SpinWheel")
 	spinFn.OnServerInvoke = function(player: Player, spinMode: string?)
 		return DataService.spinWheel(player, spinMode)
+	end
+
+	-- Dev testing cheat remote (+$10,000,000 Cash & +50,000 Gems)
+	local devRemote = Remotes.getFunction("DevAddCash")
+	devRemote.OnServerInvoke = function(player: Player)
+		local addCash = 10_000_000
+		local addGems = 50_000
+		DataService.addCash(player, addCash)
+		DataService.addGems(player, addGems)
+		print(string.format("⚡ [Dev] Granted $%d and %d Gems to %s for testing!", addCash, addGems, player.Name))
+		return true, addCash, addGems
 	end
 
 	-- Periodic auto-save loop

@@ -1,25 +1,25 @@
 --!strict
 local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 
-local TycoonClient = {}
+local AudioController = {}
 
 -- Verified pleasant audio assets
 local SOUNDS = {
-	Purchase = "rbxassetid://131886985",   -- Classic Tycoon Cash Register "Cha-Ching!"
+	Purchase = "rbxassetid://131886985",   -- Classic Cash Register "Cha-Ching!"
 	Collect = "rbxassetid://6895079853",    -- Clean, crisp coin collect chime
 	Rebirth = "rbxassetid://5153737200",    -- Grand victory / level-up fanfare
 	BGM = "rbxassetid://1843404009",        -- Iconic upbeat simulator acoustic instrumental ("Happy Song")
+	MineHit = "rbxassetid://9114223170",    -- Satisfying pickaxe stone impact
+	OreBreak = "rbxassetid://9114223849",   -- Crystal/gem shatter
 }
 
 local bgmSound: Sound? = nil
 local isMusicPlaying = true
 
-local function playSound(soundId: string, volume: number?, pitch: number?)
+function AudioController.playSound(soundId: string, volume: number?, pitch: number?)
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
 	sound.Volume = volume or 0.45
@@ -31,7 +31,7 @@ local function playSound(soundId: string, volume: number?, pitch: number?)
 	end)
 end
 
-function TycoonClient.toggleMusic(): boolean
+function AudioController.toggleMusic(): boolean
 	if bgmSound then
 		if isMusicPlaying then
 			bgmSound.Volume = 0
@@ -44,12 +44,12 @@ function TycoonClient.toggleMusic(): boolean
 	return isMusicPlaying
 end
 
-function TycoonClient.isMusicEnabled(): boolean
+function AudioController.isMusicEnabled(): boolean
 	return isMusicPlaying
 end
 
-function TycoonClient.init()
-	-- Background Simulator Instrumental Track (Cheerful, upbeat acoustic guitar/whistling APM track)
+function AudioController.init()
+	-- Background Simulator Instrumental Track
 	local bgm = Instance.new("Sound")
 	bgm.Name = "SimulatorBGM"
 	bgm.SoundId = SOUNDS.BGM
@@ -60,23 +60,20 @@ function TycoonClient.init()
 	bgmSound = bgm
 
 	local buyEvent = Remotes.getEvent("ItemPurchased")
-	buyEvent.OnClientEvent:Connect(function(itemName: string, cost: number)
-		-- Classic pleasant cash register chime
-		playSound(SOUNDS.Purchase, 0.45, 1.0)
+	buyEvent.OnClientEvent:Connect(function()
+		AudioController.playSound(SOUNDS.Purchase, 0.45, 1.0)
 	end)
 
 	local rebirthEvent = Remotes.getEvent("PlayerRebirthed")
-	rebirthEvent.OnClientEvent:Connect(function(playerName: string, rebirthCount: number, bonusGems: number)
-		-- Grand victory fanfare
-		playSound(SOUNDS.Rebirth, 0.7, 1.0)
+	rebirthEvent.OnClientEvent:Connect(function()
+		AudioController.playSound(SOUNDS.Rebirth, 0.7, 1.0)
 	end)
 
 	local crystalEvent = Remotes.getEvent("CrystalCollected")
 	crystalEvent.OnClientEvent:Connect(function()
-		-- Subtle pleasant coin chime with slight pitch variation
 		local randomPitch = 1.0 + (math.random() * 0.15)
-		playSound(SOUNDS.Collect, 0.35, randomPitch)
+		AudioController.playSound(SOUNDS.Collect, 0.35, randomPitch)
 	end)
 end
 
-return TycoonClient
+return AudioController

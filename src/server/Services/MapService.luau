@@ -212,7 +212,7 @@ function MapService.buildMountains(folder: Folder)
 	end
 end
 
--- 3. Central Spawn Plaza & Pathways Connecting to Tycoon Plots
+-- 3. Central Spawn Plaza & Pathways Connecting to Mining Fields
 function MapService.buildPlazaAndPaths(folder: Folder)
 	local pathsFolder = Instance.new("Folder")
 	pathsFolder.Name = "PlazaAndPaths"
@@ -236,12 +236,12 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 		createDungeonBrazier(pathsFolder, "PlazaBrazier_" .. bIdx, CFrame.new(offset))
 	end
 
-	-- 4 Connecting Pathways Leading from Plaza Directly to Tycoon Plot Entrances
+	-- 4 Main Exploration Pathways Leading from Plaza outward into the Mining Fields
 	local pathTargets = {
-		{ name = "Path_Plot1", target = Vector3.new(-60, 0.2, -30) },
-		{ name = "Path_Plot2", target = Vector3.new(60, 0.2, -30) },
-		{ name = "Path_Plot3", target = Vector3.new(-60, 0.2, 30) },
-		{ name = "Path_Plot4", target = Vector3.new(60, 0.2, 30) },
+		{ name = "Path_North", target = Vector3.new(0, 0.2, -60) },
+		{ name = "Path_South", target = Vector3.new(0, 0.2, 60) },
+		{ name = "Path_West", target = Vector3.new(-60, 0.2, 0) },
+		{ name = "Path_East", target = Vector3.new(60, 0.2, 0) },
 	}
 
 	for _, pt in ipairs(pathTargets) do
@@ -254,18 +254,18 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 		createStudPart(
 			pathsFolder,
 			pt.name,
-			Vector3.new(8, 0.35, length),
+			Vector3.new(10, 0.35, length),
 			CFrame.new(midpoint) * CFrame.Angles(0, angle, 0),
 			stoneColor
 		)
 	end
 
-	-- 4 Mid-Pathway Dungeon Braziers lighting the way to each Tycoon plot
+	-- 4 Pathway Dungeon Braziers lighting the way to the exploration zones
 	local pathMidBraziers = {
-		Vector3.new(-34, 0, -17),
-		Vector3.new(34, 0, -17),
-		Vector3.new(-34, 0, 17),
-		Vector3.new(34, 0, 17),
+		Vector3.new(0, 0, -35),
+		Vector3.new(0, 0, 35),
+		Vector3.new(-35, 0, 0),
+		Vector3.new(35, 0, 0),
 	}
 	for pIdx, pPos in ipairs(pathMidBraziers) do
 		createDungeonBrazier(pathsFolder, "PathBrazier_" .. pIdx, CFrame.new(pPos))
@@ -391,7 +391,7 @@ function MapService.buildTrees(folder: Folder)
 		treeModel.Parent = treesFolder
 	end
 
-	-- Coordinates chosen to frame the meadow without intruding on tycoon floors or paths
+	-- Coordinates chosen to frame the meadow without intruding on ore fields or paths
 	local treePositions = {
 		-- Central meadow clusters (between the paths)
 		Vector3.new(0, 0, -50),
@@ -726,7 +726,7 @@ function MapService.setupAtmosphere()
 	Lighting.Brightness = 2.4 -- Crisp, bright primary sunlight
 	Lighting.Ambient = Color3.fromRGB(115, 120, 135) -- Soft cool slate-blue shadows (no pitch-black voids!)
 	Lighting.OutdoorAmbient = Color3.fromRGB(135, 140, 155) -- Bright, clearly visible terrain and paths
-	Lighting.FogStart = 120 -- High clarity across the central plaza, paths, and tycoon plots
+	Lighting.FogStart = 120 -- High clarity across the central plaza, paths, and mining fields
 	Lighting.FogEnd = 420 -- Soft pale silver-slate mist gently blanketing the distant mountain ridges
 	Lighting.FogColor = Color3.fromRGB(155, 168, 185) -- Pale silver-slate mountain mist
 	Lighting.GlobalShadows = true

@@ -984,18 +984,25 @@ local function openWheelModal()
 		end
 	end
 
-	local modal = createStyledFrame(screenGui, "WheelModal", UDim2.new(0, 480, 0, 560), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(16, 18, 26))
+	-- Sleek Monochrome Modal (Pure Black & White)
+	local modal = createStyledFrame(screenGui, "WheelModal", UDim2.new(0, 480, 0, 560), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(14, 14, 16))
 	modal.AnchorPoint = Vector2.new(0.5, 0.5)
 	activeModal = modal
 
-	-- Close Button
+	local modalStroke = Instance.new("UIStroke")
+	modalStroke.Thickness = 2
+	modalStroke.Color = Color3.fromRGB(255, 255, 255)
+	modalStroke.Transparency = 0.3
+	modalStroke.Parent = modal
+
+	-- Close Button (Monochrome)
 	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.new(0, 36, 0, 36)
-	closeBtn.Position = UDim2.new(1, -44, 0, 10)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-	closeBtn.Text = "✕"
+	closeBtn.Size = UDim2.new(0, 34, 0, 34)
+	closeBtn.Position = UDim2.new(1, -42, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 28)
+	closeBtn.Text = "X"
 	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.Font = Enum.Font.GothamBold
 	closeBtn.TextSize = 16
 	closeBtn.BorderSizePixel = 0
 	closeBtn.ZIndex = 20
@@ -1004,38 +1011,50 @@ local function openWheelModal()
 	local closeCorner = Instance.new("UICorner")
 	closeCorner.CornerRadius = UDim.new(1, 0)
 	closeCorner.Parent = closeBtn
+
+	local closeStroke = Instance.new("UIStroke")
+	closeStroke.Thickness = 1.5
+	closeStroke.Color = Color3.fromRGB(255, 255, 255)
+	closeStroke.Transparency = 0.5
+	closeStroke.Parent = closeBtn
+
 	closeBtn.MouseButton1Click:Connect(closeModal)
 
-	-- Header Title
+	-- Header Title (Stark Pure White)
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 34)
-	title.Position = UDim2.new(0, 0, 0, 10)
+	title.Size = UDim2.new(1, 0, 0, 32)
+	title.Position = UDim2.new(0, 0, 0, 12)
 	title.BackgroundTransparency = 1
-	title.Text = "🎡 LUCKY WHEEL OF FORTUNE 🎡"
-	title.TextColor3 = Color3.fromRGB(255, 215, 0)
-	title.Font = Enum.Font.GothamBlack
-	title.TextSize = 19
+	title.Text = "LUCKY WHEEL OF FORTUNE"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Font = Enum.Font.Antique
+	title.TextSize = 24
 	title.ZIndex = 10
 	title.Parent = modal
 
+	local titleStroke = Instance.new("UIStroke")
+	titleStroke.Thickness = 2
+	titleStroke.Color = Color3.fromRGB(0, 0, 0)
+	titleStroke.Parent = title
+
 	local subTitle = Instance.new("TextLabel")
 	subTitle.Size = UDim2.new(1, 0, 0, 18)
-	subTitle.Position = UDim2.new(0, 0, 0, 42)
+	subTitle.Position = UDim2.new(0, 0, 0, 44)
 	subTitle.BackgroundTransparency = 1
-	subTitle.Text = "Spin to win massive Cash, Gem Boosts %, or Mythic Pets!"
-	subTitle.TextColor3 = Color3.fromRGB(180, 190, 210)
-	subTitle.Font = Enum.Font.GothamMedium
-	subTitle.TextSize = 12
+	subTitle.Text = "Spin to win Cash, Gem Boosts, or Mythic Pets"
+	subTitle.TextColor3 = Color3.fromRGB(180, 180, 180)
+	subTitle.Font = Enum.Font.Antique
+	subTitle.TextSize = 14
 	subTitle.ZIndex = 10
 	subTitle.Parent = modal
 
-	-- WHEEL CONTAINER (Circular frame)
+	-- WHEEL CONTAINER (Circular monochrome frame)
 	local wheelContainer = Instance.new("Frame")
 	wheelContainer.Name = "WheelContainer"
 	wheelContainer.Size = UDim2.new(0, 340, 0, 340)
 	wheelContainer.Position = UDim2.new(0.5, 0, 0, 238)
 	wheelContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	wheelContainer.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	wheelContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 	wheelContainer.BorderSizePixel = 0
 	wheelContainer.ZIndex = 5
 	wheelContainer.Parent = modal
@@ -1044,30 +1063,11 @@ local function openWheelModal()
 	wCorner.CornerRadius = UDim.new(1, 0)
 	wCorner.Parent = wheelContainer
 
-	-- Golden outer ring stroke
+	-- White casing ring stroke
 	local wStroke = Instance.new("UIStroke")
-	wStroke.Thickness = 6
-	wStroke.Color = Color3.fromRGB(255, 205, 50)
+	wStroke.Thickness = 4
+	wStroke.Color = Color3.fromRGB(255, 255, 255)
 	wStroke.Parent = wheelContainer
-
-	-- Glowing outer rim accent
-	local glowRim = Instance.new("Frame")
-	glowRim.Size = UDim2.new(1, 14, 1, 14)
-	glowRim.Position = UDim2.new(0.5, 0, 0.5, 0)
-	glowRim.AnchorPoint = Vector2.new(0.5, 0.5)
-	glowRim.BackgroundTransparency = 1
-	glowRim.ZIndex = 4
-	glowRim.Parent = wheelContainer
-
-	local glowCorner = Instance.new("UICorner")
-	glowCorner.CornerRadius = UDim.new(1, 0)
-	glowCorner.Parent = glowRim
-
-	local glowStroke = Instance.new("UIStroke")
-	glowStroke.Thickness = 2
-	glowStroke.Color = Color3.fromRGB(255, 140, 0)
-	glowStroke.Transparency = 0.4
-	glowStroke.Parent = glowRim
 
 	-- ROTATING DISC
 	local wheelDisc = Instance.new("Frame")
@@ -1082,7 +1082,7 @@ local function openWheelModal()
 
 	local sliceWedges: { [number]: Frame } = {}
 
-	-- Populate 8 Slices
+	-- Populate 8 Slices (Monochrome)
 	for i = 1, 8 do
 		local sliceDef = WheelConfig.SLICES[i]
 		local angle = (i - 1) * 45
@@ -1115,34 +1115,35 @@ local function openWheelModal()
 		local wedgeStroke = Instance.new("UIStroke")
 		wedgeStroke.Thickness = 1.5
 		wedgeStroke.Color = Color3.fromRGB(255, 255, 255)
-		wedgeStroke.Transparency = 0.45
+		wedgeStroke.Transparency = 0.5
 		wedgeStroke.Parent = wedge
 
 		local iconLabel = Instance.new("TextLabel")
-		iconLabel.Size = UDim2.new(1, 0, 0, 22)
+		iconLabel.Size = UDim2.new(1, 0, 0, 20)
 		iconLabel.Position = UDim2.new(0, 0, 0, 4)
 		iconLabel.BackgroundTransparency = 1
 		iconLabel.Text = sliceDef.icon
-		iconLabel.TextSize = 17
+		iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		iconLabel.Font = Enum.Font.GothamBold
+		iconLabel.TextSize = 13
 		iconLabel.ZIndex = 9
 		iconLabel.Parent = wedge
 
 		local valLabel = Instance.new("TextLabel")
 		valLabel.Size = UDim2.new(1, -6, 0, 18)
-		valLabel.Position = UDim2.new(0, 3, 0, 26)
+		valLabel.Position = UDim2.new(0, 3, 0, 24)
 		valLabel.BackgroundTransparency = 1
 		valLabel.Text = sliceDef.label
-		valLabel.TextColor3 = sliceDef.textColor
-		valLabel.Font = Enum.Font.GothamBlack
+		valLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		valLabel.Font = Enum.Font.GothamBold
 		valLabel.TextSize = 11
 		valLabel.TextWrapped = true
 		valLabel.ZIndex = 9
 		valLabel.Parent = wedge
 
 		local textStroke = Instance.new("UIStroke")
-		textStroke.Thickness = 1.5
+		textStroke.Thickness = 2.0
 		textStroke.Color = Color3.fromRGB(0, 0, 0)
-		textStroke.Transparency = 0.35
 		textStroke.Parent = valLabel
 
 		local rarityLabel = Instance.new("TextLabel")
@@ -1150,8 +1151,8 @@ local function openWheelModal()
 		rarityLabel.Position = UDim2.new(0, 0, 1, -16)
 		rarityLabel.BackgroundTransparency = 1
 		rarityLabel.Text = string.upper(sliceDef.rarity)
-		rarityLabel.TextColor3 = sliceDef.textColor
-		rarityLabel.Font = Enum.Font.GothamBold
+		rarityLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+		rarityLabel.Font = Enum.Font.GothamMedium
 		rarityLabel.TextSize = 8
 		rarityLabel.ZIndex = 9
 		rarityLabel.Parent = wedge
@@ -1159,13 +1160,13 @@ local function openWheelModal()
 		sliceWedges[i] = wedge
 	end
 
-	-- Center Hub
+	-- Center Hub (White circle with black label)
 	local centerHub = Instance.new("Frame")
 	centerHub.Name = "CenterHub"
-	centerHub.Size = UDim2.new(0, 60, 0, 60)
+	centerHub.Size = UDim2.new(0, 56, 0, 56)
 	centerHub.Position = UDim2.new(0.5, 0, 0.5, 0)
 	centerHub.AnchorPoint = Vector2.new(0.5, 0.5)
-	centerHub.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	centerHub.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	centerHub.BorderSizePixel = 0
 	centerHub.ZIndex = 12
 	centerHub.Parent = wheelContainer
@@ -1175,19 +1176,21 @@ local function openWheelModal()
 	hubCorner.Parent = centerHub
 
 	local hubStroke = Instance.new("UIStroke")
-	hubStroke.Thickness = 3
-	hubStroke.Color = Color3.fromRGB(255, 255, 255)
+	hubStroke.Thickness = 2.5
+	hubStroke.Color = Color3.fromRGB(0, 0, 0)
 	hubStroke.Parent = centerHub
 
 	local hubIcon = Instance.new("TextLabel")
 	hubIcon.Size = UDim2.new(1, 0, 1, 0)
 	hubIcon.BackgroundTransparency = 1
-	hubIcon.Text = "🌟"
-	hubIcon.TextSize = 26
+	hubIcon.Text = "SPIN"
+	hubIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
+	hubIcon.Font = Enum.Font.GothamBlack
+	hubIcon.TextSize = 14
 	hubIcon.ZIndex = 13
 	hubIcon.Parent = centerHub
 
-	-- Pointer / Ticker Arrow (Top center pointing downward into slice)
+	-- Pointer / Ticker Arrow (Monochrome)
 	local pointer = Instance.new("TextLabel")
 	pointer.Name = "WheelPointer"
 	pointer.Size = UDim2.new(0, 36, 0, 36)
@@ -1195,37 +1198,37 @@ local function openWheelModal()
 	pointer.AnchorPoint = Vector2.new(0.5, 0)
 	pointer.BackgroundTransparency = 1
 	pointer.Text = "▼"
-	pointer.TextColor3 = Color3.fromRGB(255, 50, 50)
+	pointer.TextColor3 = Color3.fromRGB(255, 255, 255)
 	pointer.TextSize = 34
 	pointer.Font = Enum.Font.GothamBlack
 	pointer.ZIndex = 15
 	pointer.Parent = wheelContainer
 
 	local pStroke = Instance.new("UIStroke")
-	pStroke.Thickness = 2.5
-	pStroke.Color = Color3.fromRGB(255, 255, 255)
+	pStroke.Thickness = 3
+	pStroke.Color = Color3.fromRGB(0, 0, 0)
 	pStroke.Parent = pointer
 
-	-- Status / Cooldown Text
+	-- Status / Cooldown Text (White & Light Gray)
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Size = UDim2.new(1, 0, 0, 20)
 	statusLabel.Position = UDim2.new(0, 0, 1, -114)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.Text = "Checking spin status..."
-	statusLabel.TextColor3 = Color3.fromRGB(200, 210, 230)
+	statusLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
 	statusLabel.Font = Enum.Font.GothamBold
 	statusLabel.TextSize = 13
 	statusLabel.ZIndex = 10
 	statusLabel.Parent = modal
 
-	-- Main Spin Button
+	-- Main Spin Button (High-Contrast White & Black)
 	local spinBtn = Instance.new("TextButton")
 	spinBtn.Name = "SpinActionBtn"
 	spinBtn.Size = UDim2.new(0, 240, 0, 48)
 	spinBtn.Position = UDim2.new(0.5, -120, 1, -88)
-	spinBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-	spinBtn.Text = "🎡 SPIN! (FREE)"
-	spinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	spinBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	spinBtn.Text = "SPIN (FREE)"
+	spinBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 	spinBtn.Font = Enum.Font.GothamBlack
 	spinBtn.TextSize = 16
 	spinBtn.BorderSizePixel = 0
@@ -1233,23 +1236,34 @@ local function openWheelModal()
 	spinBtn.Parent = modal
 
 	local sCorner = Instance.new("UICorner")
-	sCorner.CornerRadius = UDim.new(0, 12)
+	sCorner.CornerRadius = UDim.new(0, 10)
 	sCorner.Parent = spinBtn
 
 	local sStroke = Instance.new("UIStroke")
 	sStroke.Thickness = 2
-	sStroke.Color = Color3.fromRGB(255, 255, 255)
-	sStroke.Transparency = 0.5
+	sStroke.Color = Color3.fromRGB(0, 0, 0)
 	sStroke.Parent = spinBtn
 
-	-- Dev / Fast Test Spin Button (Simulator test aspect as requested)
+	-- Inversion on hover
+	spinBtn.MouseEnter:Connect(function()
+		if not isSpinningWheel then
+			spinBtn.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+		end
+	end)
+	spinBtn.MouseLeave:Connect(function()
+		if not isSpinningWheel then
+			spinBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		end
+	end)
+
+	-- Dev / Fast Test Spin Button (Instant test simulator feature)
 	local testSpinBtn = Instance.new("TextButton")
 	testSpinBtn.Name = "TestSpinBtn"
-	testSpinBtn.Size = UDim2.new(0, 140, 0, 26)
-	testSpinBtn.Position = UDim2.new(0.5, -70, 1, -34)
-	testSpinBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 75)
-	testSpinBtn.Text = "⚡ Test Spin (Free)"
-	testSpinBtn.TextColor3 = Color3.fromRGB(220, 225, 240)
+	testSpinBtn.Size = UDim2.new(0, 150, 0, 28)
+	testSpinBtn.Position = UDim2.new(0.5, -75, 1, -34)
+	testSpinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+	testSpinBtn.Text = "Test Spin (Free)"
+	testSpinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	testSpinBtn.Font = Enum.Font.GothamBold
 	testSpinBtn.TextSize = 11
 	testSpinBtn.BorderSizePixel = 0
@@ -1257,8 +1271,14 @@ local function openWheelModal()
 	testSpinBtn.Parent = modal
 
 	local tsCorner = Instance.new("UICorner")
-	tsCorner.CornerRadius = UDim.new(0, 8)
+	tsCorner.CornerRadius = UDim.new(0, 6)
 	tsCorner.Parent = testSpinBtn
+
+	local tsStroke = Instance.new("UIStroke")
+	tsStroke.Thickness = 1
+	tsStroke.Color = Color3.fromRGB(255, 255, 255)
+	tsStroke.Transparency = 0.6
+	tsStroke.Parent = testSpinBtn
 
 	-- State update function for buttons & countdown
 	local function updateSpinStatus()
@@ -1269,18 +1289,16 @@ local function openWheelModal()
 		local hasFree = (cachedData and cachedData.FreeSpins and cachedData.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
 
 		if hasFree then
-			statusLabel.Text = "✨ FREE SPIN AVAILABLE!"
-			statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
-			spinBtn.Text = "🎡 SPIN! (FREE)"
-			spinBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+			statusLabel.Text = "FREE SPIN AVAILABLE"
+			statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			spinBtn.Text = "SPIN (FREE)"
 		else
 			local remaining = math.max(0, WheelConfig.COOLDOWN_SECONDS - elapsed)
 			local mins = math.floor(remaining / 60)
 			local secs = remaining % 60
-			statusLabel.Text = string.format("⏳ Next free spin in: %02d:%02d", mins, secs)
-			statusLabel.TextColor3 = Color3.fromRGB(241, 196, 15)
-			spinBtn.Text = "💎 SPIN (50 Gems)"
-			spinBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 230)
+			statusLabel.Text = string.format("Next free spin in: %02d:%02d", mins, secs)
+			statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+			spinBtn.Text = "SPIN (50 GEMS)"
 		end
 	end
 
@@ -1295,7 +1313,7 @@ local function openWheelModal()
 	end)
 
 	-- Execute Spin Action
-	local function doSpin(bypassCost: boolean?)
+	local function doSpin(isTestSpin: boolean?)
 		if isSpinningWheel then return end
 		isSpinningWheel = true
 		spinBtn.AutoButtonColor = false
@@ -1306,15 +1324,22 @@ local function openWheelModal()
 		local lastSpin = (cachedData and cachedData.LastWheelSpin) or 0
 		local elapsed = now - lastSpin
 		local hasFree = (cachedData and cachedData.FreeSpins and cachedData.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
-		local useGems = not hasFree and not bypassCost
+
+		local spinMode = "Free"
+		if isTestSpin then
+			spinMode = "Test"
+		elseif not hasFree then
+			spinMode = "Gems"
+		end
 
 		local spinFn = Remotes.getFunction("SpinWheel")
-		local ok, result, errMsg = pcall(function()
-			return spinFn:InvokeServer(useGems)
+		local ok, result = pcall(function()
+			return spinFn:InvokeServer(spinMode)
 		end)
 
 		if not ok or not result or not result.success then
-			showFloatingPopup(errMsg or "Failed to spin wheel!", Color3.fromRGB(255, 80, 80))
+			local errMsg = if result and result.message then result.message else "Failed to spin wheel!"
+			showFloatingPopup(errMsg, Color3.fromRGB(255, 255, 255))
 			isSpinningWheel = false
 			spinBtn.AutoButtonColor = true
 			testSpinBtn.Visible = true
@@ -1338,7 +1363,7 @@ local function openWheelModal()
 			local current = wheelDisc.Rotation
 			if math.abs(current - lastTickAngle) >= 45 then
 				lastTickAngle = current
-				-- Play click sound
+				-- Soft mechanical click
 				local s = Instance.new("Sound")
 				s.SoundId = "rbxassetid://6895079853"
 				s.Volume = 0.05
@@ -1375,7 +1400,7 @@ local function openWheelModal()
 				}):Play()
 			end
 
-			-- Play victory sound
+			-- Play sound
 			local winSound = Instance.new("Sound")
 			winSound.SoundId = "rbxassetid://6895079853"
 			winSound.Volume = 0.12
@@ -1384,36 +1409,36 @@ local function openWheelModal()
 			winSound:Play()
 			winSound.Ended:Connect(function() winSound:Destroy() end)
 
-			showFloatingPopup("🎉 " .. result.rewardDisplay, Color3.fromRGB(255, 215, 0), 0)
+			showFloatingPopup(result.rewardDisplay, Color3.fromRGB(255, 255, 255), 0)
 
-			-- Celebration Winner Overlay inside modal
+			-- Monochrome Celebration Winner Card
 			local winCard = Instance.new("Frame")
 			winCard.Name = "WinCard"
 			winCard.Size = UDim2.new(0, 360, 0, 160)
 			winCard.Position = UDim2.new(0.5, 0, 0.5, 0)
 			winCard.AnchorPoint = Vector2.new(0.5, 0.5)
-			winCard.BackgroundColor3 = Color3.fromRGB(20, 24, 36)
+			winCard.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
 			winCard.BorderSizePixel = 0
 			winCard.ZIndex = 25
 			winCard.Parent = modal
 
 			local wcCorner = Instance.new("UICorner")
-			wcCorner.CornerRadius = UDim.new(0, 16)
+			wcCorner.CornerRadius = UDim.new(0, 12)
 			wcCorner.Parent = winCard
 
 			local wcStroke = Instance.new("UIStroke")
-			wcStroke.Thickness = 3
-			wcStroke.Color = Color3.fromRGB(255, 215, 0)
+			wcStroke.Thickness = 2.5
+			wcStroke.Color = Color3.fromRGB(255, 255, 255)
 			wcStroke.Parent = winCard
 
 			local winTitle = Instance.new("TextLabel")
 			winTitle.Size = UDim2.new(1, 0, 0, 32)
 			winTitle.Position = UDim2.new(0, 0, 0, 16)
 			winTitle.BackgroundTransparency = 1
-			winTitle.Text = "🎉 YOU WON! 🎉"
-			winTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
-			winTitle.Font = Enum.Font.GothamBlack
-			winTitle.TextSize = 22
+			winTitle.Text = "YOU WON!"
+			winTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+			winTitle.Font = Enum.Font.Antique
+			winTitle.TextSize = 24
 			winTitle.ZIndex = 26
 			winTitle.Parent = winCard
 
@@ -1424,25 +1449,25 @@ local function openWheelModal()
 			winReward.Text = result.rewardDisplay
 			winReward.TextColor3 = Color3.fromRGB(255, 255, 255)
 			winReward.Font = Enum.Font.GothamBold
-			winReward.TextSize = 18
+			winReward.TextSize = 17
 			winReward.TextWrapped = true
 			winReward.ZIndex = 26
 			winReward.Parent = winCard
 
 			local okBtn = Instance.new("TextButton")
 			okBtn.Size = UDim2.new(0, 140, 0, 36)
-			okBtn.Position = UDim2.new(0.5, -70, 1, -48)
-			okBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-			okBtn.Text = "AWESOME!"
-			okBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			okBtn.Position = UDim2.new(0.5, -70, 1, -46)
+			okBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			okBtn.Text = "CONTINUE"
+			okBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 			okBtn.Font = Enum.Font.GothamBold
-			okBtn.TextSize = 14
+			okBtn.TextSize = 13
 			okBtn.BorderSizePixel = 0
 			okBtn.ZIndex = 26
 			okBtn.Parent = winCard
 
 			local okCorner = Instance.new("UICorner")
-			okCorner.CornerRadius = UDim.new(0, 10)
+			okCorner.CornerRadius = UDim.new(0, 8)
 			okCorner.Parent = okBtn
 
 			okBtn.MouseButton1Click:Connect(function()
@@ -1826,52 +1851,46 @@ function UIController.buildHUD()
 	wheelBtn.Size = UDim2.new(0, 74, 0, 74)
 	wheelBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
 	wheelBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-	wheelBtn.BackgroundColor3 = Color3.fromRGB(140, 45, 225)
+	wheelBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 	wheelBtn.Text = ""
 	wheelBtn.BorderSizePixel = 0
 	wheelBtn.Parent = rightSideMenu
 
 	local wBtnCorner = Instance.new("UICorner")
-	wBtnCorner.CornerRadius = UDim.new(0, 20)
+	wBtnCorner.CornerRadius = UDim.new(0, 18)
 	wBtnCorner.Parent = wheelBtn
 
 	local wBtnStroke = Instance.new("UIStroke")
-	wBtnStroke.Thickness = 3
-	wBtnStroke.Color = Color3.fromRGB(255, 215, 0)
+	wBtnStroke.Thickness = 2.5
+	wBtnStroke.Color = Color3.fromRGB(255, 255, 255)
 	wBtnStroke.Parent = wheelBtn
 
-	local wBtnGrad = Instance.new("UIGradient")
-	wBtnGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(195, 60, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 20, 180)),
-	})
-	wBtnGrad.Rotation = 45
-	wBtnGrad.Parent = wheelBtn
-
 	local wBtnIcon = Instance.new("TextLabel")
-	wBtnIcon.Size = UDim2.new(1, 0, 0, 36)
-	wBtnIcon.Position = UDim2.new(0, 0, 0, 6)
+	wBtnIcon.Size = UDim2.new(1, 0, 0, 32)
+	wBtnIcon.Position = UDim2.new(0, 0, 0, 8)
 	wBtnIcon.BackgroundTransparency = 1
-	wBtnIcon.Text = "🎡"
-	wBtnIcon.TextSize = 28
+	wBtnIcon.Text = "WHEEL"
+	wBtnIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+	wBtnIcon.Font = Enum.Font.Antique
+	wBtnIcon.TextSize = 14
 	wBtnIcon.Parent = wheelBtn
 
 	local wBtnText = Instance.new("TextLabel")
-	wBtnText.Size = UDim2.new(1, 0, 0, 20)
-	wBtnText.Position = UDim2.new(0, 0, 1, -24)
+	wBtnText.Size = UDim2.new(1, 0, 0, 22)
+	wBtnText.Position = UDim2.new(0, 0, 1, -26)
 	wBtnText.BackgroundTransparency = 1
 	wBtnText.Text = "SPIN"
 	wBtnText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	wBtnText.Font = Enum.Font.GothamBlack
-	wBtnText.TextSize = 13
+	wBtnText.TextSize = 14
 	wBtnText.Parent = wheelBtn
 
-	-- "FREE!" Badge on top-right corner
+	-- "FREE" Badge on top-right corner (Black & White)
 	local freeBadge = Instance.new("Frame")
 	freeBadge.Name = "FreeBadge"
 	freeBadge.Size = UDim2.new(0, 42, 0, 20)
 	freeBadge.Position = UDim2.new(1, -22, 0, -8)
-	freeBadge.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	freeBadge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	freeBadge.BorderSizePixel = 0
 	freeBadge.ZIndex = 5
 	freeBadge.Parent = wheelBtn
@@ -1883,14 +1902,14 @@ function UIController.buildHUD()
 
 	local bStroke = Instance.new("UIStroke")
 	bStroke.Thickness = 1.5
-	bStroke.Color = Color3.fromRGB(255, 255, 255)
+	bStroke.Color = Color3.fromRGB(0, 0, 0)
 	bStroke.Parent = freeBadge
 
 	local bText = Instance.new("TextLabel")
 	bText.Size = UDim2.new(1, 0, 1, 0)
 	bText.BackgroundTransparency = 1
-	bText.Text = "FREE!"
-	bText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	bText.Text = "FREE"
+	bText.TextColor3 = Color3.fromRGB(0, 0, 0)
 	bText.Font = Enum.Font.GothamBlack
 	bText.TextSize = 10
 	bText.ZIndex = 6

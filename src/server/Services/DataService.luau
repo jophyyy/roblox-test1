@@ -237,26 +237,31 @@ function DataService.equipShopItem(player: Player, category: string, itemId: str
 	return false, "Unknown category"
 end
 
-function DataService.spinWheel(player: Player, useGems: boolean?): (boolean, any, string?)
+function DataService.spinWheel(player: Player, spinMode: string?): { success: boolean, sliceIndex: number?, slice: any?, rewardDisplay: string?, message: string?, nextSpinTime: number? }
 	local data = playerDataCache[player]
-	if not data then return false, nil, "No player data" end
+	if not data then
+		return { success = false, message = "No player data found." }
+	end
 
 	local now = os.time()
 	local lastSpin = data.LastWheelSpin or 0
 	local elapsed = now - lastSpin
 	local hasFreeSpin = (data.FreeSpins and data.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
 
-	if not hasFreeSpin then
-		if useGems then
-			if data.Gems < WheelConfig.GEM_SPIN_COST then
-				return false, nil, "Not enough Gems to spin!"
-			end
-			DataService.addGems(player, -WheelConfig.GEM_SPIN_COST)
-		else
-			local remaining = WheelConfig.COOLDOWN_SECONDS - elapsed
-			return false, nil, string.format("Free spin ready in %ds!", math.max(1, remaining))
+	if spinMode == "Test" then
+		-- Instant developer test spin: bypass cooldown and costs
+	elseif spinMode == "Gems" then
+		if data.Gems < WheelConfig.GEM_SPIN_COST then
+			return { success = false, message = "Not enough Gems to spin! Need " .. WheelConfig.GEM_SPIN_COST .. " Gems." }
 		end
+		DataService.addGems(player, -WheelConfig.GEM_SPIN_COST)
 	else
+		-- Free spin mode
+		if not hasFreeSpin then
+			local remaining = math.max(1, WheelConfig.COOLDOWN_SECONDS - elapsed)
+			return { success = false, message = string.format("Free spin ready in %ds!", remaining) }
+		end
+
 		if data.FreeSpins and data.FreeSpins > 0 then
 			data.FreeSpins -= 1
 		end
@@ -271,38 +276,39 @@ function DataService.spinWheel(player: Player, useGems: boolean?): (boolean, any
 	if slice.rewardType == "Cash" then
 		local amount = slice.value :: number
 		DataService.addCash(player, amount)
-		rewardDisplay = "+$" .. tostring(amount)
+		rewardDisplay = "+$" .. tostring(amount) .. " Cash"
 	elseif slice.rewardType == "GemsFlat" then
 		local amount = slice.value :: number
 		DataService.addGems(player, amount)
-		rewardDisplay = "+" .. tostring(amount) .. " 💎"
+		rewardDisplay = "+" .. tostring(amount) .. " Gems"
 	elseif slice.rewardType == "GemsPercent" then
 		local pct = slice.value.percent
 		local minGems = slice.value.min
 		local granted = math.max(minGems, math.floor(data.Gems * pct))
 		DataService.addGems(player, granted)
-		rewardDisplay = string.format("+%d 💎 (+%d%%)!", granted, math.floor(pct * 100))
+		rewardDisplay = string.format("+%d Gems (+%d%%)", granted, math.floor(pct * 100))
 	elseif slice.rewardType == "Pet" then
 		local petId = slice.value :: string
 		data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + 1
-		rewardDisplay = "🐾 Won " .. slice.name .. "!"
+		rewardDisplay = "Pet: " .. slice.name
 	elseif slice.rewardType == "Jackpot" then
 		local bonusGems = math.max(slice.value.minGems, data.Gems)
 		DataService.addGems(player, bonusGems)
 		local petId = slice.value.petId
 		data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + 1
-		rewardDisplay = string.format("👑 JACKPOT! +%d 💎 & %s!", bonusGems, petId)
+		rewardDisplay = string.format("JACKPOT! +%d Gems and %s", bonusGems, petId)
 	end
 
 	syncToClient(player, data)
-	print(string.format("🎡 [Wheel] %s spun slice %d (%s) -> %s", player.Name, sliceIndex, slice.name, rewardDisplay))
+	print(string.format("[Wheel] %s spun slice %d (%s) -> %s", player.Name, sliceIndex, slice.name, rewardDisplay))
 
-	return true, {
+	return {
+		success = true,
 		sliceIndex = sliceIndex,
 		slice = slice,
 		rewardDisplay = rewardDisplay,
 		nextSpinTime = data.LastWheelSpin + WheelConfig.COOLDOWN_SECONDS,
-	}, nil
+	}
 end
 
 function DataService.init()
@@ -345,8 +351,8 @@ function DataService.init()
 	end
 
 	local spinFn = Remotes.getFunction("SpinWheel")
-	spinFn.OnServerInvoke = function(player: Player, useGems: boolean?)
-		return DataService.spinWheel(player, useGems)
+	spinFn.OnServerInvoke = function(player: Player, spinMode: string?)
+		return DataService.spinWheel(player, spinMode)
 	end
 
 	-- Periodic auto-save loop

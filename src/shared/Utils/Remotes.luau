@@ -15,6 +15,8 @@ local REGISTERED_EVENTS = {
 	"OpenRobuxPurchaseModal",
 	"OpenVIPModal",
 	"VIPStatusChanged",
+	"OreDamaged",
+	"OreDestroyed",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -30,6 +32,7 @@ local REGISTERED_FUNCTIONS = {
 	"SpinWheel",
 	"RequestRobuxEggAction",
 	"RequestGamepassAction",
+	"MineOre",
 }
 
 local function getRemotesFolder(): Folder

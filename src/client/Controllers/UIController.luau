@@ -17,6 +17,7 @@ local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local GamepassConfig = require(ReplicatedStorage.Shared.Config.GamepassConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
+local MiningClient = require(script.Parent.MiningClient)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
@@ -2232,20 +2233,7 @@ function UIController.buildHUD()
 
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
 	local harvestBtn = createMenuButton("HarvestBtn", "⛏️ Mine (+$$/💎)", Color3.fromRGB(0, 180, 120), function()
-		local harvestFn = Remotes.getFunction("ManualHarvest")
-		local ok, cashEarned, gemsEarned = pcall(function()
-			return harvestFn:InvokeServer()
-		end)
-		if ok then
-			if cashEarned and cashEarned > 0 then
-				showFloatingPopup("+$" .. FormatNumber.formatCompact(cashEarned), Color3.fromRGB(0, 255, 170), -35)
-			end
-			if gemsEarned and gemsEarned > 0 then
-				local gemText = if gemsEarned > 1 then ("+" .. gemsEarned .. " 💎 CRIT!") else ("+" .. gemsEarned .. " 💎")
-				local gemColor = if gemsEarned > 1 then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(0, 220, 255)
-				showFloatingPopup(gemText, gemColor, 35)
-			end
-		end
+		MiningClient.performSwing()
 	end)
 
 	-- DEV TESTING CHEAT BUTTON (+$10,000,000 & +50,000 Gems for easy upgrade testing)

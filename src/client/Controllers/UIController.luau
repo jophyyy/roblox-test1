@@ -15,6 +15,7 @@ local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local TycoonClient = require(script.Parent.TycoonClient)
+local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
@@ -1989,21 +1990,9 @@ function UIController.buildHUD()
 	local eggHatchedEvent = Remotes.getEvent("EggHatched")
 	eggHatchedEvent.OnClientEvent:Connect(function(success: boolean, petId: string?, reason: string?)
 		if success and petId then
-			local petDef = PetConfig.PETS[petId]
-			local petName = if petDef then petDef.name else petId
-			local rarity = if petDef then "[" .. petDef.rarity .. "]" else ""
-			local petColor = if petDef then petDef.color else Color3.fromRGB(255, 215, 0)
-
-			local fanfare = Instance.new("Sound")
-			fanfare.SoundId = "rbxassetid://5153737200"
-			fanfare.Volume = 0.5
-			fanfare.Parent = SoundService
-			fanfare:Play()
-			fanfare.Ended:Connect(function()
-				fanfare:Destroy()
-			end)
-
-			showFloatingPopup("🎉 Hatched " .. petName .. "! " .. rarity, petColor, 0)
+			closeModal()
+			closeDialogue()
+			PetHatchAnimation.playHatch(petId)
 		else
 			showFloatingPopup("❌ " .. tostring(reason or "Cannot hatch egg!"), Color3.fromRGB(255, 90, 80), 0)
 		end

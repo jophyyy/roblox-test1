@@ -11,6 +11,7 @@ local REGISTERED_EVENTS = {
 	"ItemPurchased",
 	"PlayerRebirthed",
 	"OpenShopDialogue",
+	"EggHatched",
 }
 
 local REGISTERED_FUNCTIONS = {

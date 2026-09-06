@@ -74,8 +74,9 @@ end
 local function showFloatingPopup(text: string, color: Color3, xOffset: number?)
 	if not screenGui then return end
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(0, 160, 0, 32)
-	label.Position = UDim2.new(0.5, (xOffset or 0) + math.random(-30, 30), 0.6, math.random(-15, 15))
+	label.Size = UDim2.new(0, 360, 0, 32)
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.new(0.5, (xOffset or 0) + math.random(-20, 20), 0.6, math.random(-15, 15))
 	label.BackgroundTransparency = 1
 	label.Text = text
 	label.TextColor3 = color
@@ -1982,6 +1983,29 @@ function UIController.buildHUD()
 		end
 		if earnedGems and earnedGems > 0 then
 			showFloatingPopup("+" .. earnedGems .. " 💎", Color3.fromRGB(0, 220, 255), 35)
+		end
+	end)
+
+	local eggHatchedEvent = Remotes.getEvent("EggHatched")
+	eggHatchedEvent.OnClientEvent:Connect(function(success: boolean, petId: string?, reason: string?)
+		if success and petId then
+			local petDef = PetConfig.PETS[petId]
+			local petName = if petDef then petDef.name else petId
+			local rarity = if petDef then "[" .. petDef.rarity .. "]" else ""
+			local petColor = if petDef then petDef.color else Color3.fromRGB(255, 215, 0)
+
+			local fanfare = Instance.new("Sound")
+			fanfare.SoundId = "rbxassetid://5153737200"
+			fanfare.Volume = 0.5
+			fanfare.Parent = SoundService
+			fanfare:Play()
+			fanfare.Ended:Connect(function()
+				fanfare:Destroy()
+			end)
+
+			showFloatingPopup("🎉 Hatched " .. petName .. "! " .. rarity, petColor, 0)
+		else
+			showFloatingPopup("❌ " .. tostring(reason or "Cannot hatch egg!"), Color3.fromRGB(255, 90, 80), 0)
 		end
 	end)
 

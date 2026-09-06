@@ -40,10 +40,16 @@ end
 
 function PetService.hatchEgg(player: Player, eggId: string): (boolean, string?, string?)
 	local eggDef = PetConfig.EGGS[eggId]
-	if not eggDef then return false, nil, "Invalid egg" end
+	if not eggDef then
+		local hatchEvent = Remotes.getEvent("EggHatched")
+		hatchEvent:FireClient(player, false, nil, "Invalid egg")
+		return false, nil, "Invalid egg"
+	end
 
 	local data = DataService.get(player)
 	if not data or data.Gems < eggDef.cost then
+		local hatchEvent = Remotes.getEvent("EggHatched")
+		hatchEvent:FireClient(player, false, nil, "Not enough Gems! (Need " .. tostring(eggDef.cost) .. " 💎)")
 		return false, nil, "Not enough Gems"
 	end
 
@@ -74,6 +80,9 @@ function PetService.hatchEgg(player: Player, eggId: string): (boolean, string?, 
 	-- Sync
 	local syncEvent = Remotes.getEvent("SyncPlayerData")
 	syncEvent:FireClient(player, data)
+
+	local hatchEvent = Remotes.getEvent("EggHatched")
+	hatchEvent:FireClient(player, true, pickedPetId, nil)
 
 	return true, pickedPetId, nil
 end

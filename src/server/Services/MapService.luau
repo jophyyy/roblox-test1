@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local DataService = require(script.Parent.DataService)
+local PetService = require(script.Parent.PetService)
 
 local MapService = {}
 local brazierLights: { PointLight } = {}
@@ -927,6 +928,191 @@ function MapService.buildShopStall(folder: Folder)
 	stallModel.Parent = folder
 end
 
+-- 10. Ancient Pet Egg Hatching Shrine ("Prism Egg")
+function MapService.buildEggStand(folder: Folder)
+	local eggShrine = Instance.new("Model")
+	eggShrine.Name = "EggHatchShrine"
+
+	-- Symmetrically opposite Barnaby's stall (Barnaby at X = -13.5, Z = 0)
+	local shrineCF = CFrame.new(13.5, 0.4, 0) * CFrame.Angles(0, math.rad(-90), 0)
+
+	local stoneDark = Color3.fromRGB(48, 52, 58)
+	local stoneMid = Color3.fromRGB(68, 72, 80)
+	local goldAccent = Color3.fromRGB(240, 190, 60)
+	local runeCyan = Color3.fromRGB(0, 220, 255)
+
+	-- 1. Tiered Carved Stone Pedestal Base
+	createStudPart(eggShrine, "PedestalBase", Vector3.new(7.0, 0.6, 7.0), shrineCF * CFrame.new(0, 0.3, 0), stoneDark)
+	createStudPart(eggShrine, "PedestalStep", Vector3.new(5.6, 0.6, 5.6), shrineCF * CFrame.new(0, 0.9, 0), stoneMid)
+
+	-- 2. Carved Central Pillar Column with Studs
+	createStudPart(eggShrine, "PedestalColumn", Vector3.new(3.6, 2.2, 3.6), shrineCF * CFrame.new(0, 2.3, 0), stoneDark)
+
+	-- 3. Inscribed Gold Trim Capital
+	local capital = createStudPart(eggShrine, "PedestalCapital", Vector3.new(4.8, 0.6, 4.8), shrineCF * CFrame.new(0, 3.7, 0), goldAccent)
+	capital.Material = Enum.Material.SmoothPlastic
+
+	-- 4. Dark Obsidian Nest Bowl
+	local bowl = createStudPart(eggShrine, "NestBowl", Vector3.new(4.2, 0.4, 4.2), shrineCF * CFrame.new(0, 4.1, 0), Color3.fromRGB(28, 30, 36))
+	bowl.Material = Enum.Material.SmoothPlastic
+
+	-- 5. Glowing Cyan Rune Core Disc beneath the egg
+	local runeCore = createStudPart(eggShrine, "RuneCore", Vector3.new(3.0, 0.25, 3.0), shrineCF * CFrame.new(0, 4.35, 0), runeCyan)
+	runeCore.Material = Enum.Material.Neon
+
+	-- 6. 3D Physical Egg
+	local eggPart = Instance.new("Part")
+	eggPart.Name = "PrismEggPart"
+	eggPart.Size = Vector3.new(2.4, 3.45, 2.4)
+	eggPart.CFrame = shrineCF * CFrame.new(0, 5.9, 0)
+	eggPart.Color = Color3.fromRGB(245, 248, 255)
+	eggPart.Material = Enum.Material.SmoothPlastic
+	eggPart.Anchored = true
+	eggPart.CanCollide = true
+	eggPart.CanTouch = true
+	eggPart.Parent = eggShrine
+
+	local eggMesh = Instance.new("SpecialMesh")
+	eggMesh.MeshType = Enum.MeshType.Sphere
+	eggMesh.Scale = Vector3.new(1.0, 1.0, 1.0)
+	eggMesh.Parent = eggPart
+
+	-- Luminous decorative waist band around the egg
+	local eggBand = Instance.new("Part")
+	eggBand.Name = "EggWaistBand"
+	eggBand.Size = Vector3.new(2.5, 0.35, 2.5)
+	eggBand.CFrame = shrineCF * CFrame.new(0, 5.75, 0)
+	eggBand.Color = runeCyan
+	eggBand.Material = Enum.Material.Neon
+	eggBand.Anchored = true
+	eggBand.CanCollide = false
+	eggBand.Parent = eggShrine
+
+	local bandMesh = Instance.new("SpecialMesh")
+	bandMesh.MeshType = Enum.MeshType.Sphere
+	bandMesh.Scale = Vector3.new(1.02, 0.18, 1.02)
+	bandMesh.Parent = eggBand
+
+	-- PointLight radiating from the egg
+	local eggLight = Instance.new("PointLight")
+	eggLight.Color = runeCyan
+	eggLight.Brightness = 2.2
+	eggLight.Range = 16
+	eggLight.Parent = eggPart
+
+	-- Soft mystical sparkles
+	local eggAttach = Instance.new("Attachment")
+	eggAttach.Parent = eggPart
+
+	local eggSparkles = Instance.new("ParticleEmitter")
+	eggSparkles.Name = "EggSparkles"
+	eggSparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 235, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 240, 150)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255)),
+	})
+	eggSparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(0.5, 0.5),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	eggSparkles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.2),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	eggSparkles.LightEmission = 0.9
+	eggSparkles.Lifetime = NumberRange.new(1.0, 1.8)
+	eggSparkles.Rate = 7
+	eggSparkles.Speed = NumberRange.new(0.8, 2.0)
+	eggSparkles.SpreadAngle = Vector2.new(30, 30)
+	eggSparkles.Acceleration = Vector3.new(0, 2.0, 0)
+	eggSparkles.Parent = eggAttach
+
+	-- Overhead Info Billboard
+	local eggGui = Instance.new("BillboardGui")
+	eggGui.Name = "EggTitleGui"
+	eggGui.Size = UDim2.new(0, 260, 0, 75)
+	eggGui.StudsOffset = Vector3.new(0, 3.4, 0)
+	eggGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "✨ PRISM EGG ✨"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = eggGui
+
+	local costLabel = Instance.new("TextLabel")
+	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
+	costLabel.Position = UDim2.new(0, 0, 0.38, 0)
+	costLabel.BackgroundTransparency = 1
+	costLabel.Text = "Cost: 100 Gems 💎"
+	costLabel.TextColor3 = Color3.fromRGB(0, 230, 255)
+	costLabel.Font = Enum.Font.GothamBold
+	costLabel.TextSize = 14
+	costLabel.TextStrokeTransparency = 0.2
+	costLabel.Parent = eggGui
+
+	local chancesLabel = Instance.new("TextLabel")
+	chancesLabel.Size = UDim2.new(1, 0, 0.3, 0)
+	chancesLabel.Position = UDim2.new(0, 0, 0.70, 0)
+	chancesLabel.BackgroundTransparency = 1
+	chancesLabel.Text = "🐶 55%  •  🐱 35%  •  🐰 10%"
+	chancesLabel.TextColor3 = Color3.fromRGB(220, 230, 245)
+	chancesLabel.Font = Enum.Font.GothamMedium
+	chancesLabel.TextSize = 12
+	chancesLabel.TextStrokeTransparency = 0.25
+	chancesLabel.Parent = eggGui
+
+	eggGui.Parent = eggPart
+
+	-- Invisible Interaction Part & Proximity Prompt
+	local interactionPart = Instance.new("Part")
+	interactionPart.Name = "EggInteractionPart"
+	interactionPart.Size = Vector3.new(8, 6, 8)
+	interactionPart.CFrame = shrineCF * CFrame.new(0, 3.5, 0)
+	interactionPart.Transparency = 1
+	interactionPart.CanCollide = false
+	interactionPart.CanTouch = true
+	interactionPart.CanQuery = true
+	interactionPart.Anchored = true
+	interactionPart.Parent = eggShrine
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "HatchPrompt"
+	prompt.ActionText = "Hatch"
+	prompt.ObjectText = "Prism Egg (100 💎)"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = interactionPart
+
+	local lastHatchTime: { [Player]: number } = {}
+	prompt.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
+			return
+		end
+		lastHatchTime[player] = now
+
+		print("🥚 [MapService] ProximityPrompt Hatch triggered by " .. player.Name)
+		local ok, petId, errReason = PetService.hatchEgg(player, "BasicEgg")
+		if ok and petId then
+			print("✨ [MapService] " .. player.Name .. " hatched " .. tostring(petId))
+		else
+			print("⚠️ [MapService] Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
+		end
+	end)
+
+	eggShrine.Parent = folder
+end
+
 -- Service Initialization
 function MapService.init()
 	-- Clean up existing map container if it exists
@@ -946,6 +1132,7 @@ function MapService.init()
 	MapService.buildMountains(mapFolder)
 	MapService.buildPlazaAndPaths(mapFolder)
 	MapService.buildShopStall(mapFolder)
+	MapService.buildEggStand(mapFolder)
 	MapService.buildDungeonRuins(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)

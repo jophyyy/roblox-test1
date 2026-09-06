@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
 
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
@@ -32,12 +33,18 @@ local currentShopTab = "Shovel"
 
 -- Typewriter and RPG Dialogue State
 local dialogueTypingThread: thread? = nil
+local choicesTypingThread: thread? = nil
+local idleBounceConnection: RBXScriptConnection? = nil
 local isTypingDialogue = false
 local activeTypingTarget: TextLabel? = nil
 local activeFullText = ""
 local activeOnComplete: (() -> ())? = nil
 local choiceAction1: (() -> ())? = nil
 local choiceAction2: (() -> ())? = nil
+local activeChoiceButtons: { TextButton } = {}
+local activeChoiceTexts: { string } = {}
+local activeBounceElement: GuiObject? = nil
+local activeBounceBasePos: UDim2? = nil
 
 -- Helper to create rounded styled frames
 local function createStyledFrame(parent: Instance, name: string, size: UDim2, pos: UDim2, bgColor: Color3): Frame
@@ -100,23 +107,112 @@ function UIController.updateHUD()
 	end
 end
 
+local function stopIdleBounce()
+	if idleBounceConnection then
+		idleBounceConnection:Disconnect()
+		idleBounceConnection = nil
+	end
+	if activeBounceElement and activeBounceBasePos then
+		activeBounceElement.Position = activeBounceBasePos
+	end
+	activeBounceElement = nil
+	activeBounceBasePos = nil
+end
+
+local function startIdleBounce(element: GuiObject)
+	stopIdleBounce()
+	activeBounceElement = element
+	activeBounceBasePos = element.Position
+	local basePos = element.Position
+	local startClock = os.clock()
+
+	-- Satisfying initial pop bounce
+	local popTween = TweenService:Create(element, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = basePos + UDim2.new(0, 0, 0, -8),
+	})
+	popTween:Play()
+	popTween.Completed:Connect(function()
+		TweenService:Create(element, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = basePos,
+		}):Play()
+	end)
+
+	-- Gentle continuous floating idle bounce loop
+	idleBounceConnection = RunService.RenderStepped:Connect(function()
+		if not activeDialogue or not activeBounceElement then
+			stopIdleBounce()
+			return
+		end
+		local elapsed = os.clock() - startClock
+		local bounceY = math.sin(elapsed * 3.5) * 4
+		element.Position = basePos + UDim2.new(0, 0, 0, bounceY)
+	end)
+end
+
+-- Types out choices sequentially after NPC dialogue finishes
+local function typewriteChoices(onAllFinished: (() -> ())?)
+	if choicesTypingThread then
+		task.cancel(choicesTypingThread)
+		choicesTypingThread = nil
+	end
+
+	for _, btn in ipairs(activeChoiceButtons) do
+		btn.Text = ""
+		btn.Visible = true
+	end
+
+	choicesTypingThread = task.spawn(function()
+		for idx, btn in ipairs(activeChoiceButtons) do
+			local targetText = activeChoiceTexts[idx]
+			if not targetText then continue end
+			local words = string.split(targetText, " ")
+			local displayed = ""
+			for wIdx, word in ipairs(words) do
+				if wIdx == 1 then
+					displayed = word
+				else
+					displayed = displayed .. " " .. word
+				end
+				btn.Text = displayed .. " <font color='#FFFFFF'>▮</font>"
+				task.wait(0.028)
+			end
+			btn.Text = targetText
+			task.wait(0.04)
+		end
+
+		choicesTypingThread = nil
+		if onAllFinished then
+			onAllFinished()
+		end
+	end)
+end
+
 local function closeDialogue()
+	stopIdleBounce()
+
 	if dialogueTypingThread then
 		task.cancel(dialogueTypingThread)
 		dialogueTypingThread = nil
 	end
+	if choicesTypingThread then
+		task.cancel(choicesTypingThread)
+		choicesTypingThread = nil
+	end
+
 	isTypingDialogue = false
 	activeTypingTarget = nil
 	activeFullText = ""
 	activeOnComplete = nil
 	choiceAction1 = nil
 	choiceAction2 = nil
+	activeChoiceButtons = {}
+	activeChoiceTexts = {}
 
 	if activeDialogue then
 		local target = activeDialogue
 		activeDialogue = nil
 		local tween = TweenService:Create(target, TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.In), {
-			Position = UDim2.new(1, 60, 1, -36),
+			Position = UDim2.new(0.5, 0, 1, 60),
 		})
 		tween:Play()
 		tween.Completed:Connect(function()
@@ -127,26 +223,52 @@ end
 
 -- Fast-forwards / skips word-by-word typewriter to full text
 local function skipDialogueTyping()
-	if isTypingDialogue and activeTypingTarget and activeFullText ~= "" then
-		if dialogueTypingThread then
-			task.cancel(dialogueTypingThread)
-			dialogueTypingThread = nil
+	stopIdleBounce()
+
+	if dialogueTypingThread then
+		task.cancel(dialogueTypingThread)
+		dialogueTypingThread = nil
+	end
+	if choicesTypingThread then
+		task.cancel(choicesTypingThread)
+		choicesTypingThread = nil
+	end
+
+	isTypingDialogue = false
+	if activeTypingTarget and activeFullText ~= "" then
+		activeTypingTarget.Text = activeFullText
+	end
+
+	-- Immediately reveal all choices with full text
+	for idx, btn in ipairs(activeChoiceButtons) do
+		local fullText = activeChoiceTexts[idx]
+		if fullText then
+			btn.Text = fullText
+			btn.Visible = true
 		end
-		isTypingDialogue = false
-		activeTypingTarget.Text = activeFullText .. " <font color='#FFFFFF'>▼</font>"
-		if activeOnComplete then
-			local cb = activeOnComplete
-			activeOnComplete = nil
-			cb()
-		end
+	end
+
+	if activeBounceElement then
+		startIdleBounce(activeBounceElement)
 	end
 end
 
 -- Animates dialogue text word-by-word at a snappy, smooth RPG speed
 local function typewriteWords(targetLabel: TextLabel, fullText: string, wordDelay: number?, onComplete: (() -> ())?)
+	stopIdleBounce()
+
 	if dialogueTypingThread then
 		task.cancel(dialogueTypingThread)
 		dialogueTypingThread = nil
+	end
+	if choicesTypingThread then
+		task.cancel(choicesTypingThread)
+		choicesTypingThread = nil
+	end
+
+	-- Clear choices while NPC speaks
+	for _, btn in ipairs(activeChoiceButtons) do
+		btn.Text = ""
 	end
 
 	isTypingDialogue = true
@@ -186,7 +308,7 @@ local function typewriteWords(targetLabel: TextLabel, fullText: string, wordDela
 		end
 
 		if isTypingDialogue then
-			targetLabel.Text = fullText .. " <font color='#FFFFFF'>▼</font>"
+			targetLabel.Text = fullText
 			isTypingDialogue = false
 			if onComplete then
 				local cb = onComplete
@@ -846,70 +968,61 @@ local function openDialogueModal(npcName: string)
 		return
 	end
 
-	-- Bottom-Right Transparent Dialogue Container (Pure black & white, no box, massive text)
+	-- Centered Bottom-Half Transparent Dialogue Container (Wide 960px frame, borderless floating RPG text)
 	local dlg = Instance.new("Frame")
 	dlg.Name = "DialogueContainer"
-	dlg.Size = UDim2.new(0, 780, 0, 520)
-	dlg.Position = UDim2.new(1, 60, 1, -36)
-	dlg.AnchorPoint = Vector2.new(1, 1)
+	dlg.Size = UDim2.new(0.92, 0, 0, 420)
+	dlg.Position = UDim2.new(0.5, 0, 1, 40)
+	dlg.AnchorPoint = Vector2.new(0.5, 1)
 	dlg.BackgroundTransparency = 1
 	dlg.BorderSizePixel = 0
 	dlg.ZIndex = 30
 	dlg.Parent = screenGui
 	activeDialogue = dlg
 
+	local sizeConstraint = Instance.new("UISizeConstraint")
+	sizeConstraint.MaxSize = Vector2.new(980, 440)
+	sizeConstraint.Parent = dlg
+
 	-- Minimalist Monochrome Close "X" Button
 	local closeDlgBtn = Instance.new("TextButton")
-	closeDlgBtn.Size = UDim2.new(0, 28, 0, 28)
-	closeDlgBtn.Position = UDim2.new(1, -28, 0, 0)
-	closeDlgBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	closeDlgBtn.BackgroundTransparency = 0.5
+	closeDlgBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeDlgBtn.Position = UDim2.new(1, -20, 0, -10)
+	closeDlgBtn.BackgroundTransparency = 1
 	closeDlgBtn.Text = "X"
-	closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeDlgBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
 	closeDlgBtn.Font = Enum.Font.GothamBold
-	closeDlgBtn.TextSize = 13
+	closeDlgBtn.TextSize = 18
 	closeDlgBtn.BorderSizePixel = 0
 	closeDlgBtn.ZIndex = 35
 	closeDlgBtn.Parent = dlg
 
-	local cdCorner = Instance.new("UICorner")
-	cdCorner.CornerRadius = UDim.new(1, 0)
-	cdCorner.Parent = closeDlgBtn
-
-	local cdStroke = Instance.new("UIStroke")
-	cdStroke.Color = Color3.fromRGB(255, 255, 255)
-	cdStroke.Thickness = 1
-	cdStroke.Transparency = 0.5
-	cdStroke.Parent = closeDlgBtn
-
 	closeDlgBtn.MouseEnter:Connect(function()
-		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		closeDlgBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+		closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	end)
 	closeDlgBtn.MouseLeave:Connect(function()
-		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeDlgBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
 	end)
 	closeDlgBtn.MouseButton1Click:Connect(closeDialogue)
 
-	-- NPC Dialogue Speech Label (Massive 60px Thick Black & White Roguelike Font)
+	-- NPC Dialogue Speech Label (Centered, Massive 52px Thick Antique Roguelike Font)
 	local speechLabel = Instance.new("TextLabel")
 	speechLabel.Name = "SpeechLabel"
-	speechLabel.Size = UDim2.new(1, -36, 0, 320)
+	speechLabel.Size = UDim2.new(1, 0, 0, 220)
 	speechLabel.Position = UDim2.new(0, 0, 0, 0)
 	speechLabel.BackgroundTransparency = 1
 	speechLabel.Text = ""
 	speechLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	speechLabel.Font = Enum.Font.Antique
-	speechLabel.TextSize = 58 -- Massive font size as requested!
+	speechLabel.TextSize = 52 -- Massive thick font!
 	speechLabel.TextWrapped = true
 	speechLabel.RichText = true
-	speechLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speechLabel.TextXAlignment = Enum.TextXAlignment.Center -- Centered!
 	speechLabel.TextYAlignment = Enum.TextYAlignment.Top
 	speechLabel.ZIndex = 32
 	speechLabel.Parent = dlg
 
-	-- Heavy 3.5px pure black stroke for bold, thick text readability
+	-- Heavy 3.5px pure black stroke for bold, thick text readability without a box
 	local speechStroke = Instance.new("UIStroke")
 	speechStroke.Thickness = 3.5
 	speechStroke.Color = Color3.fromRGB(0, 0, 0)
@@ -919,7 +1032,7 @@ local function openDialogueModal(npcName: string)
 	-- Invisible Click-to-Skip Button covering speech area
 	local skipBtn = Instance.new("TextButton")
 	skipBtn.Name = "SkipDetector"
-	skipBtn.Size = UDim2.new(1, 0, 0, 325)
+	skipBtn.Size = UDim2.new(1, 0, 0, 220)
 	skipBtn.Position = UDim2.new(0, 0, 0, 0)
 	skipBtn.BackgroundTransparency = 1
 	skipBtn.Text = ""
@@ -927,74 +1040,58 @@ local function openDialogueModal(npcName: string)
 	skipBtn.Parent = dlg
 	skipBtn.MouseButton1Click:Connect(skipDialogueTyping)
 
-	-- Choice Buttons Column (Stacked vertically directly below speech)
+	-- Choice Buttons Column (Centered, Stacked Vertically, NO BOXES)
 	local choicesCol = Instance.new("Frame")
 	choicesCol.Name = "ChoicesColumn"
 	choicesCol.Size = UDim2.new(1, 0, 0, 180)
-	choicesCol.Position = UDim2.new(0, 0, 0, 335)
+	choicesCol.Position = UDim2.new(0, 0, 0, 230)
 	choicesCol.BackgroundTransparency = 1
 	choicesCol.ZIndex = 32
 	choicesCol.Parent = dlg
 
 	local choiceList = Instance.new("UIListLayout")
-	choiceList.FillDirection = Enum.FillDirection.Vertical -- Stacked vertically
-	choiceList.Padding = UDim.new(0, 10)
+	choiceList.FillDirection = Enum.FillDirection.Vertical -- Stacked vertically!
+	choiceList.HorizontalAlignment = Enum.HorizontalAlignment.Center -- Centered!
+	choiceList.Padding = UDim.new(0, 8)
 	choiceList.SortOrder = Enum.SortOrder.LayoutOrder
 	choiceList.Parent = choicesCol
 
-	local function makeChoice(order: number, text: string, onClick: () -> ()): TextButton
+	activeChoiceButtons = {}
+	activeChoiceTexts = {}
+
+	local function makeChoice(order: number, rawText: string, onClick: () -> ()): TextButton
 		local cBtn = Instance.new("TextButton")
 		cBtn.LayoutOrder = order
-		cBtn.Size = UDim2.new(1, 0, 0, 52)
-		cBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		cBtn.BackgroundTransparency = 0.55
-		cBtn.Text = text
-		cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		cBtn.Font = Enum.Font.Antique
-		cBtn.TextSize = 24
-		cBtn.TextWrapped = true
-		cBtn.TextXAlignment = Enum.TextXAlignment.Left
+		cBtn.Size = UDim2.new(1, 0, 0, 48)
+		cBtn.BackgroundTransparency = 1 -- NO BOX AROUND CHOICES!
 		cBtn.BorderSizePixel = 0
+		cBtn.Text = "" -- Empty initially until typewriter starts
+		cBtn.TextColor3 = Color3.fromRGB(210, 215, 225)
+		cBtn.Font = Enum.Font.Antique
+		cBtn.TextSize = 32 -- Bolder & bigger!
+		cBtn.TextWrapped = true
+		cBtn.TextXAlignment = Enum.TextXAlignment.Center -- Centered!
 		cBtn.ZIndex = 34
 		cBtn.Parent = choicesCol
 
-		local cPad = Instance.new("UIPadding")
-		cPad.PaddingLeft = UDim.new(0, 18)
-		cPad.PaddingRight = UDim.new(0, 18)
-		cPad.Parent = cBtn
+		-- Heavy black text stroke so user text is bold, crisp, and readable without a box
+		local textStroke = Instance.new("UIStroke")
+		textStroke.Thickness = 3.0
+		textStroke.Color = Color3.fromRGB(0, 0, 0)
+		textStroke.Transparency = 0
+		textStroke.Parent = cBtn
 
-		local cCorner = Instance.new("UICorner")
-		cCorner.CornerRadius = UDim.new(0, 6)
-		cCorner.Parent = cBtn
-
-		local cStroke = Instance.new("UIStroke")
-		cStroke.Color = Color3.fromRGB(255, 255, 255)
-		cStroke.Thickness = 1.5
-		cStroke.Transparency = 0.5
-		cStroke.Parent = cBtn
-
-		-- Monochrome High-Contrast Inversion on Hover
 		cBtn.MouseEnter:Connect(function()
-			TweenService:Create(cBtn, TweenInfo.new(0.12), {
-				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-				BackgroundTransparency = 0,
-				TextColor3 = Color3.fromRGB(0, 0, 0),
-			}):Play()
-			TweenService:Create(cStroke, TweenInfo.new(0.12), {
-				Color = Color3.fromRGB(255, 255, 255),
-				Transparency = 0,
-			}):Play()
+			if not isTypingDialogue and choicesTypingThread == nil and #cBtn.Text > 0 then
+				cBtn.Text = "> " .. rawText .. " <"
+				cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			end
 		end)
 		cBtn.MouseLeave:Connect(function()
-			TweenService:Create(cBtn, TweenInfo.new(0.12), {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 0.55,
-				TextColor3 = Color3.fromRGB(255, 255, 255),
-			}):Play()
-			TweenService:Create(cStroke, TweenInfo.new(0.12), {
-				Color = Color3.fromRGB(255, 255, 255),
-				Transparency = 0.5,
-			}):Play()
+			if not isTypingDialogue and choicesTypingThread == nil and #cBtn.Text > 0 then
+				cBtn.Text = rawText
+				cBtn.TextColor3 = Color3.fromRGB(210, 215, 225)
+			end
 		end)
 
 		cBtn.MouseButton1Click:Connect(function()
@@ -1002,6 +1099,8 @@ local function openDialogueModal(npcName: string)
 			onClick()
 		end)
 
+		table.insert(activeChoiceButtons, cBtn)
+		table.insert(activeChoiceTexts, rawText)
 		return cBtn
 	end
 
@@ -1014,7 +1113,12 @@ local function openDialogueModal(npcName: string)
 
 	-- Choice 2: Any advice for the mines?
 	choiceAction2 = function()
-		typewriteWords(speechLabel, "Build out your tycoon droppers and upgrade fields. Upgraded ores yield heaps of cash. Buy a sturdy backpack from me to multiply every batch.", 0.04)
+		local tip = "Build out your tycoon droppers and upgrade fields. Upgraded ores yield heaps of cash. Buy a sturdy backpack from me to multiply every batch."
+		typewriteWords(speechLabel, tip, 0.04, function()
+			typewriteChoices(function()
+				startIdleBounce(choicesCol)
+			end)
+		end)
 	end
 	makeChoice(2, "[2] Tell me about this place.", choiceAction2)
 
@@ -1023,14 +1127,24 @@ local function openDialogueModal(npcName: string)
 		closeDialogue()
 	end)
 
-	-- Animate in smoothly from right
+	-- Register bounce target
+	activeBounceElement = choicesCol
+	activeBounceBasePos = choicesCol.Position
+
+	-- Animate in smoothly from bottom to centered bottom half
 	TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
-		Position = UDim2.new(1, -36, 1, -36),
+		Position = UDim2.new(0.5, 0, 1, -28),
 	}):Play()
 
-	-- Start word-by-word dialogue typewriter animation (No emojis, pure monochrome)
+	-- Step 1: Typewrite NPC dialogue first.
+	-- Step 2: Once NPC dialogue finishes, typewrite the choices.
+	-- Step 3: Once choices finish, start the static/idle bounce animation!
 	local greeting = "Greetings, traveler. The ores beneath these mountains are rich, but you will need the right gear to harvest them quickly. What can I do for you?"
-	typewriteWords(speechLabel, greeting, 0.045)
+	typewriteWords(speechLabel, greeting, 0.045, function()
+		typewriteChoices(function()
+			startIdleBounce(choicesCol)
+		end)
+	end)
 end
 
 function UIController.buildHUD()
@@ -1204,7 +1318,7 @@ function UIController.buildHUD()
 		if gameProcessed then return end
 
 		if input.UserInputType == Enum.UserInputType.Keyboard then
-			if isTypingDialogue and (input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.E or input.KeyCode == Enum.KeyCode.Return) then
+			if (isTypingDialogue or choicesTypingThread ~= nil) and (input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.E or input.KeyCode == Enum.KeyCode.Return) then
 				skipDialogueTyping()
 				return
 			end

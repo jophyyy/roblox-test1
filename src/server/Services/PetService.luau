@@ -47,16 +47,21 @@ function PetService.hatchEgg(player: Player, eggId: string, count: number?): (bo
 		return false, nil, "Invalid egg"
 	end
 
-	local totalCost = eggDef.cost * hatchCount
 	local data = DataService.get(player)
-	if not data or data.Gems < totalCost then
-		local hatchEvent = Remotes.getEvent("EggHatched")
-		hatchEvent:FireClient(player, false, nil, "Not enough Gems! (Need " .. tostring(totalCost) .. " 💎)")
-		return false, nil, "Not enough Gems"
+	if not data then
+		return false, nil, "Player data not loaded"
 	end
 
-	-- Deduct gems
-	DataService.addGems(player, -totalCost)
+	if eggDef.currency == "Gems" then
+		local totalCost = eggDef.cost * hatchCount
+		if data.Gems < totalCost then
+			local hatchEvent = Remotes.getEvent("EggHatched")
+			hatchEvent:FireClient(player, false, nil, "Not enough Gems! (Need " .. tostring(totalCost) .. " 💎)")
+			return false, nil, "Not enough Gems"
+		end
+		-- Deduct gems
+		DataService.addGems(player, -totalCost)
+	end
 
 	-- Calculate total drop pool weight
 	local totalWeight = 0

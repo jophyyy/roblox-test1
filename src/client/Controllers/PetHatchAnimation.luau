@@ -645,16 +645,6 @@ function PetHatchAnimation.playHatch(petInput: any)
 	local isTriple = (#petIds >= 3)
 	local hatchCount = if isTriple then 3 else 1
 
-	local hum = getHumanoid()
-	local origWalkSpeed = 16
-	local origJumpPower = 50
-	if hum then
-		origWalkSpeed = hum.WalkSpeed
-		origJumpPower = hum.JumpPower
-		hum.WalkSpeed = 0
-		hum.JumpPower = 0
-	end
-
 	-- 1. Create Full-Screen Cinematic ScreenGui
 	local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
 	local hatchGui = Instance.new("ScreenGui")
@@ -674,7 +664,7 @@ function PetHatchAnimation.playHatch(petInput: any)
 	backdrop.ZIndex = 1
 	backdrop.Parent = hatchGui
 
-	TweenService:Create(backdrop, TweenInfo.new(0.35), { BackgroundTransparency = 0.35 }):Play()
+	TweenService:Create(backdrop, TweenInfo.new(0.35), { BackgroundTransparency = 0.82 }):Play()
 
 	-- 3. Rotating Sunburst Rays
 	local rayContainer = Instance.new("Frame")
@@ -873,25 +863,24 @@ function PetHatchAnimation.playHatch(petInput: any)
 		table.insert(createdCards, card)
 	end
 
-	-- Dismiss Click Catcher
-	local clickCatcher = Instance.new("TextButton")
-	clickCatcher.Name = "ClickToDismiss"
-	clickCatcher.Size = UDim2.new(1, 0, 1, 0)
-	clickCatcher.BackgroundTransparency = 1
-	clickCatcher.Text = ""
-	clickCatcher.ZIndex = 30
-	clickCatcher.Parent = hatchGui
+	-- Non-blocking Collect Button at bottom
+	local collectBtn = Instance.new("TextButton")
+	collectBtn.Name = "CollectBtn"
+	collectBtn.Size = UDim2.new(0, 240, 0, 38)
+	collectBtn.Position = UDim2.new(0.5, 0, 0.94, 0)
+	collectBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+	collectBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 130)
+	collectBtn.Text = "✨ COLLECT ✨"
+	collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	collectBtn.Font = Enum.Font.GothamBlack
+	collectBtn.TextSize = 15
+	collectBtn.BorderSizePixel = 0
+	collectBtn.ZIndex = 30
+	collectBtn.Parent = hatchGui
 
-	local hintLabel = Instance.new("TextLabel")
-	hintLabel.Size = UDim2.new(1, 0, 0, 26)
-	hintLabel.Position = UDim2.new(0, 0, 0.94, 0)
-	hintLabel.BackgroundTransparency = 1
-	hintLabel.Text = if isTriple then "[ Click anywhere to collect all 3 pets ]" else "[ Click anywhere to collect ]"
-	hintLabel.TextColor3 = Color3.fromRGB(180, 195, 215)
-	hintLabel.Font = Enum.Font.GothamMedium
-	hintLabel.TextSize = 14
-	hintLabel.ZIndex = 31
-	hintLabel.Parent = hatchGui
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 8)
+	btnCorner.Parent = collectBtn
 
 	-- Continuous 360° Pet Rotation in ViewportFrames
 	local rotAngle = 0
@@ -942,18 +931,12 @@ function PetHatchAnimation.playHatch(petInput: any)
 		-- Cleanup
 		hatchGui:Destroy()
 
-		-- Restore Humanoid speed
-		if hum then
-			hum.WalkSpeed = origWalkSpeed
-			hum.JumpPower = origJumpPower
-		end
-
 		isHatching = false
 	end
 
-	clickCatcher.MouseButton1Click:Connect(doDismiss)
+	collectBtn.MouseButton1Click:Connect(doDismiss)
 
-	task.delay(4.0, function()
+	task.delay(3.5, function()
 		if not dismissed then
 			doDismiss()
 		end

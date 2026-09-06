@@ -13,7 +13,8 @@ export type EggDef = {
 	id: string,
 	name: string,
 	cost: number,
-	currency: "Gems",
+	currency: "Gems" | "Robux",
+	productId: number?,
 	dropPool: { { petId: string, weight: number } },
 }
 
@@ -89,6 +90,18 @@ local PetConfig = {
 				{ petId = "NeonBunny", weight = 60 },
 				{ petId = "InfernoDragon", weight = 35 },
 				{ petId = "VoidPhoenix", weight = 5 },
+			},
+		},
+		RobuxEgg = {
+			id = "RobuxEgg",
+			name = "Exclusive Robux Egg",
+			cost = 1000,
+			currency = "Robux",
+			productId = 0, -- 0 for dev test fallback; set to real Developer Product ID in production
+			dropPool = {
+				{ petId = "NeonBunny", weight = 50 },
+				{ petId = "InfernoDragon", weight = 35 },
+				{ petId = "VoidPhoenix", weight = 15 },
 			},
 		},
 	} :: { [string]: EggDef },

@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local DataService = require(script.Parent.DataService)
 local PetService = require(script.Parent.PetService)
+local MarketplaceServiceHandler = require(script.Parent.MarketplaceServiceHandler)
 
 local MapService = {}
 local brazierLights: { PointLight } = {}
@@ -933,8 +934,8 @@ function MapService.buildEggStand(folder: Folder)
 	local eggShrine = Instance.new("Model")
 	eggShrine.Name = "EggHatchShrine"
 
-	-- Symmetrically opposite Barnaby's stall (Barnaby at X = -13.5, Z = 0)
-	local shrineCF = CFrame.new(13.5, 0.4, 0) * CFrame.Angles(0, math.rad(-90), 0)
+	-- Positioned on the East side of the plaza (Z = 4.5)
+	local shrineCF = CFrame.new(13.5, 0.4, 4.5) * CFrame.Angles(0, math.rad(-90), 0)
 
 	local stoneDark = Color3.fromRGB(48, 52, 58)
 	local stoneMid = Color3.fromRGB(68, 72, 80)
@@ -1164,6 +1165,190 @@ function MapService.buildEggStand(folder: Folder)
 	eggShrine.Parent = folder
 end
 
+-- 11. Exclusive 1,000 Robux Egg Hatching Shrine ("Exclusive Robux Egg")
+function MapService.buildRobuxEggStand(folder: Folder)
+	local eggShrine = Instance.new("Model")
+	eggShrine.Name = "RobuxEggHatchShrine"
+
+	-- Positioned adjacent on the East side of the plaza (Z = -4.5)
+	local shrineCF = CFrame.new(13.5, 0.4, -4.5) * CFrame.Angles(0, math.rad(-90), 0)
+
+	local obsidian = Color3.fromRGB(25, 26, 32)
+	local goldMetal = Color3.fromRGB(255, 215, 60)
+	local cosmicPurple = Color3.fromRGB(180, 50, 255)
+
+	-- 1. Tiered Gilded Obsidian Pedestal Base
+	createStudPart(eggShrine, "RobuxPedestalBase", Vector3.new(7.0, 0.6, 7.0), shrineCF * CFrame.new(0, 0.3, 0), obsidian)
+	createStudPart(eggShrine, "RobuxPedestalStep", Vector3.new(5.6, 0.6, 5.6), shrineCF * CFrame.new(0, 0.9, 0), Color3.fromRGB(40, 42, 50))
+
+	-- 2. Carved Central Pillar with Gold Studs
+	createStudPart(eggShrine, "RobuxPedestalColumn", Vector3.new(3.6, 2.2, 3.6), shrineCF * CFrame.new(0, 2.3, 0), obsidian)
+
+	-- 3. Solid Gold Capital
+	local capital = createStudPart(eggShrine, "RobuxPedestalCapital", Vector3.new(4.8, 0.6, 4.8), shrineCF * CFrame.new(0, 3.7, 0), goldMetal)
+	capital.Material = Enum.Material.SmoothPlastic
+
+	-- 4. Obsidian Nest Bowl
+	local bowl = createStudPart(eggShrine, "RobuxNestBowl", Vector3.new(4.2, 0.4, 4.2), shrineCF * CFrame.new(0, 4.1, 0), obsidian)
+	bowl.Material = Enum.Material.SmoothPlastic
+
+	-- 5. Glowing Cosmic Purple Rune Core Disc
+	local runeCore = createStudPart(eggShrine, "RobuxRuneCore", Vector3.new(3.0, 0.25, 3.0), shrineCF * CFrame.new(0, 4.35, 0), cosmicPurple)
+	runeCore.Material = Enum.Material.Neon
+
+	-- 6. Gilded 3D Egg
+	local eggPart = Instance.new("Part")
+	eggPart.Name = "RobuxEggPart"
+	eggPart.Size = Vector3.new(2.4, 3.45, 2.4)
+	eggPart.CFrame = shrineCF * CFrame.new(0, 5.9, 0)
+	eggPart.Color = goldMetal
+	eggPart.Material = Enum.Material.SmoothPlastic
+	eggPart.Anchored = true
+	eggPart.CanCollide = true
+	eggPart.CanTouch = true
+	eggPart.Parent = eggShrine
+
+	local eggMesh = Instance.new("SpecialMesh")
+	eggMesh.MeshType = Enum.MeshType.Sphere
+	eggMesh.Scale = Vector3.new(1.0, 1.0, 1.0)
+	eggMesh.Parent = eggPart
+
+	-- Cosmic Magenta Neon Waist Band
+	local eggBand = Instance.new("Part")
+	eggBand.Name = "EggWaistBand"
+	eggBand.Size = Vector3.new(2.5, 0.35, 2.5)
+	eggBand.CFrame = shrineCF * CFrame.new(0, 5.75, 0)
+	eggBand.Color = cosmicPurple
+	eggBand.Material = Enum.Material.Neon
+	eggBand.Anchored = true
+	eggBand.CanCollide = false
+	eggBand.Parent = eggShrine
+
+	local bandMesh = Instance.new("SpecialMesh")
+	bandMesh.MeshType = Enum.MeshType.Sphere
+	bandMesh.Scale = Vector3.new(1.02, 0.18, 1.02)
+	bandMesh.Parent = eggBand
+
+	-- Radiant PointLight
+	local eggLight = Instance.new("PointLight")
+	eggLight.Color = Color3.fromRGB(255, 220, 80)
+	eggLight.Brightness = 2.8
+	eggLight.Range = 18
+	eggLight.Parent = eggPart
+
+	-- Sparkling Star Particles
+	local eggAttach = Instance.new("Attachment")
+	eggAttach.Parent = eggPart
+
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Name = "RobuxSparkles"
+	sparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 150)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 180, 50)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 50, 255)),
+	})
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(0.5, 0.6),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	sparkles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	sparkles.LightEmission = 0.95
+	sparkles.Lifetime = NumberRange.new(1.0, 1.8)
+	sparkles.Rate = 10
+	sparkles.Speed = NumberRange.new(1.0, 2.5)
+	sparkles.SpreadAngle = Vector2.new(35, 35)
+	sparkles.Acceleration = Vector3.new(0, 2.5, 0)
+	sparkles.Parent = eggAttach
+
+	-- Overhead Info Billboard
+	local eggGui = Instance.new("BillboardGui")
+	eggGui.Name = "RobuxEggTitleGui"
+	eggGui.Size = UDim2.new(0, 280, 0, 80)
+	eggGui.StudsOffset = Vector3.new(0, 3.4, 0)
+	eggGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "👑 EXCLUSIVE EGG 👑"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = eggGui
+
+	local costLabel = Instance.new("TextLabel")
+	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
+	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
+	costLabel.BackgroundTransparency = 1
+	costLabel.Text = "Cost: 1,000 Robux R$"
+	costLabel.TextColor3 = Color3.fromRGB(0, 230, 118)
+	costLabel.Font = Enum.Font.GothamBold
+	costLabel.TextSize = 14
+	costLabel.TextStrokeTransparency = 0.2
+	costLabel.Parent = eggGui
+
+	local chancesLabel = Instance.new("TextLabel")
+	chancesLabel.Size = UDim2.new(1, 0, 0.28, 0)
+	chancesLabel.Position = UDim2.new(0, 0, 0.68, 0)
+	chancesLabel.BackgroundTransparency = 1
+	chancesLabel.Text = "🐰 Bunny 50%  •  🔥 Drake 35%  •  🌌 Phoenix 15%"
+	chancesLabel.TextColor3 = Color3.fromRGB(255, 235, 180)
+	chancesLabel.Font = Enum.Font.GothamMedium
+	chancesLabel.TextSize = 11
+	chancesLabel.TextStrokeTransparency = 0.25
+	chancesLabel.Parent = eggGui
+
+	eggGui.Parent = eggPart
+
+	-- Visual Rune Pad on Pedestal Step
+	local pad = createStudPart(eggShrine, "HatchPad_Robux", Vector3.new(3.0, 0.1, 3.0), shrineCF * CFrame.new(0, 0.45, 1.2), Color3.fromRGB(255, 215, 0))
+	pad.Material = Enum.Material.Neon
+	pad.CanCollide = false
+
+	-- Interaction Part & Proximity Prompt
+	local interactionPart = Instance.new("Part")
+	interactionPart.Name = "RobuxEggInteractionPart"
+	interactionPart.Size = Vector3.new(6, 6, 6)
+	interactionPart.CFrame = shrineCF * CFrame.new(0, 3.2, 1.0)
+	interactionPart.Transparency = 1
+	interactionPart.CanCollide = false
+	interactionPart.CanTouch = true
+	interactionPart.CanQuery = true
+	interactionPart.Anchored = true
+	interactionPart.Parent = eggShrine
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "RobuxHatchPrompt"
+	prompt.ActionText = "Hatch"
+	prompt.ObjectText = "Exclusive Egg (R$ 1,000)"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = interactionPart
+
+	local lastHatchTime: { [Player]: number } = {}
+	prompt.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.4 then
+			return
+		end
+		lastHatchTime[player] = now
+
+		print("👑 [MapService] Robux Egg ProximityPrompt triggered by " .. player.Name)
+		MarketplaceServiceHandler.handleRobuxEggPurchase(player)
+	end)
+
+	eggShrine.Parent = folder
+end
+
 -- Service Initialization
 function MapService.init()
 	-- Clean up existing map container if it exists
@@ -1184,6 +1369,7 @@ function MapService.init()
 	MapService.buildPlazaAndPaths(mapFolder)
 	MapService.buildShopStall(mapFolder)
 	MapService.buildEggStand(mapFolder)
+	MapService.buildRobuxEggStand(mapFolder)
 	MapService.buildDungeonRuins(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)

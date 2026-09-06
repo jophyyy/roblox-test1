@@ -116,7 +116,7 @@ local function closeDialogue()
 		local target = activeDialogue
 		activeDialogue = nil
 		local tween = TweenService:Create(target, TweenInfo.new(0.2, Enum.EasingStyle.Cubic, Enum.EasingDirection.In), {
-			Position = UDim2.new(1, 40, 0, 80),
+			Position = UDim2.new(1, 60, 1, -36),
 		})
 		tween:Play()
 		tween.Completed:Connect(function()
@@ -133,7 +133,7 @@ local function skipDialogueTyping()
 			dialogueTypingThread = nil
 		end
 		isTypingDialogue = false
-		activeTypingTarget.Text = activeFullText .. " <font color='#88B0E8'>▼</font>"
+		activeTypingTarget.Text = activeFullText .. " <font color='#FFFFFF'>▼</font>"
 		if activeOnComplete then
 			local cb = activeOnComplete
 			activeOnComplete = nil
@@ -167,13 +167,13 @@ local function typewriteWords(targetLabel: TextLabel, fullText: string, wordDela
 			else
 				displayed = displayed .. " " .. word
 			end
-			targetLabel.Text = displayed .. " <font color='#F5C542'>▮</font>"
+			targetLabel.Text = displayed .. " <font color='#FFFFFF'>▮</font>"
 
 			-- Subtle, soft retro chatter click every 2 words
 			if i % 2 == 1 then
 				local s = Instance.new("Sound")
 				s.SoundId = "rbxassetid://6895079853"
-				s.Volume = 0.035
+				s.Volume = 0.03
 				s.PlaybackSpeed = 2.4 + (math.random() * 0.4)
 				s.Parent = SoundService
 				s:Play()
@@ -186,7 +186,7 @@ local function typewriteWords(targetLabel: TextLabel, fullText: string, wordDela
 		end
 
 		if isTypingDialogue then
-			targetLabel.Text = fullText .. " <font color='#88B0E8'>▼</font>"
+			targetLabel.Text = fullText .. " <font color='#FFFFFF'>▼</font>"
 			isTypingDialogue = false
 			if onComplete then
 				local cb = onComplete
@@ -846,26 +846,26 @@ local function openDialogueModal(npcName: string)
 		return
 	end
 
-	-- Top-Right Transparent Dialogue Container (No box around it, borderless floating RPG text)
+	-- Bottom-Right Transparent Dialogue Container (Pure black & white, no box, massive text)
 	local dlg = Instance.new("Frame")
 	dlg.Name = "DialogueContainer"
-	dlg.Size = UDim2.new(0, 520, 0, 340)
-	dlg.Position = UDim2.new(1, 30, 0, 80)
-	dlg.AnchorPoint = Vector2.new(1, 0)
+	dlg.Size = UDim2.new(0, 780, 0, 520)
+	dlg.Position = UDim2.new(1, 60, 1, -36)
+	dlg.AnchorPoint = Vector2.new(1, 1)
 	dlg.BackgroundTransparency = 1
 	dlg.BorderSizePixel = 0
 	dlg.ZIndex = 30
 	dlg.Parent = screenGui
 	activeDialogue = dlg
 
-	-- Discreet Corner Close "✕" Button
+	-- Minimalist Monochrome Close "X" Button
 	local closeDlgBtn = Instance.new("TextButton")
-	closeDlgBtn.Size = UDim2.new(0, 26, 0, 26)
-	closeDlgBtn.Position = UDim2.new(1, -26, 0, -4)
-	closeDlgBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 48)
-	closeDlgBtn.BackgroundTransparency = 0.4
-	closeDlgBtn.Text = "✕"
-	closeDlgBtn.TextColor3 = Color3.fromRGB(200, 210, 230)
+	closeDlgBtn.Size = UDim2.new(0, 28, 0, 28)
+	closeDlgBtn.Position = UDim2.new(1, -28, 0, 0)
+	closeDlgBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	closeDlgBtn.BackgroundTransparency = 0.5
+	closeDlgBtn.Text = "X"
+	closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	closeDlgBtn.Font = Enum.Font.GothamBold
 	closeDlgBtn.TextSize = 13
 	closeDlgBtn.BorderSizePixel = 0
@@ -876,26 +876,32 @@ local function openDialogueModal(npcName: string)
 	cdCorner.CornerRadius = UDim.new(1, 0)
 	cdCorner.Parent = closeDlgBtn
 
+	local cdStroke = Instance.new("UIStroke")
+	cdStroke.Color = Color3.fromRGB(255, 255, 255)
+	cdStroke.Thickness = 1
+	cdStroke.Transparency = 0.5
+	cdStroke.Parent = closeDlgBtn
+
 	closeDlgBtn.MouseEnter:Connect(function()
-		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-		closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		closeDlgBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 	end)
 	closeDlgBtn.MouseLeave:Connect(function()
-		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 48)
-		closeDlgBtn.TextColor3 = Color3.fromRGB(200, 210, 230)
+		closeDlgBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		closeDlgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	end)
 	closeDlgBtn.MouseButton1Click:Connect(closeDialogue)
 
-	-- NPC Dialogue Speech Label (Much bigger Antique Roguelike Font, no box around it)
+	-- NPC Dialogue Speech Label (Massive 60px Thick Black & White Roguelike Font)
 	local speechLabel = Instance.new("TextLabel")
 	speechLabel.Name = "SpeechLabel"
-	speechLabel.Size = UDim2.new(1, -32, 0, 130)
+	speechLabel.Size = UDim2.new(1, -36, 0, 320)
 	speechLabel.Position = UDim2.new(0, 0, 0, 0)
 	speechLabel.BackgroundTransparency = 1
 	speechLabel.Text = ""
 	speechLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	speechLabel.Font = Enum.Font.Antique
-	speechLabel.TextSize = 28 -- Much bigger font!
+	speechLabel.TextSize = 58 -- Massive font size as requested!
 	speechLabel.TextWrapped = true
 	speechLabel.RichText = true
 	speechLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -903,17 +909,17 @@ local function openDialogueModal(npcName: string)
 	speechLabel.ZIndex = 32
 	speechLabel.Parent = dlg
 
-	-- Crisp dark stroke around the letters so text is 100% readable over 3D world geometry without a box
+	-- Heavy 3.5px pure black stroke for bold, thick text readability
 	local speechStroke = Instance.new("UIStroke")
-	speechStroke.Thickness = 2.5
-	speechStroke.Color = Color3.fromRGB(8, 10, 16)
+	speechStroke.Thickness = 3.5
+	speechStroke.Color = Color3.fromRGB(0, 0, 0)
 	speechStroke.Transparency = 0
 	speechStroke.Parent = speechLabel
 
 	-- Invisible Click-to-Skip Button covering speech area
 	local skipBtn = Instance.new("TextButton")
 	skipBtn.Name = "SkipDetector"
-	skipBtn.Size = UDim2.new(1, 0, 0, 135)
+	skipBtn.Size = UDim2.new(1, 0, 0, 325)
 	skipBtn.Position = UDim2.new(0, 0, 0, 0)
 	skipBtn.BackgroundTransparency = 1
 	skipBtn.Text = ""
@@ -921,31 +927,31 @@ local function openDialogueModal(npcName: string)
 	skipBtn.Parent = dlg
 	skipBtn.MouseButton1Click:Connect(skipDialogueTyping)
 
-	-- Choice Buttons Column (Stacked vertically on top of each other, right below speech)
+	-- Choice Buttons Column (Stacked vertically directly below speech)
 	local choicesCol = Instance.new("Frame")
 	choicesCol.Name = "ChoicesColumn"
-	choicesCol.Size = UDim2.new(1, 0, 0, 175)
-	choicesCol.Position = UDim2.new(0, 0, 0, 140)
+	choicesCol.Size = UDim2.new(1, 0, 0, 180)
+	choicesCol.Position = UDim2.new(0, 0, 0, 335)
 	choicesCol.BackgroundTransparency = 1
 	choicesCol.ZIndex = 32
 	choicesCol.Parent = dlg
 
 	local choiceList = Instance.new("UIListLayout")
-	choiceList.FillDirection = Enum.FillDirection.Vertical -- Stacked vertically!
-	choiceList.Padding = UDim.new(0, 8)
+	choiceList.FillDirection = Enum.FillDirection.Vertical -- Stacked vertically
+	choiceList.Padding = UDim.new(0, 10)
 	choiceList.SortOrder = Enum.SortOrder.LayoutOrder
 	choiceList.Parent = choicesCol
 
-	local function makeChoice(order: number, text: string, strokeCol: Color3, onClick: () -> ()): TextButton
+	local function makeChoice(order: number, text: string, onClick: () -> ()): TextButton
 		local cBtn = Instance.new("TextButton")
 		cBtn.LayoutOrder = order
-		cBtn.Size = UDim2.new(1, 0, 0, 48)
-		cBtn.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
-		cBtn.BackgroundTransparency = 0.25
+		cBtn.Size = UDim2.new(1, 0, 0, 52)
+		cBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		cBtn.BackgroundTransparency = 0.55
 		cBtn.Text = text
-		cBtn.TextColor3 = Color3.fromRGB(240, 245, 255)
+		cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		cBtn.Font = Enum.Font.Antique
-		cBtn.TextSize = 18
+		cBtn.TextSize = 24
 		cBtn.TextWrapped = true
 		cBtn.TextXAlignment = Enum.TextXAlignment.Left
 		cBtn.BorderSizePixel = 0
@@ -953,38 +959,41 @@ local function openDialogueModal(npcName: string)
 		cBtn.Parent = choicesCol
 
 		local cPad = Instance.new("UIPadding")
-		cPad.PaddingLeft = UDim.new(0, 16)
-		cPad.PaddingRight = UDim.new(0, 16)
+		cPad.PaddingLeft = UDim.new(0, 18)
+		cPad.PaddingRight = UDim.new(0, 18)
 		cPad.Parent = cBtn
 
 		local cCorner = Instance.new("UICorner")
-		cCorner.CornerRadius = UDim.new(0, 8)
+		cCorner.CornerRadius = UDim.new(0, 6)
 		cCorner.Parent = cBtn
 
 		local cStroke = Instance.new("UIStroke")
-		cStroke.Color = strokeCol
+		cStroke.Color = Color3.fromRGB(255, 255, 255)
 		cStroke.Thickness = 1.5
-		cStroke.Transparency = 0.4
+		cStroke.Transparency = 0.5
 		cStroke.Parent = cBtn
 
+		-- Monochrome High-Contrast Inversion on Hover
 		cBtn.MouseEnter:Connect(function()
-			TweenService:Create(cBtn, TweenInfo.new(0.15), {
-				BackgroundTransparency = 0.05,
-				TextColor3 = Color3.fromRGB(255, 225, 110),
+			TweenService:Create(cBtn, TweenInfo.new(0.12), {
+				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+				BackgroundTransparency = 0,
+				TextColor3 = Color3.fromRGB(0, 0, 0),
 			}):Play()
-			TweenService:Create(cStroke, TweenInfo.new(0.15), {
+			TweenService:Create(cStroke, TweenInfo.new(0.12), {
+				Color = Color3.fromRGB(255, 255, 255),
 				Transparency = 0,
-				Thickness = 2.0,
 			}):Play()
 		end)
 		cBtn.MouseLeave:Connect(function()
-			TweenService:Create(cBtn, TweenInfo.new(0.15), {
-				BackgroundTransparency = 0.25,
-				TextColor3 = Color3.fromRGB(240, 245, 255),
+			TweenService:Create(cBtn, TweenInfo.new(0.12), {
+				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+				BackgroundTransparency = 0.55,
+				TextColor3 = Color3.fromRGB(255, 255, 255),
 			}):Play()
-			TweenService:Create(cStroke, TweenInfo.new(0.15), {
-				Transparency = 0.4,
-				Thickness = 1.5,
+			TweenService:Create(cStroke, TweenInfo.new(0.12), {
+				Color = Color3.fromRGB(255, 255, 255),
+				Transparency = 0.5,
 			}):Play()
 		end)
 
@@ -1001,26 +1010,26 @@ local function openDialogueModal(npcName: string)
 		closeDialogue()
 		openEquipmentShopModal()
 	end
-	makeChoice(1, "🛒 [1] What do you have for sale?", Color3.fromRGB(50, 220, 155), choiceAction1)
+	makeChoice(1, "[1] What do you have for sale?", choiceAction1)
 
 	-- Choice 2: Any advice for the mines?
 	choiceAction2 = function()
-		typewriteWords(speechLabel, "“Build out your tycoon droppers and upgrade fields! Upgraded ores yield heaps of cash. And buy a sturdy backpack from me to multiply every batch!”", 0.04)
+		typewriteWords(speechLabel, "Build out your tycoon droppers and upgrade fields. Upgraded ores yield heaps of cash. Buy a sturdy backpack from me to multiply every batch.", 0.04)
 	end
-	makeChoice(2, "📜 [2] Tell me about this place.", Color3.fromRGB(100, 165, 255), choiceAction2)
+	makeChoice(2, "[2] Tell me about this place.", choiceAction2)
 
 	-- Choice 3: Leave
-	makeChoice(3, "✕ [3] Just browsing. [Leave]", Color3.fromRGB(160, 165, 180), function()
+	makeChoice(3, "[3] Just browsing. [Leave]", function()
 		closeDialogue()
 	end)
 
 	-- Animate in smoothly from right
 	TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
-		Position = UDim2.new(1, -36, 0, 80),
+		Position = UDim2.new(1, -36, 1, -36),
 	}):Play()
 
-	-- Start word-by-word dialogue typewriter animation
-	local greeting = "“Greetings, traveler! The ores beneath these mountains are rich, but you'll need the right gear to harvest them quickly. What can I do for you?”"
+	-- Start word-by-word dialogue typewriter animation (No emojis, pure monochrome)
+	local greeting = "Greetings, traveler. The ores beneath these mountains are rich, but you will need the right gear to harvest them quickly. What can I do for you?"
 	typewriteWords(speechLabel, greeting, 0.045)
 end
 

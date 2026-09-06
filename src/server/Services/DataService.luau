@@ -112,7 +112,17 @@ function DataService.addGems(player: Player, amount: number)
 	local data = playerDataCache[player]
 	if not data then return end
 
-	data.Gems = math.max(0, data.Gems + amount)
+	local finalAmount = amount
+	if amount > 0 then
+		local ok, MarketplaceServiceHandler = pcall(function()
+			return require(script.Parent.MarketplaceServiceHandler)
+		end)
+		if ok and MarketplaceServiceHandler and MarketplaceServiceHandler.isVIP(player) then
+			finalAmount = amount * 2
+		end
+	end
+
+	data.Gems = math.max(0, data.Gems + finalAmount)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
 		local gemsVal = leaderstats:FindFirstChild("Gems") :: NumberValue?

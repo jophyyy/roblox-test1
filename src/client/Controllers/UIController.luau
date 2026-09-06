@@ -14,6 +14,7 @@ local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
+local GamepassConfig = require(ReplicatedStorage.Shared.Config.GamepassConfig)
 local TycoonClient = require(script.Parent.TycoonClient)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 
@@ -22,12 +23,14 @@ local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
 
 local UIController = {}
 local cachedData: any = nil
+local isLocalPlayerVIP = false
 
 -- UI References
 local screenGui: ScreenGui
 local cashLabel: TextLabel
 local gemsLabel: TextLabel
 local multiplierBadge: TextLabel
+local vipBadge: TextLabel? = nil
 
 local activeModal: Frame? = nil
 local activeDialogue: Frame? = nil
@@ -691,6 +694,410 @@ local function openPetModal()
 	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
 	}):Play()
+end
+
+local function openRobuxEggModal()
+	closeModal()
+
+	local modal = createStyledFrame(screenGui, "RobuxEggModal", UDim2.new(0, 520, 0, 440), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 20, 28))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local stroke = modal:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = Color3.fromRGB(255, 215, 60)
+		stroke.Thickness = 2.0
+	end
+
+	-- Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 48)
+	title.BackgroundTransparency = 1
+	title.Text = "👑 EXCLUSIVE EGG 👑"
+	title.TextColor3 = Color3.fromRGB(255, 215, 60)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 22
+	title.Parent = modal
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 20)
+	subTitle.Position = UDim2.new(0, 0, 0, 42)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Monetized Developer Product • Price: 1,000 Robux (R$)"
+	subTitle.TextColor3 = Color3.fromRGB(0, 230, 118)
+	subTitle.Font = Enum.Font.GothamBold
+	subTitle.TextSize = 13
+	subTitle.Parent = modal
+
+	-- Drops Container Card
+	local dropsFrame = Instance.new("Frame")
+	dropsFrame.Size = UDim2.new(0.92, 0, 0, 130)
+	dropsFrame.Position = UDim2.new(0.04, 0, 0, 72)
+	dropsFrame.BackgroundColor3 = Color3.fromRGB(26, 29, 40)
+	dropsFrame.BorderSizePixel = 0
+	dropsFrame.Parent = modal
+
+	local dropsCorner = Instance.new("UICorner")
+	dropsCorner.CornerRadius = UDim.new(0, 10)
+	dropsCorner.Parent = dropsFrame
+
+	local dropsHeader = Instance.new("TextLabel")
+	dropsHeader.Size = UDim2.new(1, 0, 0, 26)
+	dropsHeader.BackgroundTransparency = 1
+	dropsHeader.Text = "✨ Guaranteed Mythic & Legendary Creatures ✨"
+	dropsHeader.TextColor3 = Color3.fromRGB(220, 230, 255)
+	dropsHeader.Font = Enum.Font.GothamBold
+	dropsHeader.TextSize = 13
+	dropsHeader.Parent = dropsFrame
+
+	local dropItems = {
+		{ name = "🐰 Neon Bunny", rarity = "Rare", chance = "50%", mult = "2.5x Gems", color = Color3.fromRGB(100, 220, 255) },
+		{ name = "🔥 Inferno Drake", rarity = "Epic", chance = "35%", mult = "4.0x Gems", color = Color3.fromRGB(255, 140, 40) },
+		{ name = "🌌 Void Phoenix", rarity = "Legendary", chance = "15%", mult = "7.5x Gems", color = Color3.fromRGB(220, 60, 255) },
+	}
+
+	for i, item in ipairs(dropItems) do
+		local itemCard = Instance.new("Frame")
+		itemCard.Size = UDim2.new(0.3, 0, 0, 85)
+		itemCard.Position = UDim2.new(0.025 + (i - 1) * 0.325, 0, 0, 32)
+		itemCard.BackgroundColor3 = Color3.fromRGB(34, 38, 54)
+		itemCard.BorderSizePixel = 0
+		itemCard.Parent = dropsFrame
+
+		local cardCorner = Instance.new("UICorner")
+		cardCorner.CornerRadius = UDim.new(0, 8)
+		cardCorner.Parent = itemCard
+
+		local itemTitle = Instance.new("TextLabel")
+		itemTitle.Size = UDim2.new(1, 0, 0, 32)
+		itemTitle.Position = UDim2.new(0, 0, 0, 4)
+		itemTitle.BackgroundTransparency = 1
+		itemTitle.Text = item.name
+		itemTitle.TextColor3 = item.color
+		itemTitle.Font = Enum.Font.GothamBold
+		itemTitle.TextSize = 12
+		itemTitle.Parent = itemCard
+
+		local chanceLbl = Instance.new("TextLabel")
+		chanceLbl.Size = UDim2.new(1, 0, 0, 22)
+		chanceLbl.Position = UDim2.new(0, 0, 0, 34)
+		chanceLbl.BackgroundTransparency = 1
+		chanceLbl.Text = item.chance .. " Chance"
+		chanceLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+		chanceLbl.Font = Enum.Font.GothamBlack
+		chanceLbl.TextSize = 13
+		chanceLbl.Parent = itemCard
+
+		local multLbl = Instance.new("TextLabel")
+		multLbl.Size = UDim2.new(1, 0, 0, 20)
+		multLbl.Position = UDim2.new(0, 0, 0, 58)
+		multLbl.BackgroundTransparency = 1
+		multLbl.Text = item.mult
+		multLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+		multLbl.Font = Enum.Font.GothamMedium
+		multLbl.TextSize = 11
+		multLbl.Parent = itemCard
+	end
+
+	-- Info Text / Guidance Box
+	local infoBox = Instance.new("Frame")
+	infoBox.Size = UDim2.new(0.92, 0, 0, 78)
+	infoBox.Position = UDim2.new(0.04, 0, 0, 212)
+	infoBox.BackgroundColor3 = Color3.fromRGB(24, 27, 36)
+	infoBox.BorderSizePixel = 0
+	infoBox.Parent = modal
+
+	local infoCorner = Instance.new("UICorner")
+	infoCorner.CornerRadius = UDim.new(0, 8)
+	infoCorner.Parent = infoBox
+
+	local eggDef = PetConfig.EGGS.RobuxEgg
+	local productId = (eggDef and eggDef.productId) or 0
+
+	local infoLabel = Instance.new("TextLabel")
+	infoLabel.Size = UDim2.new(1, -16, 1, -10)
+	infoLabel.Position = UDim2.new(0, 8, 0, 5)
+	infoLabel.BackgroundTransparency = 1
+	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+	infoLabel.TextYAlignment = Enum.TextYAlignment.Top
+	infoLabel.TextWrapped = true
+	infoLabel.Font = Enum.Font.GothamMedium
+	infoLabel.TextSize = 11
+
+	if productId == 0 then
+		infoLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+		infoLabel.Text = "⚙️ Studio Test Mode (Product ID = 0):\n• Click 'Buy for 1,000 R$' to test prompt logic.\n• Click 'Free Studio Test Hatch' to test hatching without Robux!\n• To enable real Robux: Create a Developer Product on Creator Hub and paste ID in PetConfig.luau."
+	else
+		infoLabel.TextColor3 = Color3.fromRGB(150, 255, 180)
+		infoLabel.Text = string.format("🟢 Live Product Active (Product ID = %d):\n• Purchases charge 1,000 Robux via official Roblox modal.\n• Safe receipt processing handled automatically on server.", productId)
+	end
+	infoLabel.Parent = infoBox
+
+	-- Action Buttons Container
+	local btnContainer = Instance.new("Frame")
+	btnContainer.Size = UDim2.new(0.92, 0, 0, 110)
+	btnContainer.Position = UDim2.new(0.04, 0, 0, 302)
+	btnContainer.BackgroundTransparency = 1
+	btnContainer.Parent = modal
+
+	-- Primary: Buy for 1,000 Robux
+	local buyBtn = Instance.new("TextButton")
+	buyBtn.Size = UDim2.new(1, 0, 0, 48)
+	buyBtn.Position = UDim2.new(0, 0, 0, 0)
+	buyBtn.BackgroundColor3 = Color3.fromRGB(0, 190, 100)
+	buyBtn.Text = "👑 Buy for 1,000 Robux (R$)"
+	buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	buyBtn.Font = Enum.Font.GothamBlack
+	buyBtn.TextSize = 16
+	buyBtn.BorderSizePixel = 0
+	buyBtn.Parent = btnContainer
+
+	local buyCorner = Instance.new("UICorner")
+	buyCorner.CornerRadius = UDim.new(0, 10)
+	buyCorner.Parent = buyBtn
+
+	buyBtn.MouseButton1Click:Connect(function()
+		local fn = Remotes.getFunction("RequestRobuxEggAction")
+		local ok, res = pcall(function()
+			return fn:InvokeServer("PromptPurchase")
+		end)
+		if ok and res then
+			if res.prompted then
+				closeModal()
+			elseif res.reason == "NO_PRODUCT_ID" then
+				showFloatingPopup("⚙️ Product ID is 0! See info box.", Color3.fromRGB(255, 190, 50), 0)
+			else
+				showFloatingPopup("❌ " .. tostring(res.message or "Cannot prompt"), Color3.fromRGB(255, 90, 80), 0)
+			end
+		else
+			showFloatingPopup("❌ Network error", Color3.fromRGB(255, 90, 80), 0)
+		end
+	end)
+
+	-- Secondary: Free Studio Test Hatch
+	local testBtn = Instance.new("TextButton")
+	testBtn.Size = UDim2.new(1, 0, 0, 44)
+	testBtn.Position = UDim2.new(0, 0, 0, 56)
+	testBtn.BackgroundColor3 = Color3.fromRGB(60, 90, 180)
+	testBtn.Text = "🧪 Free Studio Test Hatch (No Robux Needed)"
+	testBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	testBtn.Font = Enum.Font.GothamBold
+	testBtn.TextSize = 14
+	testBtn.BorderSizePixel = 0
+	testBtn.Parent = btnContainer
+
+	local testCorner = Instance.new("UICorner")
+	testCorner.CornerRadius = UDim.new(0, 10)
+	testCorner.Parent = testBtn
+
+	testBtn.MouseButton1Click:Connect(function()
+		closeModal()
+		local fn = Remotes.getFunction("RequestRobuxEggAction")
+		local ok, res = pcall(function()
+			return fn:InvokeServer("DevTestHatch")
+		end)
+		if not ok or not res or not res.success then
+			showFloatingPopup("❌ Test hatch failed!", Color3.fromRGB(255, 90, 80), 0)
+		end
+	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeBtn.Position = UDim2.new(1, -40, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 8)
+	closeCorner.Parent = closeBtn
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	local tween = TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	})
+	tween:Play()
+end
+
+local function openVIPModal()
+	closeModal()
+
+	local modal = createStyledFrame(screenGui, "VIPModal", UDim2.new(0, 500, 0, 440), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 32))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local stroke = modal:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = Color3.fromRGB(255, 215, 60)
+		stroke.Thickness = 2.0
+	end
+
+	-- Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 48)
+	title.BackgroundTransparency = 1
+	title.Text = "👑 VIP MEMBERSHIP PASS 👑"
+	title.TextColor3 = Color3.fromRGB(255, 215, 60)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 22
+	title.Parent = modal
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 20)
+	subTitle.Position = UDim2.new(0, 0, 0, 42)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Permanent Gamepass • Price: 400 Robux (R$)"
+	subTitle.TextColor3 = Color3.fromRGB(0, 230, 118)
+	subTitle.Font = Enum.Font.GothamBold
+	subTitle.TextSize = 13
+	subTitle.Parent = modal
+
+	-- Perks List
+	local perksFrame = Instance.new("Frame")
+	perksFrame.Size = UDim2.new(0.92, 0, 0, 140)
+	perksFrame.Position = UDim2.new(0.04, 0, 0, 72)
+	perksFrame.BackgroundColor3 = Color3.fromRGB(28, 30, 44)
+	perksFrame.BorderSizePixel = 0
+	perksFrame.Parent = modal
+
+	local perksCorner = Instance.new("UICorner")
+	perksCorner.CornerRadius = UDim.new(0, 10)
+	perksCorner.Parent = perksFrame
+
+	local perks = {
+		"💎 2x GEMS MULTIPLIER on all mining, collectors & wheel!",
+		"👑 Golden [VIP] Overhead Crown Badge & Prestige Chat Tag!",
+		"⚡ +25% Faster Base Walkspeed permanently!",
+		"✨ Exclusive Golden Aura particle sparkles!",
+	}
+
+	for i, perkText in ipairs(perks) do
+		local pLabel = Instance.new("TextLabel")
+		pLabel.Size = UDim2.new(1, -20, 0, 28)
+		pLabel.Position = UDim2.new(0, 14, 0, 10 + (i - 1) * 30)
+		pLabel.BackgroundTransparency = 1
+		pLabel.Text = perkText
+		pLabel.TextColor3 = Color3.fromRGB(255, 240, 200)
+		pLabel.Font = Enum.Font.GothamBold
+		pLabel.TextSize = 12
+		pLabel.TextXAlignment = Enum.TextXAlignment.Left
+		pLabel.Parent = perksFrame
+	end
+
+	-- VIP Status Card
+	local statusCard = Instance.new("Frame")
+	statusCard.Size = UDim2.new(0.92, 0, 0, 50)
+	statusCard.Position = UDim2.new(0.04, 0, 0, 222)
+	statusCard.BackgroundColor3 = isLocalPlayerVIP and Color3.fromRGB(35, 60, 30) or Color3.fromRGB(35, 38, 50)
+	statusCard.BorderSizePixel = 0
+	statusCard.Parent = modal
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 8)
+	sCorner.Parent = statusCard
+
+	local statusLbl = Instance.new("TextLabel")
+	statusLbl.Size = UDim2.new(1, 0, 1, 0)
+	statusLbl.BackgroundTransparency = 1
+	statusLbl.Text = isLocalPlayerVIP and "👑 YOUR VIP MEMBERSHIP IS ACTIVE (2x Perks Enabled!)" or "🔒 Status: Not Owned Yet"
+	statusLbl.TextColor3 = isLocalPlayerVIP and Color3.fromRGB(120, 255, 120) or Color3.fromRGB(200, 205, 220)
+	statusLbl.Font = Enum.Font.GothamBlack
+	statusLbl.TextSize = 13
+	statusLbl.Parent = statusCard
+
+	-- Action Buttons
+	local btnContainer = Instance.new("Frame")
+	btnContainer.Size = UDim2.new(0.92, 0, 0, 120)
+	btnContainer.Position = UDim2.new(0.04, 0, 0, 282)
+	btnContainer.BackgroundTransparency = 1
+	btnContainer.Parent = modal
+
+	-- Buy Button
+	local buyBtn = Instance.new("TextButton")
+	buyBtn.Size = UDim2.new(1, 0, 0, 48)
+	buyBtn.BackgroundColor3 = Color3.fromRGB(220, 160, 20)
+	buyBtn.Text = "👑 Buy VIP Pass (400 Robux)"
+	buyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	buyBtn.Font = Enum.Font.GothamBlack
+	buyBtn.TextSize = 16
+	buyBtn.BorderSizePixel = 0
+	buyBtn.Parent = btnContainer
+
+	local buyCorner = Instance.new("UICorner")
+	buyCorner.CornerRadius = UDim.new(0, 10)
+	buyCorner.Parent = buyBtn
+
+	buyBtn.MouseButton1Click:Connect(function()
+		local fn = Remotes.getFunction("RequestGamepassAction")
+		local ok, res = pcall(function()
+			return fn:InvokeServer("PromptPass")
+		end)
+		if ok and res then
+			if res.prompted then
+				closeModal()
+			elseif res.reason == "NO_PASS_ID" then
+				showFloatingPopup("⚙️ Pass ID is 0! See Dev Test mode below.", Color3.fromRGB(255, 190, 50), 0)
+			else
+				showFloatingPopup("❌ " .. tostring(res.message or "Cannot prompt pass"), Color3.fromRGB(255, 90, 80), 0)
+			end
+		end
+	end)
+
+	-- Dev Test Toggle Button
+	local testBtn = Instance.new("TextButton")
+	testBtn.Size = UDim2.new(1, 0, 0, 44)
+	testBtn.Position = UDim2.new(0, 0, 0, 56)
+	testBtn.BackgroundColor3 = Color3.fromRGB(80, 50, 130)
+	testBtn.Text = "🧪 Toggle VIP Test Mode (Free In Studio)"
+	testBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	testBtn.Font = Enum.Font.GothamBold
+	testBtn.TextSize = 14
+	testBtn.BorderSizePixel = 0
+	testBtn.Parent = btnContainer
+
+	local testCorner = Instance.new("UICorner")
+	testCorner.CornerRadius = UDim.new(0, 10)
+	testCorner.Parent = testBtn
+
+	testBtn.MouseButton1Click:Connect(function()
+		local fn = Remotes.getFunction("RequestGamepassAction")
+		local ok, res = pcall(function()
+			return fn:InvokeServer("DevTestToggle")
+		end)
+		if ok and res and res.success then
+			isLocalPlayerVIP = res.isVIP
+			UIController.updateVIPDisplay(res.isVIP)
+			openVIPModal() -- re-render modal with updated status
+			showFloatingPopup("👑 VIP " .. (res.isVIP and "ACTIVATED (2x Gems)!" or "DEACTIVATED!"), Color3.fromRGB(255, 215, 0), 0)
+		end
+	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeBtn.Position = UDim2.new(1, -40, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 8)
+	closeCorner.Parent = closeBtn
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	local tween = TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	})
+	tween:Play()
 end
 
 local function openEquipmentShopModal()
@@ -1697,11 +2104,11 @@ function UIController.buildHUD()
 	screenGui.Parent = playerGui
 
 	-- TOP BAR CONTAINER
-	local topBar = createStyledFrame(screenGui, "TopBar", UDim2.new(0, 560, 0, 56), UDim2.new(0.5, -280, 0, 16), Color3.fromRGB(18, 20, 26))
+	local topBar = createStyledFrame(screenGui, "TopBar", UDim2.new(0, 640, 0, 56), UDim2.new(0.5, -320, 0, 16), Color3.fromRGB(18, 20, 26))
 
 	-- Cash Container
 	local cashBox = Instance.new("Frame")
-	cashBox.Size = UDim2.new(0.38, 0, 1, 0)
+	cashBox.Size = UDim2.new(0.32, 0, 1, 0)
 	cashBox.BackgroundTransparency = 1
 	cashBox.Parent = topBar
 
@@ -1725,8 +2132,8 @@ function UIController.buildHUD()
 
 	-- Gems Container
 	local gemsBox = Instance.new("Frame")
-	gemsBox.Size = UDim2.new(0.32, 0, 1, 0)
-	gemsBox.Position = UDim2.new(0.38, 0, 0, 0)
+	gemsBox.Size = UDim2.new(0.28, 0, 1, 0)
+	gemsBox.Position = UDim2.new(0.33, 0, 0, 0)
 	gemsBox.BackgroundTransparency = 1
 	gemsBox.Parent = topBar
 
@@ -1748,10 +2155,27 @@ function UIController.buildHUD()
 	gemsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	gemsLabel.Parent = gemsBox
 
+	-- VIP Badge
+	vipBadge = Instance.new("TextLabel")
+	vipBadge.Size = UDim2.new(0.18, 0, 0.7, 0)
+	vipBadge.Position = UDim2.new(0.62, 0, 0.15, 0)
+	vipBadge.BackgroundColor3 = Color3.fromRGB(85, 60, 15)
+	vipBadge.Text = "👑 VIP 2X"
+	vipBadge.TextColor3 = Color3.fromRGB(255, 215, 60)
+	vipBadge.Font = Enum.Font.GothamBlack
+	vipBadge.TextSize = 12
+	vipBadge.BorderSizePixel = 0
+	vipBadge.Visible = isLocalPlayerVIP
+	vipBadge.Parent = topBar
+
+	local vipBadgeCorner = Instance.new("UICorner")
+	vipBadgeCorner.CornerRadius = UDim.new(0, 8)
+	vipBadgeCorner.Parent = vipBadge
+
 	-- Multiplier Badge
 	multiplierBadge = Instance.new("TextLabel")
-	multiplierBadge.Size = UDim2.new(0.28, 0, 0.7, 0)
-	multiplierBadge.Position = UDim2.new(0.7, 0, 0.15, 0)
+	multiplierBadge.Size = UDim2.new(0.18, 0, 0.7, 0)
+	multiplierBadge.Position = UDim2.new(0.81, 0, 0.15, 0)
 	multiplierBadge.BackgroundColor3 = Color3.fromRGB(35, 42, 60)
 	multiplierBadge.Text = "⚡ 1.0x Boost"
 	multiplierBadge.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -1767,8 +2191,8 @@ function UIController.buildHUD()
 	-- SIDE MENU BUTTONS
 	local sideMenu = Instance.new("Frame")
 	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 148, 0, 350)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, -175)
+	sideMenu.Size = UDim2.new(0, 148, 0, 410)
+	sideMenu.Position = UDim2.new(0, 16, 0.5, -205)
 	sideMenu.BackgroundTransparency = 1
 	sideMenu.Parent = screenGui
 
@@ -1804,6 +2228,7 @@ function UIController.buildHUD()
 	createMenuButton("ShopBtn", "🛒 Shop", Color3.fromRGB(220, 100, 30), openEquipmentShopModal)
 	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
+	createMenuButton("VIPBtn", "👑 VIP Pass", Color3.fromRGB(190, 140, 15), openVIPModal)
 
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
 	local harvestBtn = createMenuButton("HarvestBtn", "⛏️ Mine (+$$/💎)", Color3.fromRGB(0, 180, 120), function()
@@ -1998,7 +2423,25 @@ function UIController.buildHUD()
 		end
 	end)
 
-	-- Initial Data fetch
+	-- Open Robux Egg Modal (Event from ProximityPrompt)
+	local robuxModalEvent = Remotes.getEvent("OpenRobuxPurchaseModal")
+	robuxModalEvent.OnClientEvent:Connect(function()
+		openRobuxEggModal()
+	end)
+
+	-- Open VIP Modal (Event from VIP ProximityPrompt)
+	local openVipEvent = Remotes.getEvent("OpenVIPModal")
+	openVipEvent.OnClientEvent:Connect(function()
+		openVIPModal()
+	end)
+
+	-- Sync VIP Status in Real-Time
+	local vipStatusEvent = Remotes.getEvent("VIPStatusChanged")
+	vipStatusEvent.OnClientEvent:Connect(function(isVip: boolean)
+		UIController.updateVIPDisplay(isVip)
+	end)
+
+	-- Initial Data fetch & VIP Status check
 	task.spawn(function()
 		local getFn = Remotes.getFunction("GetPlayerData")
 		local ok, data = pcall(function()
@@ -2008,7 +2451,22 @@ function UIController.buildHUD()
 			cachedData = data
 			UIController.updateHUD()
 		end
+
+		local passFn = Remotes.getFunction("RequestGamepassAction")
+		local okVip, vipRes = pcall(function()
+			return passFn:InvokeServer("GetVIPStatus")
+		end)
+		if okVip and vipRes and vipRes.isVIP ~= nil then
+			UIController.updateVIPDisplay(vipRes.isVIP)
+		end
 	end)
+end
+
+function UIController.updateVIPDisplay(isVip: boolean)
+	isLocalPlayerVIP = isVip
+	if vipBadge then
+		vipBadge.Visible = isVip
+	end
 end
 
 function UIController.init()

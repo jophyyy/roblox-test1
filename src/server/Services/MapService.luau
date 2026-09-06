@@ -1343,10 +1343,150 @@ function MapService.buildRobuxEggStand(folder: Folder)
 		lastHatchTime[player] = now
 
 		print("👑 [MapService] Robux Egg ProximityPrompt triggered by " .. player.Name)
-		MarketplaceServiceHandler.handleRobuxEggPurchase(player)
+		local openModalEvent = Remotes.getEvent("OpenRobuxPurchaseModal")
+		openModalEvent:FireClient(player)
 	end)
 
 	eggShrine.Parent = folder
+end
+
+-- 12. Royal VIP Gamepass Dais & Throne
+function MapService.buildVIPThrone(folder: Folder)
+	local vipModel = Instance.new("Model")
+	vipModel.Name = "VIPGamepassShrine"
+
+	-- Positioned at East plaza (Z = -13.5)
+	local shrineCF = CFrame.new(13.5, 0.4, -13.5) * CFrame.Angles(0, math.rad(-90), 0)
+
+	local goldMetal = Color3.fromRGB(255, 215, 60)
+	local royalPurple = Color3.fromRGB(110, 25, 180)
+	local darkStone = Color3.fromRGB(28, 30, 38)
+
+	-- 1. Tiered Pedestal with Royal Purple Velvet Inset
+	createStudPart(vipModel, "VIPPedestalBase", Vector3.new(7.5, 0.6, 7.5), shrineCF * CFrame.new(0, 0.3, 0), darkStone)
+	createStudPart(vipModel, "VIPPedestalStep", Vector3.new(6.2, 0.6, 6.2), shrineCF * CFrame.new(0, 0.9, 0), goldMetal)
+	createStudPart(vipModel, "VIPVelvetRune", Vector3.new(5.0, 0.2, 5.0), shrineCF * CFrame.new(0, 1.25, 0), royalPurple)
+
+	-- 2. Golden Royal Throne
+	local throneSeat = createStudPart(vipModel, "ThroneSeat", Vector3.new(3.0, 1.2, 2.6), shrineCF * CFrame.new(0, 2.0, -0.2), goldMetal)
+	throneSeat.Material = Enum.Material.SmoothPlastic
+
+	-- Velvet Cushion
+	local cushion = createStudPart(vipModel, "ThroneCushion", Vector3.new(2.6, 0.4, 2.2), shrineCF * CFrame.new(0, 2.7, -0.2), Color3.fromRGB(180, 40, 160))
+	cushion.Material = Enum.Material.Neon
+
+	-- Throne High Backrest
+	local backrest = createStudPart(vipModel, "ThroneBack", Vector3.new(3.2, 4.4, 0.6), shrineCF * CFrame.new(0, 4.3, -1.3), goldMetal)
+	backrest.Material = Enum.Material.SmoothPlastic
+
+	-- Crown Finial on Top
+	local crownTop = createStudPart(vipModel, "ThroneCrown", Vector3.new(2.4, 1.0, 0.8), shrineCF * CFrame.new(0, 6.8, -1.3), goldMetal)
+	crownTop.Material = Enum.Material.Neon
+
+	-- 3. Sparkling Golden Aura
+	local attach = Instance.new("Attachment")
+	attach.Position = Vector3.new(0, 2.5, 0)
+	attach.Parent = throneSeat
+
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Name = "VIPSparkles"
+	sparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 100)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 140, 0)),
+	})
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(0.5, 0.7),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	sparkles.Lifetime = NumberRange.new(1.2, 2.0)
+	sparkles.Rate = 12
+	sparkles.Speed = NumberRange.new(1.0, 2.5)
+	sparkles.SpreadAngle = Vector2.new(30, 30)
+	sparkles.Acceleration = Vector3.new(0, 3.0, 0)
+	sparkles.LightEmission = 0.95
+	sparkles.Parent = attach
+
+	-- 4. Overhead Billboard Gui
+	local vipGui = Instance.new("BillboardGui")
+	vipGui.Name = "VIPTitleGui"
+	vipGui.Size = UDim2.new(0, 280, 0, 80)
+	vipGui.StudsOffset = Vector3.new(0, 8.2, -1.3)
+	vipGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "👑 VIP MEMBERSHIP 👑"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = vipGui
+
+	local costLabel = Instance.new("TextLabel")
+	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
+	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
+	costLabel.BackgroundTransparency = 1
+	costLabel.Text = "Cost: 400 Robux R$"
+	costLabel.TextColor3 = Color3.fromRGB(0, 230, 118)
+	costLabel.Font = Enum.Font.GothamBold
+	costLabel.TextSize = 14
+	costLabel.TextStrokeTransparency = 0.2
+	costLabel.Parent = vipGui
+
+	local perksLabel = Instance.new("TextLabel")
+	perksLabel.Size = UDim2.new(1, 0, 0.28, 0)
+	perksLabel.Position = UDim2.new(0, 0, 0.68, 0)
+	perksLabel.BackgroundTransparency = 1
+	perksLabel.Text = "💎 2x Gems Forever  •  👑 Golden [VIP] Tag"
+	perksLabel.TextColor3 = Color3.fromRGB(255, 235, 180)
+	perksLabel.Font = Enum.Font.GothamMedium
+	perksLabel.TextSize = 11
+	perksLabel.TextStrokeTransparency = 0.25
+	perksLabel.Parent = vipGui
+
+	vipGui.Parent = throneSeat
+
+	-- 5. Interaction Part & Proximity Prompt
+	local interactionPart = Instance.new("Part")
+	interactionPart.Name = "VIPInteractionPart"
+	interactionPart.Size = Vector3.new(6, 6, 6)
+	interactionPart.CFrame = shrineCF * CFrame.new(0, 2.8, 1.2)
+	interactionPart.Transparency = 1
+	interactionPart.CanCollide = false
+	interactionPart.CanTouch = true
+	interactionPart.CanQuery = true
+	interactionPart.Anchored = true
+	interactionPart.Parent = vipModel
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "VIPPurchasePrompt"
+	prompt.ActionText = "View Perks"
+	prompt.ObjectText = "VIP Pass (400 R$)"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = interactionPart
+
+	local lastPromptTime: { [Player]: number } = {}
+	prompt.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastPromptTime[player] and (now - lastPromptTime[player]) < 0.4 then
+			return
+		end
+		lastPromptTime[player] = now
+
+		print("👑 [MapService] VIP ProximityPrompt triggered by " .. player.Name)
+		local openVipEvent = Remotes.getEvent("OpenVIPModal")
+		openVipEvent:FireClient(player)
+	end)
+
+	vipModel.Parent = folder
 end
 
 -- Service Initialization
@@ -1370,6 +1510,7 @@ function MapService.init()
 	MapService.buildShopStall(mapFolder)
 	MapService.buildEggStand(mapFolder)
 	MapService.buildRobuxEggStand(mapFolder)
+	MapService.buildVIPThrone(mapFolder)
 	MapService.buildDungeonRuins(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)

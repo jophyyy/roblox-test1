@@ -41,6 +41,7 @@ local REGISTERED_FUNCTIONS = {
 	"BuyTrail",
 	"EquipTrail",
 	"UnequipTrail",
+	"UnlockSkillNode",
 }
 
 local function getRemotesFolder(): Folder

@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
+local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local DataService = require(script.Parent.DataService)
 
 local TrailService = {}
@@ -26,16 +27,18 @@ function TrailService.updatePlayerTrail(player: Player)
 	if att1 then att1:Destroy() end
 
 	local data = DataService.get(player)
+	local skillSpeed = if data then SkillTreeConfig.getTotalSpeedBonus(data.UnlockedSkills) else 0
+
 	if not data or not data.EquippedTrail then
-		humanoid.WalkSpeed = 16
+		humanoid.WalkSpeed = 16 + skillSpeed
 		return
 	end
 
 	local trailDef = TrailConfig.getTrail(data.EquippedTrail)
-	if not trailDef then return end
+	local trailSpeed = if trailDef then trailDef.speedBonus else 0
 
-	-- Apply speed boost directly to Humanoid base speed
-	humanoid.WalkSpeed = 16 + trailDef.speedBonus
+	-- Apply total speed boost directly to Humanoid base speed
+	humanoid.WalkSpeed = 16 + trailSpeed + skillSpeed
 
 	-- Create Attachments on HumanoidRootPart
 	local a0 = Instance.new("Attachment")

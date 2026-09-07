@@ -25,6 +25,7 @@ export type PlayerData = {
 	EquippedBackpack: string?,
 	OwnedTrails: { [string]: boolean },
 	EquippedTrail: string?,
+	UnlockedSkills: { [string]: boolean },
 	LastWheelSpin: number?,
 	FreeSpins: number?,
 	LastSaved: number,
@@ -60,6 +61,7 @@ local function getDefaultData(): PlayerData
 		EquippedBackpack = "pack_canvas",
 		OwnedTrails = {},
 		EquippedTrail = nil,
+		UnlockedSkills = {},
 		LastWheelSpin = 0,
 		FreeSpins = 1,
 		LastSaved = os.time(),
@@ -193,6 +195,7 @@ function DataService.load(player: Player)
 	data.EquippedBackpack = data.EquippedBackpack or "pack_canvas"
 	data.OwnedTrails = data.OwnedTrails or {}
 	data.EquippedTrail = data.EquippedTrail or nil
+	data.UnlockedSkills = data.UnlockedSkills or {}
 	data.LastWheelSpin = data.LastWheelSpin or 0
 	data.FreeSpins = data.FreeSpins or 1
 
@@ -399,6 +402,46 @@ function DataService.unequipTrail(player: Player): (boolean, string?)
 	return true, nil
 end
 
+function DataService.unlockSkillNode(player: Player, nodeId: string): (boolean, string?)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
+	local node = SkillTreeConfig.getNode(nodeId)
+	if not node then return false, "Invalid skill node" end
+
+	data.UnlockedSkills = data.UnlockedSkills or {}
+	if data.UnlockedSkills[nodeId] then
+		return false, "Talent already mastered!"
+	end
+
+	if not SkillTreeConfig.canUnlock(nodeId, data.UnlockedSkills) then
+		return false, "Prerequisite talent not yet unlocked!"
+	end
+
+	if (data.Gems or 0) < node.cost then
+		return false, "Not enough Gems!"
+	end
+
+	-- Deduct gems and mark unlocked
+	DataService.addGems(player, -node.cost)
+	data.UnlockedSkills[nodeId] = true
+	syncToClient(player, data)
+
+	-- Update character walkspeed if speed talent
+	if node.speedBonus > 0 then
+		local ok, TrailService = pcall(function()
+			return require(script.Parent.TrailService)
+		end)
+		if ok and TrailService then
+			TrailService.updatePlayerTrail(player)
+		end
+	end
+
+	print(string.format("🌳 [DataService] %s unlocked talent: %s (%s)", player.Name, node.name, nodeId))
+	return true, nil
+end
+
 function DataService.init()
 	Players.PlayerAdded:Connect(function(player)
 		DataService.load(player)
@@ -457,6 +500,11 @@ function DataService.init()
 	local unequipTrailFn = Remotes.getFunction("UnequipTrail")
 	unequipTrailFn.OnServerInvoke = function(player: Player)
 		return DataService.unequipTrail(player)
+	end
+
+	local unlockSkillFn = Remotes.getFunction("UnlockSkillNode")
+	unlockSkillFn.OnServerInvoke = function(player: Player, nodeId: string)
+		return DataService.unlockSkillNode(player, nodeId)
 	end
 
 	-- Dev testing cheat remote (+$10,000,000 Cash & +50,000 Gems)

@@ -16,6 +16,7 @@ local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local GamepassConfig = require(ReplicatedStorage.Shared.Config.GamepassConfig)
 local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
+local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 local MiningClient = require(script.Parent.MiningClient)
@@ -114,7 +115,8 @@ function UIController.updateHUD()
 	if multiplierBadge then
 		local rebirthMult = RebirthConfig.getMultiplier(cachedData.Rebirths or 0)
 		local trailMult = TrailConfig.getCashMultiplier(cachedData.EquippedTrail)
-		local totalMult = rebirthMult * trailMult
+		local skillCashMult = SkillTreeConfig.getTotalCashMult(cachedData.UnlockedSkills)
+		local totalMult = rebirthMult * trailMult * skillCashMult
 		multiplierBadge.Text = string.format("⚡ %.1fx Boost", totalMult)
 	end
 	if wheelFreeBadge then
@@ -2149,6 +2151,476 @@ local function openTrailsShopModal()
 	}):Play()
 end
 
+local function openUpgradeTreeModal()
+	closeModal()
+	closeDialogue()
+
+	if not screenGui then return end
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		else
+			return
+		end
+	end
+
+	-- Fullscreen Modal Container
+	local modal = Instance.new("Frame")
+	modal.Name = "UpgradeTreeModal"
+	modal.Size = UDim2.new(1, 0, 1, 0)
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	modal.Position = UDim2.new(0.5, 0, 1.5, 0)
+	modal.BackgroundColor3 = Color3.fromRGB(11, 13, 19)
+	modal.BorderSizePixel = 0
+	modal.ZIndex = 40
+	modal.Parent = screenGui
+	activeModal = modal
+
+	-- Atmospheric background gradient
+	local bgGradient = Instance.new("UIGradient")
+	bgGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 24, 36)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(11, 14, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 9, 14)),
+	})
+	bgGradient.Rotation = 45
+	bgGradient.Parent = modal
+
+	-- Top Header Bar
+	local header = Instance.new("Frame")
+	header.Name = "HeaderBar"
+	header.Size = UDim2.new(1, 0, 0, 68)
+	header.Position = UDim2.new(0, 0, 0, 0)
+	header.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+	header.BorderSizePixel = 0
+	header.ZIndex = 45
+	header.Parent = modal
+
+	local headerStroke = Instance.new("UIStroke")
+	headerStroke.Thickness = 1.5
+	headerStroke.Color = Color3.fromRGB(0, 200, 140)
+	headerStroke.Transparency = 0.5
+	headerStroke.Parent = header
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(0.45, 0, 0, 32)
+	titleLabel.Position = UDim2.new(0, 24, 0, 10)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "🌳 ANCIENT TALENT TREE 🌳"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
+	titleLabel.Font = Enum.Font.Antique
+	titleLabel.TextSize = 22
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.ZIndex = 46
+	titleLabel.Parent = header
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(0.45, 0, 0, 18)
+	subTitle.Position = UDim2.new(0, 24, 0, 42)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Unlock primal disciplines to awaken permanent buffs across all realms"
+	subTitle.TextColor3 = Color3.fromRGB(165, 180, 205)
+	subTitle.Font = Enum.Font.Antique
+	subTitle.TextSize = 13
+	subTitle.TextXAlignment = Enum.TextXAlignment.Left
+	subTitle.ZIndex = 46
+	subTitle.Parent = header
+
+	-- Live Currency Display (Gems Badge)
+	local gemsBadge = Instance.new("TextLabel")
+	gemsBadge.Size = UDim2.new(0, 140, 0, 38)
+	gemsBadge.Position = UDim2.new(1, -270, 0.5, -19)
+	gemsBadge.BackgroundColor3 = Color3.fromRGB(25, 22, 38)
+	gemsBadge.Text = "💎 " .. FormatNumber.formatCompact(cachedData.Gems or 0)
+	gemsBadge.TextColor3 = Color3.fromRGB(0, 255, 230)
+	gemsBadge.Font = Enum.Font.GothamBold
+	gemsBadge.TextSize = 13
+	gemsBadge.BorderSizePixel = 0
+	gemsBadge.ZIndex = 46
+	gemsBadge.Parent = header
+
+	local gbCorner = Instance.new("UICorner")
+	gbCorner.CornerRadius = UDim.new(0, 8)
+	gbCorner.Parent = gemsBadge
+
+	local gbStroke = Instance.new("UIStroke")
+	gbStroke.Thickness = 1
+	gbStroke.Color = Color3.fromRGB(160, 60, 230)
+	gbStroke.Parent = gemsBadge
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 110, 0, 38)
+	closeBtn.Position = UDim2.new(1, -125, 0.5, -19)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(190, 45, 60)
+	closeBtn.Text = "✕ CLOSE"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 13
+	closeBtn.BorderSizePixel = 0
+	closeBtn.ZIndex = 46
+	closeBtn.Parent = header
+
+	local cbCorner = Instance.new("UICorner")
+	cbCorner.CornerRadius = UDim.new(0, 8)
+	cbCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	-- Scrollable Canvas for Tree
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "TreeScroll"
+	scroll.Size = UDim2.new(1, -40, 1, -85)
+	scroll.Position = UDim2.new(0, 20, 0, 78)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 6
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 740)
+	scroll.ZIndex = 41
+	scroll.Parent = modal
+
+	local treeCanvas = Instance.new("Frame")
+	treeCanvas.Name = "TreeCanvas"
+	treeCanvas.Size = UDim2.new(1, 0, 0, 720)
+	treeCanvas.BackgroundTransparency = 1
+	treeCanvas.ZIndex = 42
+	treeCanvas.Parent = scroll
+
+	-- Forward-declare render function
+	local renderTree: () -> ()
+
+	-- Wire drawing helper
+	local function drawWire(p0: Vector2, p1: Vector2, color: Color3, thickness: number, transparency: number)
+		local delta = p1 - p0
+		local length = delta.Magnitude
+		local angle = math.deg(math.atan2(delta.Y, delta.X))
+		local mid = (p0 + p1) / 2
+
+		local wire = Instance.new("Frame")
+		wire.Name = "Wire"
+		wire.AnchorPoint = Vector2.new(0.5, 0.5)
+		wire.Position = UDim2.new(0, mid.X, 0, mid.Y)
+		wire.Size = UDim2.new(0, length, 0, thickness)
+		wire.Rotation = angle
+		wire.BackgroundColor3 = color
+		wire.BackgroundTransparency = transparency
+		wire.BorderSizePixel = 0
+		wire.ZIndex = 43
+		wire.Parent = treeCanvas
+
+		local wCorner = Instance.new("UICorner")
+		wCorner.CornerRadius = UDim.new(1, 0)
+		wCorner.Parent = wire
+		return wire
+	end
+
+	renderTree = function()
+		treeCanvas:ClearAllChildren()
+
+		local cw = treeCanvas.AbsoluteSize.X
+		if cw < 600 then cw = math.max(600, scroll.AbsoluteSize.X) end
+		local ch = 700
+
+		-- Column Titles at Top (Y = 15)
+		local branches = {
+			{ x = 0.20, name = "⚔️ MIGHT & BOSS SLAYER", sub = "Heavy Impact & Colossus Damage", color = Color3.fromRGB(255, 80, 60) },
+			{ x = 0.50, name = "⚡ VELOCITY & MOBILITY", sub = "WalkSpeed & Sprint Acceleration", color = Color3.fromRGB(40, 210, 255) },
+			{ x = 0.80, name = "👑 FORTUNE & ABUNDANCE", sub = "Bonus Gems & Cash Multipliers", color = Color3.fromRGB(210, 110, 255) },
+		}
+
+		for _, b in ipairs(branches) do
+			local colHeader = Instance.new("Frame")
+			colHeader.Size = UDim2.new(0, 220, 0, 48)
+			colHeader.AnchorPoint = Vector2.new(0.5, 0)
+			colHeader.Position = UDim2.new(b.x, 0, 0, 15)
+			colHeader.BackgroundColor3 = Color3.fromRGB(18, 21, 30)
+			colHeader.BorderSizePixel = 0
+			colHeader.ZIndex = 43
+			colHeader.Parent = treeCanvas
+
+			local chCorner = Instance.new("UICorner")
+			chCorner.CornerRadius = UDim.new(0, 8)
+			chCorner.Parent = colHeader
+
+			local chStroke = Instance.new("UIStroke")
+			chStroke.Color = b.color
+			chStroke.Thickness = 1.5
+			chStroke.Transparency = 0.4
+			chStroke.Parent = colHeader
+
+			local chTitle = Instance.new("TextLabel")
+			chTitle.Size = UDim2.new(1, 0, 0, 24)
+			chTitle.BackgroundTransparency = 1
+			chTitle.Text = b.name
+			chTitle.TextColor3 = b.color
+			chTitle.Font = Enum.Font.Antique
+			chTitle.TextSize = 13
+			chTitle.ZIndex = 44
+			chTitle.Parent = colHeader
+
+			local chSub = Instance.new("TextLabel")
+			chSub.Size = UDim2.new(1, 0, 0, 18)
+			chSub.Position = UDim2.new(0, 0, 0, 24)
+			chSub.BackgroundTransparency = 1
+			chSub.Text = b.sub
+			chSub.TextColor3 = Color3.fromRGB(160, 170, 190)
+			chSub.Font = Enum.Font.Antique
+			chSub.TextSize = 11
+			chSub.ZIndex = 44
+			chSub.Parent = colHeader
+		end
+
+		-- Draw Connecting Branch Lines
+		for _, nodeId in ipairs(SkillTreeConfig.NODE_ORDER) do
+			local node = SkillTreeConfig.NODES[nodeId]
+			if node and node.parent then
+				local parentNode = SkillTreeConfig.NODES[node.parent]
+				if parentNode then
+					local p0 = Vector2.new(parentNode.position.X * cw, parentNode.position.Y * ch)
+					local p1 = Vector2.new(node.position.X * cw, node.position.Y * ch)
+
+					local isUnlocked = SkillTreeConfig.isUnlocked(node.id, cachedData.UnlockedSkills)
+					local isRevealed = SkillTreeConfig.isRevealed(node.id, cachedData.UnlockedSkills)
+
+					if isUnlocked then
+						drawWire(p0, p1, node.color, 4, 0)
+					elseif isRevealed then
+						drawWire(p0, p1, node.color, 2.5, 0.45)
+					else
+						-- Hidden/Locked connection
+						drawWire(p0, p1, Color3.fromRGB(50, 54, 70), 1.5, 0.8)
+					end
+				end
+			end
+		end
+
+		-- Render Nodes
+		for _, nodeId in ipairs(SkillTreeConfig.NODE_ORDER) do
+			local node = SkillTreeConfig.NODES[nodeId]
+			if not node then continue end
+
+			local isUnlocked = SkillTreeConfig.isUnlocked(node.id, cachedData.UnlockedSkills)
+			local canUnlock = SkillTreeConfig.canUnlock(node.id, cachedData.UnlockedSkills)
+			local isRevealed = SkillTreeConfig.isRevealed(node.id, cachedData.UnlockedSkills)
+
+			local card = Instance.new("Frame")
+			card.Name = "NodeCard_" .. node.id
+			card.Size = UDim2.new(0, 215, 0, 96)
+			card.AnchorPoint = Vector2.new(0.5, 0.5)
+			card.Position = UDim2.new(node.position.X, 0, 0, node.position.Y * ch)
+			card.BorderSizePixel = 0
+			card.ZIndex = 44
+			card.Parent = treeCanvas
+
+			local cCorner = Instance.new("UICorner")
+			cCorner.CornerRadius = UDim.new(0, 10)
+			cCorner.Parent = card
+
+			local cStroke = Instance.new("UIStroke")
+			cStroke.Parent = card
+
+			if isUnlocked then
+				card.BackgroundColor3 = Color3.fromRGB(24, 34, 38)
+				cStroke.Color = node.color
+				cStroke.Thickness = 2
+				cStroke.Transparency = 0
+			elseif canUnlock then
+				card.BackgroundColor3 = Color3.fromRGB(25, 28, 42)
+				cStroke.Color = node.color
+				cStroke.Thickness = 1.5
+				cStroke.Transparency = 0.25
+			else
+				-- Hidden / Shrouded in Fog-of-War
+				card.BackgroundColor3 = Color3.fromRGB(15, 17, 24)
+				cStroke.Color = Color3.fromRGB(45, 48, 62)
+				cStroke.Thickness = 1
+				cStroke.Transparency = 0.5
+			end
+
+			if isRevealed then
+				-- Icon
+				local iconLbl = Instance.new("TextLabel")
+				iconLbl.Size = UDim2.new(0, 36, 0, 36)
+				iconLbl.Position = UDim2.new(0, 10, 0, 8)
+				iconLbl.BackgroundTransparency = 1
+				iconLbl.Text = node.icon
+				iconLbl.TextSize = 24
+				iconLbl.ZIndex = 45
+				iconLbl.Parent = card
+
+				-- Title
+				local nameLbl = Instance.new("TextLabel")
+				nameLbl.Size = UDim2.new(1, -54, 0, 20)
+				nameLbl.Position = UDim2.new(0, 48, 0, 8)
+				nameLbl.BackgroundTransparency = 1
+				nameLbl.Text = node.name
+				nameLbl.TextColor3 = if isUnlocked then node.color else Color3.fromRGB(240, 245, 255)
+				nameLbl.Font = Enum.Font.Antique
+				nameLbl.TextSize = 14
+				nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+				nameLbl.ZIndex = 45
+				nameLbl.Parent = card
+
+				-- Perk Summary Line
+				local perkLbl = Instance.new("TextLabel")
+				perkLbl.Size = UDim2.new(1, -20, 0, 20)
+				perkLbl.Position = UDim2.new(0, 12, 0, 38)
+				perkLbl.BackgroundTransparency = 1
+				perkLbl.TextColor3 = Color3.fromRGB(180, 205, 230)
+				perkLbl.Font = Enum.Font.Antique
+				perkLbl.TextSize = 11
+				perkLbl.TextXAlignment = Enum.TextXAlignment.Left
+				perkLbl.ZIndex = 45
+
+				if node.branch == "Power" then
+					local mineBonus = math.floor((node.miningPowerMult - 1.0) * 100 + 0.5)
+					local bossBonus = math.floor((node.bossMultiplier - 1.0) * 100 + 0.5)
+					perkLbl.Text = string.format("+%d%% Mine • +%d%% Boss", mineBonus, bossBonus)
+				elseif node.branch == "Speed" then
+					perkLbl.Text = string.format("+%d WalkSpeed • +%d Sprint", node.speedBonus, math.floor(node.speedBonus * 1.5))
+				elseif node.branch == "Luck" then
+					local cashBonus = math.floor((node.cashMultiplier - 1.0) * 100 + 0.5)
+					perkLbl.Text = string.format("+%d 💎/Ore • +%d%% Cash", node.bonusGems, cashBonus)
+				else
+					perkLbl.Text = "+10% Mining/Cash • +2 Speed"
+				end
+				perkLbl.Parent = card
+
+				-- Action Button or Mastered Tag
+				if isUnlocked then
+					local tag = Instance.new("TextLabel")
+					tag.Size = UDim2.new(1, -20, 0, 26)
+					tag.Position = UDim2.new(0, 10, 1, -30)
+					tag.BackgroundColor3 = Color3.fromRGB(28, 60, 42)
+					tag.Text = "✓ MASTERED"
+					tag.TextColor3 = Color3.fromRGB(80, 255, 160)
+					tag.Font = Enum.Font.GothamBold
+					tag.TextSize = 11
+					tag.BorderSizePixel = 0
+					tag.ZIndex = 45
+					tag.Parent = card
+
+					local tCorner = Instance.new("UICorner")
+					tCorner.CornerRadius = UDim.new(0, 6)
+					tCorner.Parent = tag
+				elseif canUnlock then
+					local canAfford = (cachedData.Gems or 0) >= node.cost
+					local unlockBtn = Instance.new("TextButton")
+					unlockBtn.Size = UDim2.new(1, -20, 0, 26)
+					unlockBtn.Position = UDim2.new(0, 10, 1, -30)
+					unlockBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 160, 110) else Color3.fromRGB(75, 42, 55)
+					unlockBtn.Text = "💎 " .. FormatNumber.formatCompact(node.cost) .. " UNLOCK"
+					unlockBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(220, 160, 175)
+					unlockBtn.Font = Enum.Font.GothamBold
+					unlockBtn.TextSize = 11
+					unlockBtn.BorderSizePixel = 0
+					unlockBtn.ZIndex = 46
+					unlockBtn.Parent = card
+
+					local ubCorner = Instance.new("UICorner")
+					ubCorner.CornerRadius = UDim.new(0, 6)
+					ubCorner.Parent = unlockBtn
+
+					unlockBtn.MouseButton1Click:Connect(function()
+						local unlockFn = Remotes.getFunction("UnlockSkillNode")
+						local ok, success, msg = pcall(function()
+							return unlockFn:InvokeServer(node.id)
+						end)
+
+						if ok and success then
+							local s = Instance.new("Sound")
+							s.SoundId = "rbxassetid://6895079853"
+							s.Volume = 0.2
+							s.PlaybackSpeed = 1.2
+							s.Parent = SoundService
+							s:Play()
+							s.Ended:Connect(function() s:Destroy() end)
+
+							showFloatingPopup("Mastered " .. node.name .. "!", node.color)
+
+							local getFn = Remotes.getFunction("GetPlayerData")
+							local okData, freshData = pcall(function()
+								return getFn:InvokeServer()
+							end)
+							if okData and freshData then
+								cachedData = freshData
+							end
+
+							gemsBadge.Text = "💎 " .. FormatNumber.formatCompact(cachedData.Gems or 0)
+							UIController.updateHUD()
+							renderTree()
+						else
+							showFloatingPopup(tostring(msg or "Cannot unlock"), Color3.fromRGB(255, 90, 80))
+						end
+					end)
+				end
+			else
+				-- Shrouded / Hidden Node (Mystery Tier)
+				local lockIcon = Instance.new("TextLabel")
+				lockIcon.Size = UDim2.new(0, 36, 0, 36)
+				lockIcon.Position = UDim2.new(0, 10, 0, 8)
+				lockIcon.BackgroundTransparency = 1
+				lockIcon.Text = "🔒"
+				lockIcon.TextSize = 22
+				lockIcon.ZIndex = 45
+				lockIcon.Parent = card
+
+				local lockName = Instance.new("TextLabel")
+				lockName.Size = UDim2.new(1, -54, 0, 20)
+				lockName.Position = UDim2.new(0, 48, 0, 10)
+				lockName.BackgroundTransparency = 1
+				lockName.Text = "??? Mystery Talent"
+				lockName.TextColor3 = Color3.fromRGB(115, 120, 135)
+				lockName.Font = Enum.Font.Antique
+				lockName.TextSize = 14
+				lockName.TextXAlignment = Enum.TextXAlignment.Left
+				lockName.ZIndex = 45
+				lockName.Parent = card
+
+				local lockPerk = Instance.new("TextLabel")
+				lockPerk.Size = UDim2.new(1, -20, 0, 20)
+				lockPerk.Position = UDim2.new(0, 12, 0, 38)
+				lockPerk.BackgroundTransparency = 1
+				lockPerk.Text = "Master prior talent to reveal"
+				lockPerk.TextColor3 = Color3.fromRGB(80, 85, 100)
+				lockPerk.Font = Enum.Font.Antique
+				lockPerk.TextSize = 11
+				lockPerk.TextXAlignment = Enum.TextXAlignment.Left
+				lockPerk.ZIndex = 45
+				lockPerk.Parent = card
+
+				local lockPill = Instance.new("TextLabel")
+				lockPill.Size = UDim2.new(1, -20, 0, 24)
+				lockPill.Position = UDim2.new(0, 10, 1, -28)
+				lockPill.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+				lockPill.Text = "🔒 SHROUDED"
+				lockPill.TextColor3 = Color3.fromRGB(90, 95, 110)
+				lockPill.Font = Enum.Font.GothamBold
+				lockPill.TextSize = 10
+				lockPill.BorderSizePixel = 0
+				lockPill.ZIndex = 45
+				lockPill.Parent = card
+
+				local lpCorner = Instance.new("UICorner")
+				lpCorner.CornerRadius = UDim.new(0, 6)
+				lpCorner.Parent = lockPill
+			end
+		end
+	end
+
+	renderTree()
+
+	-- Smooth slide-up entrance animation
+	TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
 local function openDialogueModal(npcName: string)
 	print("🗣️ [UIController] openDialogueModal initiated for " .. tostring(npcName or "Barnaby"))
 	closeModal()
@@ -2470,19 +2942,19 @@ function UIController.buildHUD()
 	-- SIDE MENU BUTTONS
 	local sideMenu = Instance.new("Frame")
 	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 148, 0, 410)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, -205)
+	sideMenu.Size = UDim2.new(0, 148, 0, 465)
+	sideMenu.Position = UDim2.new(0, 16, 0.5, -232)
 	sideMenu.BackgroundTransparency = 1
 	sideMenu.Parent = screenGui
 
 	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 10)
+	list.Padding = UDim.new(0, 8)
 	list.Parent = sideMenu
 
 	local function createMenuButton(name: string, text: string, color: Color3, onClick: () -> ()): TextButton
 		local btn = Instance.new("TextButton")
 		btn.Name = name
-		btn.Size = UDim2.new(1, 0, 0, 46)
+		btn.Size = UDim2.new(1, 0, 0, 44)
 		btn.BackgroundColor3 = color
 		btn.Text = text
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -2508,6 +2980,7 @@ function UIController.buildHUD()
 	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
 	createMenuButton("TrailsBtn", "✨ Trails", Color3.fromRGB(160, 40, 220), openTrailsShopModal)
+	createMenuButton("TreeBtn", "🌳 Upgrades", Color3.fromRGB(0, 175, 120), openUpgradeTreeModal)
 	createMenuButton("VIPBtn", "👑 VIP Pass", Color3.fromRGB(190, 140, 15), openVIPModal)
 
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
@@ -2650,8 +3123,26 @@ function UIController.buildHUD()
 				if choiceAction2 then
 					choiceAction2()
 				end
-			elseif input.KeyCode == Enum.KeyCode.Three or input.KeyCode == Enum.KeyCode.KeypadThree or input.KeyCode == Enum.KeyCode.Escape then
+			elseif input.KeyCode == Enum.KeyCode.Three or input.KeyCode == Enum.KeyCode.KeypadThree then
 				closeDialogue()
+			end
+		end
+	end)
+
+	-- Escape key closes activeModal or activeDialogue
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		if UserInputService:GetFocusedTextBox() ~= nil then return end
+
+		if input.KeyCode == Enum.KeyCode.Escape then
+			if activeModal then
+				closeModal()
+			elseif activeDialogue then
+				closeDialogue()
+			end
+		elseif input.KeyCode == Enum.KeyCode.U then
+			if not activeModal and not activeDialogue then
+				openUpgradeTreeModal()
 			end
 		end
 	end)

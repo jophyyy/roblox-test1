@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
+local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 
 local SprintClient = {}
 
@@ -20,13 +21,14 @@ local camera = Workspace.CurrentCamera
 local isShiftHeld = false
 local currentHumanoid: Humanoid? = nil
 local trailSpeedBonus = 0
+local skillSpeedBonus = 0
 
 local function getNormalSpeed(): number
-	return BASE_NORMAL_SPEED + trailSpeedBonus
+	return BASE_NORMAL_SPEED + trailSpeedBonus + skillSpeedBonus
 end
 
 local function getSprintSpeed(): number
-	return BASE_SPRINT_SPEED + math.floor(trailSpeedBonus * 1.5)
+	return BASE_SPRINT_SPEED + math.floor((trailSpeedBonus + skillSpeedBonus) * 1.5)
 end
 
 local function getHumanoid(): Humanoid?
@@ -62,6 +64,13 @@ local function onCharacterAdded(character: Model)
 	end)
 end
 
+local function updateSpeedFromData(data: any)
+	if not data then return end
+	trailSpeedBonus = TrailConfig.getSpeedBonus(data.EquippedTrail)
+	skillSpeedBonus = SkillTreeConfig.getTotalSpeedBonus(data.UnlockedSkills)
+	setSprint(isShiftHeld)
+end
+
 function SprintClient.init()
 	if player.Character then
 		task.spawn(function()
@@ -70,22 +79,16 @@ function SprintClient.init()
 	end
 	player.CharacterAdded:Connect(onCharacterAdded)
 
-	-- Listen for player data to update trail speed bonus
+	-- Listen for player data to update trail & skill speed bonuses
 	task.spawn(function()
 		local getDataFn = Remotes.getFunction("GetPlayerData")
 		local data = getDataFn:InvokeServer()
-		if data and data.EquippedTrail then
-			trailSpeedBonus = TrailConfig.getSpeedBonus(data.EquippedTrail)
-			setSprint(isShiftHeld)
-		end
+		updateSpeedFromData(data)
 	end)
 
 	local syncEvent = Remotes.getEvent("SyncPlayerData")
 	syncEvent.OnClientEvent:Connect(function(data)
-		if data then
-			trailSpeedBonus = TrailConfig.getSpeedBonus(data.EquippedTrail)
-			setSprint(isShiftHeld)
-		end
+		updateSpeedFromData(data)
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)

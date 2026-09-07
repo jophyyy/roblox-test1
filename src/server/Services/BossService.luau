@@ -8,6 +8,7 @@ local Debris = game:GetService("Debris")
 local BossConfig = require(ReplicatedStorage.Shared.Config.BossConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
+local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 
@@ -329,12 +330,13 @@ function BossService.attackBoss(player: Player): (boolean, any)
 	local rebirthMult = RebirthConfig.getMultiplier(data.Rebirths or 0)
 	local petMult = PetService.getCashMultiplier(player)
 
-	-- Compute Damage using Pickaxe Trait and Trail Boss Multiplier
+	-- Compute Damage using Pickaxe Trait, Trail Boss Multiplier, and Skill Tree Multiplier
 	local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 	local trailBossMult = TrailConfig.getBossMultiplier(data.EquippedTrail)
+	local skillBossMult = SkillTreeConfig.getTotalBossMult(data.UnlockedSkills)
 
 	local damage, isCrit, trait = BossConfig.calculateDamage(data.EquippedShovel, rebirthMult, petMult)
-	damage = math.max(1, math.floor(damage * trailBossMult))
+	damage = math.max(1, math.floor(damage * trailBossMult * skillBossMult))
 
 	-- Apply damage
 	currentHealth = math.max(0, currentHealth - damage)

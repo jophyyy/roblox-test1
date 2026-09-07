@@ -8,6 +8,7 @@ local HttpService = game:GetService("HttpService")
 local OreConfig = require(ReplicatedStorage.Shared.Config.OreConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
+local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 
@@ -235,12 +236,13 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 
 	local rebirthMult = RebirthConfig.getMultiplier(data.Rebirths or 0)
 	local petDamageMult = PetService.getCashMultiplier(player)
+	local skillMiningMult = SkillTreeConfig.getTotalMiningPowerMult(data.UnlockedSkills)
 
 	-- 15% Chance of Critical Strike
 	local isCrit = math.random() <= 0.15
 	local critBonus = if isCrit then 2.0 else 1.0
 
-	local totalDamage = math.max(1, math.floor(baseDamage * rebirthMult * petDamageMult * critBonus))
+	local totalDamage = math.max(1, math.floor(baseDamage * rebirthMult * petDamageMult * skillMiningMult * critBonus))
 
 	-- 2. Apply Damage
 	ore.health = math.max(0, ore.health - totalDamage)
@@ -286,9 +288,12 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 		local trailCashMult = TrailConfig.getCashMultiplier(data.EquippedTrail)
 		local trailBonusGems = TrailConfig.getBonusGems(data.EquippedTrail)
 
+		local skillCashMult = SkillTreeConfig.getTotalCashMult(data.UnlockedSkills)
+		local skillBonusGems = SkillTreeConfig.getTotalBonusGems(data.UnlockedSkills)
+
 		local petGemMult = PetService.getGemMultiplier(player)
-		cashEarned = math.max(1, math.floor(oreDef.cashReward * bpMultiplier * trailCashMult * rebirthMult * petDamageMult))
-		gemsEarned = math.max(1, math.floor((oreDef.gemsReward + bpBonusGems + trailBonusGems) * petGemMult))
+		cashEarned = math.max(1, math.floor(oreDef.cashReward * bpMultiplier * trailCashMult * skillCashMult * rebirthMult * petDamageMult))
+		gemsEarned = math.max(1, math.floor((oreDef.gemsReward + bpBonusGems + trailBonusGems + skillBonusGems) * petGemMult))
 
 		-- Award to player
 		DataService.addCash(player, cashEarned)

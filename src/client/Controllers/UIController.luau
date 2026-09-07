@@ -15,6 +15,7 @@ local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local GamepassConfig = require(ReplicatedStorage.Shared.Config.GamepassConfig)
+local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 local MiningClient = require(script.Parent.MiningClient)
@@ -112,7 +113,9 @@ function UIController.updateHUD()
 	end
 	if multiplierBadge then
 		local rebirthMult = RebirthConfig.getMultiplier(cachedData.Rebirths or 0)
-		multiplierBadge.Text = string.format("⚡ %.1fx Boost", rebirthMult)
+		local trailMult = TrailConfig.getCashMultiplier(cachedData.EquippedTrail)
+		local totalMult = rebirthMult * trailMult
+		multiplierBadge.Text = string.format("⚡ %.1fx Boost", totalMult)
 	end
 	if wheelFreeBadge then
 		local now = os.time()
@@ -1910,6 +1913,242 @@ local function openWheelModal()
 	}):Play()
 end
 
+local function openTrailsShopModal()
+	closeModal()
+	closeDialogue()
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		else
+			return
+		end
+	end
+
+	local modal = createStyledFrame(screenGui, "TrailsShopModal", UDim2.new(0, 560, 0, 510), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(22, 20, 32))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 38)
+	title.BackgroundTransparency = 1
+	title.Text = "✨ ZEPHYR'S TRAIL SANCTUARY ✨"
+	title.TextColor3 = Color3.fromRGB(220, 160, 255)
+	title.Font = Enum.Font.Antique
+	title.TextSize = 22
+	title.Parent = modal
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 20)
+	subTitle.Position = UDim2.new(0, 0, 0, 36)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Equip mystical trails for Speed, Cash Multipliers, Gems & Boss Damage!"
+	subTitle.TextColor3 = Color3.fromRGB(180, 185, 215)
+	subTitle.Font = Enum.Font.Antique
+	subTitle.TextSize = 13
+	subTitle.Parent = modal
+
+	-- Scrolling Items Container
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(0.92, 0, 0, 420)
+	scroll.Position = UDim2.new(0.04, 0, 0, 68)
+	scroll.BackgroundColor3 = Color3.fromRGB(26, 24, 38)
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 6
+	scroll.Parent = modal
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 8)
+	sCorner.Parent = scroll
+
+	local function refreshTrails()
+		scroll:ClearAllChildren()
+		local uilist = Instance.new("UIListLayout")
+		uilist.Padding = UDim.new(0, 8)
+		uilist.Parent = scroll
+
+		local ownedTrails = cachedData.OwnedTrails or {}
+		local equippedId = cachedData.EquippedTrail
+
+		for _, trailId in ipairs(TrailConfig.TRAIL_ORDER) do
+			local trail = TrailConfig.TRAILS[trailId]
+			if not trail then continue end
+
+			local isOwned = ownedTrails[trailId] == true
+			local isEquipped = (equippedId == trailId)
+
+			local card = Instance.new("Frame")
+			card.Size = UDim2.new(0.96, 0, 0, 78)
+			card.BackgroundColor3 = if isEquipped then Color3.fromRGB(42, 32, 64) else Color3.fromRGB(32, 29, 44)
+			card.BorderSizePixel = 0
+			card.Parent = scroll
+
+			local cCorner = Instance.new("UICorner")
+			cCorner.CornerRadius = UDim.new(0, 8)
+			cCorner.Parent = card
+
+			local cStroke = Instance.new("UIStroke")
+			cStroke.Color = if isEquipped then Color3.fromRGB(180, 80, 255) else Color3.fromRGB(60, 52, 80)
+			cStroke.Thickness = if isEquipped then 2 else 1
+			cStroke.Parent = card
+
+			-- Icon box
+			local iconLabel = Instance.new("TextLabel")
+			iconLabel.Size = UDim2.new(0, 52, 1, 0)
+			iconLabel.BackgroundTransparency = 1
+			iconLabel.Text = trail.icon
+			iconLabel.TextSize = 30
+			iconLabel.Parent = card
+
+			-- Name Label
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Size = UDim2.new(0.55, 0, 0, 22)
+			nameLabel.Position = UDim2.new(0, 54, 0, 6)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = trail.name
+			nameLabel.TextColor3 = Color3.fromRGB(255, 235, 140)
+			nameLabel.Font = Enum.Font.Antique
+			nameLabel.TextSize = 16
+			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+			nameLabel.Parent = card
+
+			-- Perks Line 1 (Speed & Cash)
+			local perkLine1 = Instance.new("TextLabel")
+			perkLine1.Size = UDim2.new(0.55, 0, 0, 18)
+			perkLine1.Position = UDim2.new(0, 54, 0, 30)
+			perkLine1.BackgroundTransparency = 1
+			perkLine1.TextColor3 = Color3.fromRGB(200, 215, 240)
+			perkLine1.Font = Enum.Font.Antique
+			perkLine1.TextSize = 12
+			perkLine1.TextXAlignment = Enum.TextXAlignment.Left
+			local cashBonusPct = math.floor((trail.cashMultiplier - 1.0) * 100 + 0.5)
+			perkLine1.Text = string.format("👟 +%d Speed   💰 +%d%% Cash", trail.speedBonus, cashBonusPct)
+			perkLine1.Parent = card
+
+			-- Perks Line 2 (Gems & Boss Dmg)
+			local perkLine2 = Instance.new("TextLabel")
+			perkLine2.Size = UDim2.new(0.55, 0, 0, 18)
+			perkLine2.Position = UDim2.new(0, 54, 0, 50)
+			perkLine2.BackgroundTransparency = 1
+			perkLine2.TextColor3 = Color3.fromRGB(180, 235, 210)
+			perkLine2.Font = Enum.Font.Antique
+			perkLine2.TextSize = 12
+			perkLine2.TextXAlignment = Enum.TextXAlignment.Left
+			local bossBonusPct = math.floor((trail.bossMultiplier - 1.0) * 100 + 0.5)
+			local bossText = if bossBonusPct > 0 then string.format("   ⚔️ +%d%% Boss Dmg", bossBonusPct) else ""
+			local gemText = if trail.bonusGems > 0 then string.format("💎 +%d Gems/Ore", trail.bonusGems) else "💎 +0 Gems"
+			perkLine2.Text = string.format("%s%s", gemText, bossText)
+			perkLine2.Parent = card
+
+			-- Action Button
+			local actionBtn = Instance.new("TextButton")
+			actionBtn.Size = UDim2.new(0.30, 0, 0, 42)
+			actionBtn.Position = UDim2.new(0.67, 0, 0.5, -21)
+			actionBtn.Font = Enum.Font.Antique
+			actionBtn.TextSize = 14
+			actionBtn.BorderSizePixel = 0
+			actionBtn.Parent = card
+
+			local aCorner = Instance.new("UICorner")
+			aCorner.CornerRadius = UDim.new(0, 8)
+			aCorner.Parent = actionBtn
+
+			if isEquipped then
+				actionBtn.BackgroundColor3 = Color3.fromRGB(40, 140, 75)
+				actionBtn.TextColor3 = Color3.fromRGB(230, 255, 230)
+				actionBtn.Text = "EQUIPPED"
+				actionBtn.MouseButton1Click:Connect(function()
+					local unequipFn = Remotes.getFunction("UnequipTrail")
+					local ok, success, msg = pcall(function()
+						return unequipFn:InvokeServer()
+					end)
+					if ok and success then
+						cachedData.EquippedTrail = nil
+						showFloatingPopup("Unequipped trail!", Color3.fromRGB(200, 200, 200))
+						refreshTrails()
+						UIController.updateHUD()
+					end
+				end)
+			elseif isOwned then
+				actionBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 240)
+				actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				actionBtn.Text = "EQUIP"
+				actionBtn.MouseButton1Click:Connect(function()
+					local equipFn = Remotes.getFunction("EquipTrail")
+					local ok, success, msg = pcall(function()
+						return equipFn:InvokeServer(trailId)
+					end)
+					if ok and success then
+						cachedData.EquippedTrail = trailId
+						showFloatingPopup("Equipped " .. trail.name .. "!", Color3.fromRGB(180, 80, 255))
+						refreshTrails()
+						UIController.updateHUD()
+					else
+						showFloatingPopup(tostring(msg or "Failed to equip"), Color3.fromRGB(255, 90, 80))
+					end
+				end)
+			else
+				local canAfford = (cachedData.Gems or 0) >= trail.cost
+				actionBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(160, 40, 220) else Color3.fromRGB(75, 40, 60)
+				actionBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(200, 160, 175)
+				actionBtn.Text = "💎 " .. FormatNumber.formatCompact(trail.cost) .. " BUY"
+
+				actionBtn.MouseButton1Click:Connect(function()
+					local buyFn = Remotes.getFunction("BuyTrail")
+					local ok, success, msg = pcall(function()
+						return buyFn:InvokeServer(trailId)
+					end)
+					if ok and success then
+						showFloatingPopup("Unlocked " .. trail.name .. "!", Color3.fromRGB(220, 160, 255))
+						local getFn = Remotes.getFunction("GetPlayerData")
+						local okData, freshData = pcall(function()
+							return getFn:InvokeServer()
+						end)
+						if okData and freshData then
+							cachedData = freshData
+						end
+						UIController.updateHUD()
+						refreshTrails()
+					else
+						showFloatingPopup(tostring(msg or "Cannot purchase"), Color3.fromRGB(255, 90, 80))
+					end
+				end)
+			end
+		end
+
+		scroll.CanvasSize = UDim2.new(0, 0, 0, #TrailConfig.TRAIL_ORDER * 86)
+	end
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -42, 0, 8)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	refreshTrails()
+
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
 local function openDialogueModal(npcName: string)
 	print("🗣️ [UIController] openDialogueModal initiated for " .. tostring(npcName or "Barnaby"))
 	closeModal()
@@ -2056,47 +2295,85 @@ local function openDialogueModal(npcName: string)
 		return cBtn
 	end
 
-	-- Choice 1: What do you have for sale?
-	choiceAction1 = function()
-		closeDialogue()
-		openEquipmentShopModal()
-	end
-	makeChoice(1, "[1] What do you have for sale?", choiceAction1)
+	if npcName == "Zephyr" then
+		choiceAction1 = function()
+			closeDialogue()
+			openTrailsShopModal()
+		end
+		makeChoice(1, "[1] Show me your mystical trails!", choiceAction1)
 
-	-- Choice 2: Any advice for the mines?
-	choiceAction2 = function()
-		local tip = "Swing your pickaxe at glowing ore veins across the map. Rarer ores yield heaps of cash and gems. Buy a sturdy backpack from me to multiply every batch."
-		typewriteWords(speechLabel, tip, 0.04, function()
+		choiceAction2 = function()
+			local tip = "My trails weave elemental currents behind your stride. Each trail enhances movement speed, multiplies mining cash, grants bonus gems, and empowers pickaxe strikes against mighty bosses!"
+			typewriteWords(speechLabel, tip, 0.04, function()
+				typewriteChoices(function()
+					startIdleBounce(choicesCol)
+				end)
+			end)
+		end
+		makeChoice(2, "[2] How do trails empower me?", choiceAction2)
+
+		makeChoice(3, "[3] Farewell. [Leave]", function()
+			closeDialogue()
+		end)
+
+		-- Register bounce target
+		activeBounceElement = choicesCol
+		activeBounceBasePos = choicesCol.Position
+
+		-- Animate in smoothly from bottom to centered bottom half
+		TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, 0, 1, -28),
+		}):Play()
+
+		local greeting = "Greetings, traveler! I am Zephyr, the Trail Artisan. By weaving the ancient crystal currents of this realm, I can craft ethereal ribbons that empower your every stride!"
+		typewriteWords(speechLabel, greeting, 0.045, function()
+			typewriteChoices(function()
+				startIdleBounce(choicesCol)
+			end)
+		end)
+	else
+		-- Choice 1: What do you have for sale?
+		choiceAction1 = function()
+			closeDialogue()
+			openEquipmentShopModal()
+		end
+		makeChoice(1, "[1] What do you have for sale?", choiceAction1)
+
+		-- Choice 2: Any advice for the mines?
+		choiceAction2 = function()
+			local tip = "Swing your pickaxe at glowing ore veins across the map. Rarer ores yield heaps of cash and gems. Buy a sturdy backpack from me to multiply every batch."
+			typewriteWords(speechLabel, tip, 0.04, function()
+				typewriteChoices(function()
+					startIdleBounce(choicesCol)
+				end)
+			end)
+		end
+		makeChoice(2, "[2] Tell me about this place.", choiceAction2)
+
+		-- Choice 3: Leave
+		makeChoice(3, "[3] Just browsing. [Leave]", function()
+			closeDialogue()
+		end)
+
+		-- Register bounce target
+		activeBounceElement = choicesCol
+		activeBounceBasePos = choicesCol.Position
+
+		-- Animate in smoothly from bottom to centered bottom half
+		TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, 0, 1, -28),
+		}):Play()
+
+		-- Step 1: Typewrite NPC dialogue first.
+		-- Step 2: Once NPC dialogue finishes, typewrite the choices.
+		-- Step 3: Once choices finish, start the static/idle bounce animation!
+		local greeting = "Greetings, traveler. The ores beneath these mountains are rich, but you will need the right gear to harvest them quickly. What can I do for you?"
+		typewriteWords(speechLabel, greeting, 0.045, function()
 			typewriteChoices(function()
 				startIdleBounce(choicesCol)
 			end)
 		end)
 	end
-	makeChoice(2, "[2] Tell me about this place.", choiceAction2)
-
-	-- Choice 3: Leave
-	makeChoice(3, "[3] Just browsing. [Leave]", function()
-		closeDialogue()
-	end)
-
-	-- Register bounce target
-	activeBounceElement = choicesCol
-	activeBounceBasePos = choicesCol.Position
-
-	-- Animate in smoothly from bottom to centered bottom half
-	TweenService:Create(dlg, TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 1, -28),
-	}):Play()
-
-	-- Step 1: Typewrite NPC dialogue first.
-	-- Step 2: Once NPC dialogue finishes, typewrite the choices.
-	-- Step 3: Once choices finish, start the static/idle bounce animation!
-	local greeting = "Greetings, traveler. The ores beneath these mountains are rich, but you will need the right gear to harvest them quickly. What can I do for you?"
-	typewriteWords(speechLabel, greeting, 0.045, function()
-		typewriteChoices(function()
-			startIdleBounce(choicesCol)
-		end)
-	end)
 end
 
 function UIController.buildHUD()
@@ -2230,6 +2507,7 @@ function UIController.buildHUD()
 	createMenuButton("ShopBtn", "🛒 Shop", Color3.fromRGB(220, 100, 30), openEquipmentShopModal)
 	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
+	createMenuButton("TrailsBtn", "✨ Trails", Color3.fromRGB(160, 40, 220), openTrailsShopModal)
 	createMenuButton("VIPBtn", "👑 VIP Pass", Color3.fromRGB(190, 140, 15), openVIPModal)
 
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON

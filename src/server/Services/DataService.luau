@@ -23,6 +23,8 @@ export type PlayerData = {
 	EquippedShovel: string?,
 	OwnedBackpacks: { [string]: boolean },
 	EquippedBackpack: string?,
+	OwnedTrails: { [string]: boolean },
+	EquippedTrail: string?,
 	LastWheelSpin: number?,
 	FreeSpins: number?,
 	LastSaved: number,
@@ -56,6 +58,8 @@ local function getDefaultData(): PlayerData
 		EquippedShovel = "shovel_rusty",
 		OwnedBackpacks = { ["pack_canvas"] = true },
 		EquippedBackpack = "pack_canvas",
+		OwnedTrails = {},
+		EquippedTrail = nil,
 		LastWheelSpin = 0,
 		FreeSpins = 1,
 		LastSaved = os.time(),
@@ -187,6 +191,8 @@ function DataService.load(player: Player)
 	data.EquippedShovel = data.EquippedShovel or "shovel_rusty"
 	data.OwnedBackpacks = data.OwnedBackpacks or { ["pack_canvas"] = true }
 	data.EquippedBackpack = data.EquippedBackpack or "pack_canvas"
+	data.OwnedTrails = data.OwnedTrails or {}
+	data.EquippedTrail = data.EquippedTrail or nil
 	data.LastWheelSpin = data.LastWheelSpin or 0
 	data.FreeSpins = data.FreeSpins or 1
 
@@ -321,6 +327,78 @@ function DataService.spinWheel(player: Player, spinMode: string?): { success: bo
 	}
 end
 
+function DataService.buyTrail(player: Player, trailId: string): (boolean, string?)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
+	local trailDef = TrailConfig.getTrail(trailId)
+	if not trailDef then return false, "Invalid trail" end
+
+	if data.OwnedTrails and data.OwnedTrails[trailId] then
+		return false, "Already owned!"
+	end
+
+	if data.Gems < trailDef.cost then
+		return false, "Not enough Gems! (Need " .. tostring(trailDef.cost) .. " 💎)"
+	end
+
+	data.Gems -= trailDef.cost
+	data.OwnedTrails = data.OwnedTrails or {}
+	data.OwnedTrails[trailId] = true
+	data.EquippedTrail = trailId -- Auto-equip newly purchased trail
+
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local gemsVal = leaderstats:FindFirstChild("Gems") :: NumberValue?
+		if gemsVal then gemsVal.Value = data.Gems end
+	end
+
+	syncToClient(player, data)
+
+	local TrailService = require(script.Parent.TrailService)
+	TrailService.updatePlayerTrail(player)
+
+	print(string.format("✨ [DataService] %s purchased and equipped trail: %s", player.Name, trailDef.name))
+	return true, nil
+end
+
+function DataService.equipTrail(player: Player, trailId: string): (boolean, string?)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
+	local trailDef = TrailConfig.getTrail(trailId)
+	if not trailDef then return false, "Invalid trail" end
+
+	if not data.OwnedTrails or not data.OwnedTrails[trailId] then
+		return false, "Trail not owned"
+	end
+
+	data.EquippedTrail = trailId
+	syncToClient(player, data)
+
+	local TrailService = require(script.Parent.TrailService)
+	TrailService.updatePlayerTrail(player)
+
+	print(string.format("✨ [DataService] %s equipped trail: %s", player.Name, trailDef.name))
+	return true, nil
+end
+
+function DataService.unequipTrail(player: Player): (boolean, string?)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	data.EquippedTrail = nil
+	syncToClient(player, data)
+
+	local TrailService = require(script.Parent.TrailService)
+	TrailService.updatePlayerTrail(player)
+
+	print(string.format("✨ [DataService] %s unequipped trail", player.Name))
+	return true, nil
+end
+
 function DataService.init()
 	Players.PlayerAdded:Connect(function(player)
 		DataService.load(player)
@@ -363,6 +441,22 @@ function DataService.init()
 	local spinFn = Remotes.getFunction("SpinWheel")
 	spinFn.OnServerInvoke = function(player: Player, spinMode: string?)
 		return DataService.spinWheel(player, spinMode)
+	end
+
+	-- Trail management remotes
+	local buyTrailFn = Remotes.getFunction("BuyTrail")
+	buyTrailFn.OnServerInvoke = function(player: Player, trailId: string)
+		return DataService.buyTrail(player, trailId)
+	end
+
+	local equipTrailFn = Remotes.getFunction("EquipTrail")
+	equipTrailFn.OnServerInvoke = function(player: Player, trailId: string)
+		return DataService.equipTrail(player, trailId)
+	end
+
+	local unequipTrailFn = Remotes.getFunction("UnequipTrail")
+	unequipTrailFn.OnServerInvoke = function(player: Player)
+		return DataService.unequipTrail(player)
 	end
 
 	-- Dev testing cheat remote (+$10,000,000 Cash & +50,000 Gems)

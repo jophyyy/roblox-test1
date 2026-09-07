@@ -2055,6 +2055,7 @@ function MapService.init()
 	MapService.buildMountains(mapFolder)
 	MapService.buildPlazaAndPaths(mapFolder)
 	MapService.buildShopStall(mapFolder)
+	MapService.buildTrailShopStall(mapFolder)
 	MapService.buildEggStand(mapFolder)
 	MapService.buildRobuxEggStand(mapFolder)
 	MapService.buildVIPThrone(mapFolder)
@@ -2066,6 +2067,172 @@ function MapService.init()
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)
 	print("✅ [MapService] Retro Roguelike Map Generation Complete! (Zone 1 Meadow & Zone 2 Magma Caverns Active)")
+end
+
+-- 9b. Mystical Trail Artisan Stall & NPC ("Zephyr")
+function MapService.buildTrailShopStall(folder: Folder)
+	local stallModel = Instance.new("Model")
+	stallModel.Name = "TrailArtisanStall"
+
+	local stallCF = CFrame.new(-13.5, 0.4, -14.0) * CFrame.Angles(0, math.rad(90), 0)
+
+	local woodDark = Color3.fromRGB(45, 30, 55)
+	local woodLight = Color3.fromRGB(75, 45, 95)
+	local clothCyan = Color3.fromRGB(0, 210, 255)
+	local clothViolet = Color3.fromRGB(180, 50, 240)
+	local goldTrim = Color3.fromRGB(255, 215, 60)
+
+	-- Counter Table
+	createStudPart(stallModel, "TrailCounterBase", Vector3.new(8, 2.6, 2.4), stallCF * CFrame.new(0, 1.3, 0), woodDark)
+	createStudPart(stallModel, "TrailCounterTop", Vector3.new(9, 0.6, 3.2), stallCF * CFrame.new(0, 2.8, 0), woodLight)
+
+	-- 4 Canopy Support Corner Posts
+	local postOffsets = {
+		Vector3.new(-3.8, 0, -2.4),
+		Vector3.new(3.8, 0, -2.4),
+		Vector3.new(-3.8, 0, 1.2),
+		Vector3.new(3.8, 0, 1.2),
+	}
+	for _, pOff in ipairs(postOffsets) do
+		createStudPart(stallModel, "Post", Vector3.new(0.8, 8, 0.8), stallCF * CFrame.new(pOff.X, 4.4, pOff.Z), woodDark)
+	end
+
+	-- Overhead Striped Canopy Roof (Alternating Violet and Celestial Cyan)
+	for s = -3, 3 do
+		local slatCol = if s % 2 == 0 then clothViolet else clothCyan
+		createStudPart(stallModel, "CanopySlat", Vector3.new(1.4, 0.5, 5.0), stallCF * CFrame.new(s * 1.35, 8.4, -0.6) * CFrame.Angles(math.rad(-8), 0, 0), slatCol)
+	end
+
+	-- Display props on counter: Glowing floating trail ribbon crystals
+	local crystalProp = createStudPart(stallModel, "DisplayCrystal", Vector3.new(0.9, 1.8, 0.9), stallCF * CFrame.new(-2.6, 3.8, 0) * CFrame.Angles(math.rad(15), 0, math.rad(15)), Color3.fromRGB(0, 240, 255))
+	crystalProp.Material = Enum.Material.Neon
+	local orbProp = createStudPart(stallModel, "DisplayOrb", Vector3.new(1.4, 1.4, 1.4), stallCF * CFrame.new(2.6, 3.8, 0), Color3.fromRGB(240, 50, 255))
+	orbProp.Material = Enum.Material.Neon
+
+	-- Hanging Celestial Lantern under canopy
+	local lantern = createStudPart(stallModel, "TrailLantern", Vector3.new(1.0, 1.2, 1.0), stallCF * CFrame.new(0, 7.2, 0.8), Color3.fromRGB(180, 100, 255))
+	lantern.Material = Enum.Material.Neon
+
+	local stallLight = Instance.new("PointLight")
+	stallLight.Color = Color3.fromRGB(200, 120, 255)
+	stallLight.Brightness = 2.2
+	stallLight.Range = 22
+	stallLight.Parent = lantern
+
+	-- Sparkling Wind Particles around the stall
+	local windAttach = Instance.new("Attachment")
+	windAttach.Position = Vector3.new(0, 5, 0)
+	windAttach.Parent = lantern
+
+	local windSparkles = Instance.new("ParticleEmitter")
+	windSparkles.Name = "WindSparkles"
+	windSparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 240, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(240, 100, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 220, 80)),
+	})
+	windSparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(1, 0.05),
+	})
+	windSparkles.Lifetime = NumberRange.new(1.0, 1.8)
+	windSparkles.Rate = 14
+	windSparkles.Speed = NumberRange.new(1.5, 3.5)
+	windSparkles.SpreadAngle = Vector2.new(30, 30)
+	windSparkles.LightEmission = 0.95
+	windSparkles.Parent = windAttach
+
+	-- NPC: "Zephyr the Trail Artisan"
+	local npcModel = Instance.new("Model")
+	npcModel.Name = "ZephyrArtisan"
+
+	local npcCF = stallCF * CFrame.new(0, 1.2, -1.2)
+
+	-- Torso
+	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 2.0, 0), Color3.fromRGB(70, 35, 110))
+
+	-- Legs
+	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 0.0, 0), Color3.fromRGB(35, 25, 50))
+	createStudPart(npcModel, "RightLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(0.5, 0.0, 0), Color3.fromRGB(35, 25, 50))
+
+	-- Head & Face
+	local head = createStudPart(npcModel, "Head", Vector3.new(1.25, 1.25, 1.25), npcCF * CFrame.new(0, 3.4, 0), Color3.fromRGB(255, 220, 185), true, Enum.SurfaceType.Smooth)
+	local face = Instance.new("Decal")
+	face.Name = "Face"
+	face.Texture = "rbxasset://textures/face.png"
+	face.Face = Enum.NormalId.Front
+	face.Parent = head
+
+	-- Artisan Feather Hat
+	createStudPart(npcModel, "HatBrim", Vector3.new(2.5, 0.35, 2.5), npcCF * CFrame.new(0, 4.0, 0), Color3.fromRGB(45, 20, 75))
+	createStudPart(npcModel, "HatCrown", Vector3.new(1.6, 0.8, 1.6), npcCF * CFrame.new(0, 4.45, 0), Color3.fromRGB(60, 30, 95))
+	local star = createStudPart(npcModel, "HatStar", Vector3.new(0.5, 0.5, 0.5), npcCF * CFrame.new(0, 4.5, -0.9), goldTrim)
+	star.Material = Enum.Material.Neon
+
+	-- Arms
+	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(70, 35, 110))
+	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(70, 35, 110))
+
+	-- Title Billboard
+	local titleGui = Instance.new("BillboardGui")
+	titleGui.Name = "ZephyrTitleGui"
+	titleGui.Size = UDim2.new(0, 200, 0, 50)
+	titleGui.StudsOffset = Vector3.new(0, 3.2, 0)
+	titleGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "✨ ZEPHYR ✨"
+	titleLabel.TextColor3 = Color3.fromRGB(240, 100, 255)
+	titleLabel.Font = Enum.Font.Antique
+	titleLabel.TextSize = 19
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = titleGui
+
+	local subtitleLabel = Instance.new("TextLabel")
+	subtitleLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	subtitleLabel.Position = UDim2.new(0, 0, 0.55, 0)
+	subtitleLabel.BackgroundTransparency = 1
+	subtitleLabel.Text = "[Trail Artisan]"
+	subtitleLabel.TextColor3 = Color3.fromRGB(160, 240, 255)
+	subtitleLabel.Font = Enum.Font.Antique
+	subtitleLabel.TextSize = 14
+	subtitleLabel.TextStrokeTransparency = 0.2
+	subtitleLabel.Parent = titleGui
+	titleGui.Parent = head
+
+	-- Invisible Interaction Part & ProximityPrompt
+	local interactionPart = Instance.new("Part")
+	interactionPart.Name = "ZephyrInteractionPart"
+	interactionPart.Size = Vector3.new(9, 5, 4)
+	interactionPart.CFrame = stallCF * CFrame.new(0, 2.8, 1.2)
+	interactionPart.Transparency = 1
+	interactionPart.CanCollide = false
+	interactionPart.CanTouch = true
+	interactionPart.CanQuery = true
+	interactionPart.Anchored = true
+	interactionPart.Parent = stallModel
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "TalkPrompt"
+	prompt.ActionText = "Talk"
+	prompt.ObjectText = "Zephyr (Trails Shop)"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 16
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = interactionPart
+
+	prompt.Triggered:Connect(function(player)
+		print("🗣️ [MapService] Zephyr ProximityPrompt triggered by " .. player.Name)
+		local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
+		dialogueEvent:FireClient(player, "Zephyr")
+	end)
+
+	npcModel.Parent = stallModel
+	stallModel.Parent = folder
 end
 
 return MapService

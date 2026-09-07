@@ -282,9 +282,13 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 			end
 		end
 
+		local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
+		local trailCashMult = TrailConfig.getCashMultiplier(data.EquippedTrail)
+		local trailBonusGems = TrailConfig.getBonusGems(data.EquippedTrail)
+
 		local petGemMult = PetService.getGemMultiplier(player)
-		cashEarned = math.max(1, math.floor(oreDef.cashReward * bpMultiplier * rebirthMult * petDamageMult))
-		gemsEarned = math.max(1, math.floor((oreDef.gemsReward + bpBonusGems) * petGemMult))
+		cashEarned = math.max(1, math.floor(oreDef.cashReward * bpMultiplier * trailCashMult * rebirthMult * petDamageMult))
+		gemsEarned = math.max(1, math.floor((oreDef.gemsReward + bpBonusGems + trailBonusGems) * petGemMult))
 
 		-- Award to player
 		DataService.addCash(player, cashEarned)

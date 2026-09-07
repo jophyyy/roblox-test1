@@ -38,6 +38,9 @@ local REGISTERED_FUNCTIONS = {
 	"RequestGamepassAction",
 	"MineOre",
 	"AttackBoss",
+	"BuyTrail",
+	"EquipTrail",
+	"UnequipTrail",
 }
 
 local function getRemotesFolder(): Folder

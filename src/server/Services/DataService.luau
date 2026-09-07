@@ -11,6 +11,7 @@ local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local TrainingConfig = require(ReplicatedStorage.Shared.Config.TrainingConfig)
+local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 
 local DATA_STORE_NAME = "MiningSave_v1"
@@ -24,6 +25,8 @@ export type PlayerData = {
 	UnlockedItems: { [string]: boolean },
 	OwnedPets: { [string]: number }, -- petId -> count
 	EquippedPets: { [string]: boolean },
+	PetIndex: { [string]: boolean }, -- petId -> discovered
+	ClaimedIndexMilestones: { [string]: boolean }, -- milestoneId -> claimed
 	OwnedShovels: { [string]: boolean },
 	EquippedShovel: string?,
 	OwnedBackpacks: { [string]: boolean },
@@ -61,6 +64,8 @@ local function getDefaultData(): PlayerData
 		UnlockedItems = {},
 		OwnedPets = {},
 		EquippedPets = {},
+		PetIndex = {},
+		ClaimedIndexMilestones = {},
 		OwnedShovels = { ["shovel_rusty"] = true },
 		EquippedShovel = "shovel_rusty",
 		OwnedBackpacks = { ["pack_canvas"] = true },
@@ -191,7 +196,8 @@ function DataService.calculateClickPowerGain(player: Player): (number, number, n
 		petMult = PetService.getCashMultiplier(player)
 	end
 
-	local powerGain = math.max(1, math.floor(1 * toolMultiplier * rebirthMult * trailMult * skillPowerMult * petMult))
+	local indexPowerMult = DataService.getIndexPowerMultiplier(player)
+	local powerGain = math.max(1, math.floor(1 * toolMultiplier * rebirthMult * trailMult * skillPowerMult * petMult * indexPowerMult))
 	return powerGain, clickCash, clickGems
 end
 
@@ -245,6 +251,7 @@ function DataService.trainOnOre(player: Player, oreId: string): (boolean, any)
 		petMult = PetService.getCashMultiplier(player)
 	end
 
+	local indexPowerMult = DataService.getIndexPowerMultiplier(player)
 	local powerGain = TrainingConfig.calculatePower(
 		oreDef,
 		data.Rebirths or 0,
@@ -253,6 +260,7 @@ function DataService.trainOnOre(player: Player, oreId: string): (boolean, any)
 		trailMult,
 		skillMiningMult
 	)
+	powerGain = math.max(1, math.floor(powerGain * indexPowerMult))
 
 	DataService.addPower(player, powerGain)
 
@@ -318,6 +326,13 @@ function DataService.load(player: Player)
 	data.UnlockedItems = data.UnlockedItems or {}
 	data.OwnedPets = data.OwnedPets or {}
 	data.EquippedPets = data.EquippedPets or {}
+	data.PetIndex = data.PetIndex or {}
+	data.ClaimedIndexMilestones = data.ClaimedIndexMilestones or {}
+	for petId, count in data.OwnedPets do
+		if count and count > 0 then
+			data.PetIndex[petId] = true
+		end
+	end
 	data.OwnedShovels = data.OwnedShovels or { ["shovel_rusty"] = true }
 	data.EquippedShovel = data.EquippedShovel or "shovel_rusty"
 	data.OwnedBackpacks = data.OwnedBackpacks or { ["pack_canvas"] = true }
@@ -439,12 +454,16 @@ function DataService.spinWheel(player: Player, spinMode: string?): { success: bo
 	elseif slice.rewardType == "Pet" then
 		local petId = slice.value :: string
 		data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + 1
+		data.PetIndex = data.PetIndex or {}
+		data.PetIndex[petId] = true
 		rewardDisplay = "Pet: " .. slice.name
 	elseif slice.rewardType == "Jackpot" then
 		local bonusGems = math.max(slice.value.minGems, data.Gems)
 		DataService.addGems(player, bonusGems)
 		local petId = slice.value.petId
 		data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + 1
+		data.PetIndex = data.PetIndex or {}
+		data.PetIndex[petId] = true
 		rewardDisplay = string.format("JACKPOT! +%d Gems and %s", bonusGems, petId)
 	end
 
@@ -674,6 +693,12 @@ function DataService.init()
 		return true, addCash, addGems
 	end
 
+	-- Claim Pet Index milestone remote
+	local claimIndexRemote = Remotes.getFunction("ClaimIndexMilestone")
+	claimIndexRemote.OnServerInvoke = function(player: Player, milestoneId: string)
+		return DataService.claimIndexMilestone(player, milestoneId)
+	end
+
 	-- Periodic auto-save loop
 	task.spawn(function()
 		while true do
@@ -683,6 +708,64 @@ function DataService.init()
 			end
 		end
 	end)
+end
+
+-- Calculates total permanent power multiplier from claimed Pet Index milestones
+function DataService.getIndexPowerMultiplier(player: Player): number
+	local data = playerDataCache[player]
+	if not data or not data.ClaimedIndexMilestones then return 1.0 end
+
+	local bonusPct = 0
+	for _, milestone in ipairs(PetConfig.INDEX_MILESTONES) do
+		if data.ClaimedIndexMilestones[milestone.id] then
+			bonusPct += milestone.powerBoostPct
+		end
+	end
+
+	return 1.0 + (bonusPct / 100)
+end
+
+-- Claims reward for reaching a Pet Index discovery count milestone
+function DataService.claimIndexMilestone(player: Player, milestoneId: string): (boolean, string)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	data.PetIndex = data.PetIndex or {}
+	data.ClaimedIndexMilestones = data.ClaimedIndexMilestones or {}
+
+	if data.ClaimedIndexMilestones[milestoneId] then
+		return false, "Milestone reward already claimed!"
+	end
+
+	local targetMilestone: PetConfig.PetIndexMilestone? = nil
+	for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
+		if m.id == milestoneId then
+			targetMilestone = m
+			break
+		end
+	end
+
+	if not targetMilestone then
+		return false, "Invalid milestone"
+	end
+
+	-- Count discovered pets
+	local discoveredCount = 0
+	for _ in data.PetIndex do
+		discoveredCount += 1
+	end
+
+	if discoveredCount < targetMilestone.requiredCount then
+		return false, string.format("Need %d discovered pets (you have %d)!", targetMilestone.requiredCount, discoveredCount)
+	end
+
+	-- Grant rewards
+	data.ClaimedIndexMilestones[milestoneId] = true
+	DataService.addGems(player, targetMilestone.gemsReward)
+	syncToClient(player, data)
+
+	print(string.format("📖 [PetIndex] %s claimed %s! (+%d Gems, +%d%% Power)", player.Name, targetMilestone.name, targetMilestone.gemsReward, targetMilestone.powerBoostPct))
+	return true, string.format("Claimed %s! (+%d 💎, +%d%% Power)", targetMilestone.name, targetMilestone.gemsReward, targetMilestone.powerBoostPct)
 end
 
 return DataService

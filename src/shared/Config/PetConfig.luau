@@ -7,6 +7,8 @@ export type PetDef = {
 	gemMultiplier: number,
 	color: Color3,
 	meshType: "Sphere" | "Block" | "Diamond",
+	icon: string,
+	originEgg: string,
 }
 
 export type EggDef = {
@@ -18,8 +20,52 @@ export type EggDef = {
 	dropPool: { { petId: string, weight: number } },
 }
 
+export type PetIndexMilestone = {
+	id: string,
+	name: string,
+	requiredCount: number,
+	gemsReward: number,
+	powerBoostPct: number,
+	icon: string,
+}
+
 local PetConfig = {
 	MAX_EQUIPPED = 3,
+
+	INDEX_MILESTONES = {
+		{
+			id = "milestone_3",
+			name = "Bronze Collector",
+			requiredCount = 3,
+			gemsReward = 5000,
+			powerBoostPct = 15,
+			icon = "🥉",
+		},
+		{
+			id = "milestone_6",
+			name = "Silver Zoologist",
+			requiredCount = 6,
+			gemsReward = 25000,
+			powerBoostPct = 35,
+			icon = "🥈",
+		},
+		{
+			id = "milestone_9",
+			name = "Gold Beastmaster",
+			requiredCount = 9,
+			gemsReward = 100000,
+			powerBoostPct = 75,
+			icon = "🥇",
+		},
+		{
+			id = "milestone_11",
+			name = "Cosmic Master",
+			requiredCount = 11,
+			gemsReward = 500000,
+			powerBoostPct = 150,
+			icon = "👑",
+		},
+	} :: { PetIndexMilestone },
 
 	PETS = {
 		CrystalDoge = {
@@ -30,6 +76,8 @@ local PetConfig = {
 			gemMultiplier = 1.1,
 			color = Color3.fromRGB(240, 200, 80),
 			meshType = "Block",
+			icon = "🐶",
+			originEgg = "BasicEgg",
 		},
 		SparkleKitty = {
 			id = "SparkleKitty",
@@ -39,6 +87,8 @@ local PetConfig = {
 			gemMultiplier = 1.15,
 			color = Color3.fromRGB(255, 182, 193),
 			meshType = "Block",
+			icon = "🐱",
+			originEgg = "BasicEgg",
 		},
 		NeonBunny = {
 			id = "NeonBunny",
@@ -48,6 +98,8 @@ local PetConfig = {
 			gemMultiplier = 1.3,
 			color = Color3.fromRGB(80, 240, 255),
 			meshType = "Sphere",
+			icon = "🐰",
+			originEgg = "BasicEgg",
 		},
 		InfernoDragon = {
 			id = "InfernoDragon",
@@ -57,6 +109,8 @@ local PetConfig = {
 			gemMultiplier = 1.75,
 			color = Color3.fromRGB(255, 69, 0),
 			meshType = "Diamond",
+			icon = "🐉",
+			originEgg = "RobuxEgg",
 		},
 		VoidPhoenix = {
 			id = "VoidPhoenix",
@@ -66,6 +120,8 @@ local PetConfig = {
 			gemMultiplier = 2.5,
 			color = Color3.fromRGB(186, 85, 211),
 			meshType = "Diamond",
+			icon = "🦅",
+			originEgg = "RobuxEgg",
 		},
 		MagmaHound = {
 			id = "MagmaHound",
@@ -75,6 +131,8 @@ local PetConfig = {
 			gemMultiplier = 3.0,
 			color = Color3.fromRGB(255, 120, 20),
 			meshType = "Sphere",
+			icon = "🐕",
+			originEgg = "MagmaEgg",
 		},
 		VolcanicGolem = {
 			id = "VolcanicGolem",
@@ -84,6 +142,8 @@ local PetConfig = {
 			gemMultiplier = 5.5,
 			color = Color3.fromRGB(50, 32, 32),
 			meshType = "Block",
+			icon = "🗿",
+			originEgg = "MagmaEgg",
 		},
 		ElderMagmaDrake = {
 			id = "ElderMagmaDrake",
@@ -93,6 +153,8 @@ local PetConfig = {
 			gemMultiplier = 10.0,
 			color = Color3.fromRGB(255, 40, 0),
 			meshType = "Diamond",
+			icon = "🐲",
+			originEgg = "MagmaEgg",
 		},
 		AstralKitsune = {
 			id = "AstralKitsune",
@@ -102,6 +164,8 @@ local PetConfig = {
 			gemMultiplier = 15.0,
 			color = Color3.fromRGB(170, 110, 255),
 			meshType = "Sphere",
+			icon = "🦊",
+			originEgg = "CosmicEgg",
 		},
 		VoidLeviathan = {
 			id = "VoidLeviathan",
@@ -111,6 +175,8 @@ local PetConfig = {
 			gemMultiplier = 40.0,
 			color = Color3.fromRGB(30, 25, 60),
 			meshType = "Block",
+			icon = "🐋",
+			originEgg = "CosmicEgg",
 		},
 		ChronosDrake = {
 			id = "ChronosDrake",
@@ -120,6 +186,8 @@ local PetConfig = {
 			gemMultiplier = 100.0,
 			color = Color3.fromRGB(0, 240, 255),
 			meshType = "Diamond",
+			icon = "🌌",
+			originEgg = "CosmicEgg",
 		},
 	} :: { [string]: PetDef },
 
@@ -171,5 +239,28 @@ local PetConfig = {
 		},
 	} :: { [string]: EggDef },
 }
+
+function PetConfig.getTotalPetsCount(): number
+	local count = 0
+	for _ in PetConfig.PETS do
+		count += 1
+	end
+	return count
+end
+
+function PetConfig.getRarityColor(rarity: string): Color3
+	if rarity == "Common" then
+		return Color3.fromRGB(180, 190, 205)
+	elseif rarity == "Rare" then
+		return Color3.fromRGB(0, 200, 255)
+	elseif rarity == "Epic" then
+		return Color3.fromRGB(190, 70, 255)
+	elseif rarity == "Legendary" then
+		return Color3.fromRGB(255, 140, 20)
+	elseif rarity == "Mythic" then
+		return Color3.fromRGB(255, 215, 0)
+	end
+	return Color3.fromRGB(200, 200, 200)
+end
 
 return PetConfig

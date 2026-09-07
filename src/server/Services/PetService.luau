@@ -83,8 +83,10 @@ function PetService.hatchEgg(player: Player, eggId: string, count: number?): (bo
 			end
 		end
 
-		-- Add to inventory
+		-- Add to inventory & discover in Pet Index
 		data.OwnedPets[pickedPetId] = (data.OwnedPets[pickedPetId] or 0) + 1
+		data.PetIndex = data.PetIndex or {}
+		data.PetIndex[pickedPetId] = true
 		table.insert(pickedPetIds, pickedPetId)
 	end
 

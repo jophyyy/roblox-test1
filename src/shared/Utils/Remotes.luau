@@ -46,6 +46,7 @@ local REGISTERED_FUNCTIONS = {
 	"UnlockSkillNode",
 	"ClickPower",
 	"TrainOnOre",
+	"ClaimIndexMilestone",
 }
 
 local function getRemotesFolder(): Folder

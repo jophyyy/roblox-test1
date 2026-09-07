@@ -567,17 +567,22 @@ local function openRebirthModal()
 	}):Play()
 end
 
+-- Forward declarations for Pet Modals
+local openPetModal: () -> ()
+local openPetIndexModal: (filter: string?) -> ()
+
 -- Pet Hatching & Inventory Modal
-local function openPetModal()
+openPetModal = function()
 	closeModal()
 	if not cachedData then return end
 
-	local modal = createStyledFrame(screenGui, "PetModal", UDim2.new(0, 520, 0, 420), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 30))
+	local modal = createStyledFrame(screenGui, "PetModal", UDim2.new(0, 530, 0, 460), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 30))
 	modal.AnchorPoint = Vector2.new(0.5, 0.5)
 	activeModal = modal
 
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, 0, 0, 50)
+	title.Size = UDim2.new(1, 0, 0, 42)
+	title.Position = UDim2.new(0, 0, 0, 6)
 	title.BackgroundTransparency = 1
 	title.Text = "🐾 PET SANCTUARY 🐾"
 	title.TextColor3 = Color3.fromRGB(80, 240, 255)
@@ -585,10 +590,59 @@ local function openPetModal()
 	title.TextSize = 22
 	title.Parent = modal
 
+	-- Navigation Tabs
+	local tabRow = Instance.new("Frame")
+	tabRow.Size = UDim2.new(0.92, 0, 0, 32)
+	tabRow.Position = UDim2.new(0.04, 0, 0, 46)
+	tabRow.BackgroundTransparency = 1
+	tabRow.Parent = modal
+
+	local tabList = Instance.new("UIListLayout")
+	tabList.FillDirection = Enum.FillDirection.Horizontal
+	tabList.Padding = UDim.new(0, 8)
+	tabList.Parent = tabRow
+
+	local invTab = Instance.new("TextButton")
+	invTab.Size = UDim2.new(0.485, 0, 1, 0)
+	invTab.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+	invTab.Text = "🐾 Inventory & Hatching"
+	invTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+	invTab.Font = Enum.Font.GothamBlack
+	invTab.TextSize = 12
+	invTab.BorderSizePixel = 0
+	invTab.Parent = tabRow
+
+	local itCorner = Instance.new("UICorner")
+	itCorner.CornerRadius = UDim.new(0, 6)
+	itCorner.Parent = invTab
+
+	local indexTab = Instance.new("TextButton")
+	indexTab.Size = UDim2.new(0.485, 0, 1, 0)
+	indexTab.BackgroundColor3 = Color3.fromRGB(36, 42, 58)
+	local petIndex = cachedData.PetIndex or {}
+	local discCount = 0
+	for petId, _ in PetConfig.PETS do
+		if petIndex[petId] then discCount += 1 end
+	end
+	indexTab.Text = string.format("📖 Pet Index (%d/%d)", discCount, PetConfig.getTotalPetsCount())
+	indexTab.TextColor3 = Color3.fromRGB(200, 210, 230)
+	indexTab.Font = Enum.Font.GothamBold
+	indexTab.TextSize = 12
+	indexTab.BorderSizePixel = 0
+	indexTab.Parent = tabRow
+
+	local idCorner = Instance.new("UICorner")
+	idCorner.CornerRadius = UDim.new(0, 6)
+	idCorner.Parent = indexTab
+
+	indexTab.MouseButton1Click:Connect(function()
+		openPetIndexModal()
+	end)
+
 	-- Egg Hatch Section
 	local eggSection = Instance.new("Frame")
-	eggSection.Size = UDim2.new(0.92, 0, 0, 130)
-	eggSection.Position = UDim2.new(0.04, 0, 0, 55)
+	eggSection.Size = UDim2.new(0.92, 0, 0, 126)
+	eggSection.Position = UDim2.new(0.04, 0, 0, 86)
 	eggSection.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
 	eggSection.BorderSizePixel = 0
 	eggSection.Parent = modal
@@ -598,7 +652,7 @@ local function openPetModal()
 	eggCorner.Parent = eggSection
 
 	local eggSecTitle = Instance.new("TextLabel")
-	eggSecTitle.Size = UDim2.new(1, 0, 0, 25)
+	eggSecTitle.Size = UDim2.new(1, 0, 0, 24)
 	eggSecTitle.BackgroundTransparency = 1
 	eggSecTitle.Text = "Hatch Eggs (Boosts Cash & Gems!)"
 	eggSecTitle.TextColor3 = Color3.fromRGB(200, 210, 230)
@@ -612,7 +666,7 @@ local function openPetModal()
 		if eggDef then
 			local eggBtn = Instance.new("TextButton")
 			eggBtn.Size = UDim2.new(0.30, 0, 0, 75)
-			eggBtn.Position = UDim2.new(0.025 + (i - 1) * 0.325, 0, 0, 35)
+			eggBtn.Position = UDim2.new(0.025 + (i - 1) * 0.325, 0, 0, 32)
 			eggBtn.BackgroundColor3 = if eggId == "MagmaEgg" then Color3.fromRGB(60, 32, 28) else Color3.fromRGB(40, 48, 68)
 			eggBtn.Text = eggDef.name .. "\n💎 " .. eggDef.cost .. " Gems"
 			eggBtn.TextColor3 = if eggId == "MagmaEgg" then Color3.fromRGB(255, 150, 60) else Color3.fromRGB(255, 255, 255)
@@ -640,8 +694,8 @@ local function openPetModal()
 
 	-- Inventory Section
 	local invLabel = Instance.new("TextLabel")
-	invLabel.Size = UDim2.new(1, 0, 0, 25)
-	invLabel.Position = UDim2.new(0, 0, 0, 195)
+	invLabel.Size = UDim2.new(1, 0, 0, 24)
+	invLabel.Position = UDim2.new(0, 0, 0, 220)
 	invLabel.BackgroundTransparency = 1
 	invLabel.Text = "Your Pets (Equipped: Max 3)"
 	invLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -650,14 +704,16 @@ local function openPetModal()
 	invLabel.Parent = modal
 
 	local scroll = Instance.new("ScrollingFrame")
-	scroll.Size = UDim2.new(0.92, 0, 0, 175)
-	scroll.Position = UDim2.new(0.04, 0, 0, 225)
+	scroll.Size = UDim2.new(0.92, 0, 0, 195)
+	scroll.Position = UDim2.new(0.04, 0, 0, 248)
 	scroll.BackgroundColor3 = Color3.fromRGB(26, 29, 38)
 	scroll.BorderSizePixel = 0
 	scroll.ScrollBarThickness = 6
 	scroll.Parent = modal
 
 	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 8)
+	sCorner.Parent = scroll
 	sCorner.CornerRadius = UDim.new(0, 8)
 	sCorner.Parent = scroll
 
@@ -746,6 +802,449 @@ local function openPetModal()
 
 	closeBtn.MouseButton1Click:Connect(closeModal)
 
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
+-- ==========================================
+-- 📖 PET BESTIARY / COLLECTION INDEX MODAL
+-- ==========================================
+openPetIndexModal = function(currentFilter: string?)
+	closeModal()
+	if not cachedData then return end
+
+	local activeFilter = currentFilter or "All"
+	local petIndex = cachedData.PetIndex or {}
+	local claimedMilestones = cachedData.ClaimedIndexMilestones or {}
+
+	-- Count discovered pets
+	local totalPets = PetConfig.getTotalPetsCount()
+	local discoveredCount = 0
+	for petId, _ in PetConfig.PETS do
+		if petIndex[petId] then
+			discoveredCount += 1
+		end
+	end
+	local pct = math.clamp(discoveredCount / math.max(1, totalPets), 0, 1)
+
+	-- Calculate total power boost from claimed milestones
+	local totalBoostPct = 0
+	for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
+		if claimedMilestones[m.id] then
+			totalBoostPct += m.powerBoostPct
+		end
+	end
+
+	local modal = createStyledFrame(screenGui, "PetIndexModal", UDim2.new(0, 640, 0, 530), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 20, 28))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 42)
+	title.Position = UDim2.new(0, 0, 0, 8)
+	title.BackgroundTransparency = 1
+	title.Text = "📖 PET COLLECTION INDEX 📖"
+	title.TextColor3 = Color3.fromRGB(255, 215, 0)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 22
+	title.Parent = modal
+
+	-- Navigation Tabs
+	local tabRow = Instance.new("Frame")
+	tabRow.Size = UDim2.new(0.92, 0, 0, 32)
+	tabRow.Position = UDim2.new(0.04, 0, 0, 48)
+	tabRow.BackgroundTransparency = 1
+	tabRow.Parent = modal
+
+	local tabList = Instance.new("UIListLayout")
+	tabList.FillDirection = Enum.FillDirection.Horizontal
+	tabList.Padding = UDim.new(0, 8)
+	tabList.Parent = tabRow
+
+	local invTabBtn = Instance.new("TextButton")
+	invTabBtn.Size = UDim2.new(0.485, 0, 1, 0)
+	invTabBtn.BackgroundColor3 = Color3.fromRGB(38, 44, 60)
+	invTabBtn.Text = "🐾 Pet Inventory & Hatching"
+	invTabBtn.TextColor3 = Color3.fromRGB(190, 200, 220)
+	invTabBtn.Font = Enum.Font.GothamBold
+	invTabBtn.TextSize = 13
+	invTabBtn.BorderSizePixel = 0
+	invTabBtn.Parent = tabRow
+
+	local tCorner1 = Instance.new("UICorner")
+	tCorner1.CornerRadius = UDim.new(0, 6)
+	tCorner1.Parent = invTabBtn
+
+	invTabBtn.MouseButton1Click:Connect(openPetModal)
+
+	local indexTabBtn = Instance.new("TextButton")
+	indexTabBtn.Size = UDim2.new(0.485, 0, 1, 0)
+	indexTabBtn.BackgroundColor3 = Color3.fromRGB(0, 165, 215)
+	indexTabBtn.Text = string.format("📖 Pet Index (%d/%d Discovered)", discoveredCount, totalPets)
+	indexTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	indexTabBtn.Font = Enum.Font.GothamBlack
+	indexTabBtn.TextSize = 13
+	indexTabBtn.BorderSizePixel = 0
+	indexTabBtn.Parent = tabRow
+
+	local tCorner2 = Instance.new("UICorner")
+	tCorner2.CornerRadius = UDim.new(0, 6)
+	tCorner2.Parent = indexTabBtn
+
+	-- Progress and Total Boost Banner
+	local progressCard = Instance.new("Frame")
+	progressCard.Size = UDim2.new(0.92, 0, 0, 44)
+	progressCard.Position = UDim2.new(0.04, 0, 0, 88)
+	progressCard.BackgroundColor3 = Color3.fromRGB(26, 30, 44)
+	progressCard.BorderSizePixel = 0
+	progressCard.Parent = modal
+
+	local pCorner = Instance.new("UICorner")
+	pCorner.CornerRadius = UDim.new(0, 8)
+	pCorner.Parent = progressCard
+
+	local progressLabel = Instance.new("TextLabel")
+	progressLabel.Size = UDim2.new(0.55, 0, 0.45, 0)
+	progressLabel.Position = UDim2.new(0.03, 0, 0.1, 0)
+	progressLabel.BackgroundTransparency = 1
+	progressLabel.Text = string.format("Discovery Progress: %d / %d Pets (%d%%)", discoveredCount, totalPets, math.floor(pct * 100))
+	progressLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
+	progressLabel.Font = Enum.Font.GothamBold
+	progressLabel.TextSize = 12
+	progressLabel.TextXAlignment = Enum.TextXAlignment.Left
+	progressLabel.Parent = progressCard
+
+	local boostLabel = Instance.new("TextLabel")
+	boostLabel.Size = UDim2.new(0.4, 0, 0.45, 0)
+	boostLabel.Position = UDim2.new(0.57, 0, 0.1, 0)
+	boostLabel.BackgroundTransparency = 1
+	boostLabel.Text = string.format("⚡ Total Boost: +%d%% Power", totalBoostPct)
+	boostLabel.TextColor3 = Color3.fromRGB(0, 230, 118)
+	boostLabel.Font = Enum.Font.GothamBlack
+	boostLabel.TextSize = 12
+	boostLabel.TextXAlignment = Enum.TextXAlignment.Right
+	boostLabel.Parent = progressCard
+
+	local barBg = Instance.new("Frame")
+	barBg.Size = UDim2.new(0.94, 0, 0, 10)
+	barBg.Position = UDim2.new(0.03, 0, 0.65, 0)
+	barBg.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
+	barBg.BorderSizePixel = 0
+	barBg.Parent = progressCard
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 5)
+	bCorner.Parent = barBg
+
+	local barFill = Instance.new("Frame")
+	barFill.Size = UDim2.new(pct, 0, 1, 0)
+	barFill.BackgroundColor3 = Color3.fromRGB(0, 215, 255)
+	barFill.BorderSizePixel = 0
+	barFill.Parent = barBg
+
+	local bfCorner = Instance.new("UICorner")
+	bfCorner.CornerRadius = UDim.new(0, 5)
+	bfCorner.Parent = barFill
+
+	-- Milestone Rewards Strip
+	local milestoneSec = Instance.new("Frame")
+	milestoneSec.Size = UDim2.new(0.92, 0, 0, 68)
+	milestoneSec.Position = UDim2.new(0.04, 0, 0, 138)
+	milestoneSec.BackgroundColor3 = Color3.fromRGB(22, 25, 36)
+	milestoneSec.BorderSizePixel = 0
+	milestoneSec.Parent = modal
+
+	local mCorner = Instance.new("UICorner")
+	mCorner.CornerRadius = UDim.new(0, 8)
+	mCorner.Parent = milestoneSec
+
+	local mLayout = Instance.new("UIListLayout")
+	mLayout.FillDirection = Enum.FillDirection.Horizontal
+	mLayout.Padding = UDim.new(0, 8)
+	mLayout.Parent = milestoneSec
+
+	for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
+		local isClaimed = claimedMilestones[m.id] == true
+		local isEligible = discoveredCount >= m.requiredCount and not isClaimed
+
+		local mCard = Instance.new("Frame")
+		mCard.Size = UDim2.new(0.235, 0, 0.9, 0)
+		mCard.Position = UDim2.new(0, 0, 0.05, 0)
+		mCard.BackgroundColor3 = if isEligible then Color3.fromRGB(35, 55, 45) elseif isClaimed then Color3.fromRGB(28, 30, 40) else Color3.fromRGB(25, 28, 38)
+		mCard.BorderSizePixel = 0
+		mCard.Parent = milestoneSec
+
+		local mcCorner = Instance.new("UICorner")
+		mcCorner.CornerRadius = UDim.new(0, 6)
+		mcCorner.Parent = mCard
+
+		local mTitle = Instance.new("TextLabel")
+		mTitle.Size = UDim2.new(1, 0, 0.35, 0)
+		mTitle.BackgroundTransparency = 1
+		mTitle.Text = string.format("%s %s (%d)", m.icon, m.name, m.requiredCount)
+		mTitle.TextColor3 = if isEligible then Color3.fromRGB(255, 220, 100) else Color3.fromRGB(210, 215, 230)
+		mTitle.Font = Enum.Font.GothamBold
+		mTitle.TextSize = 10
+		mTitle.Parent = mCard
+
+		local mReward = Instance.new("TextLabel")
+		mReward.Size = UDim2.new(1, 0, 0.3, 0)
+		mReward.Position = UDim2.new(0, 0, 0.32, 0)
+		mReward.BackgroundTransparency = 1
+		mReward.Text = string.format("+%s 💎 • +%d%% ⚡", FormatNumber.formatCompact(m.gemsReward), m.powerBoostPct)
+		mReward.TextColor3 = Color3.fromRGB(0, 230, 180)
+		mReward.Font = Enum.Font.GothamBold
+		mReward.TextSize = 10
+		mReward.Parent = mCard
+
+		local claimBtn = Instance.new("TextButton")
+		claimBtn.Size = UDim2.new(0.88, 0, 0.32, 0)
+		claimBtn.Position = UDim2.new(0.06, 0, 0.64, 0)
+		claimBtn.BorderSizePixel = 0
+		claimBtn.Font = Enum.Font.GothamBlack
+		claimBtn.TextSize = 10
+		claimBtn.Parent = mCard
+
+		local cbCorner = Instance.new("UICorner")
+		cbCorner.CornerRadius = UDim.new(0, 4)
+		cbCorner.Parent = claimBtn
+
+		if isClaimed then
+			claimBtn.BackgroundColor3 = Color3.fromRGB(45, 55, 50)
+			claimBtn.Text = "✓ CLAIMED"
+			claimBtn.TextColor3 = Color3.fromRGB(150, 200, 160)
+		elseif isEligible then
+			claimBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+			claimBtn.Text = "CLAIM REWARD"
+			claimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			claimBtn.MouseButton1Click:Connect(function()
+				local claimFn = Remotes.getFunction("ClaimIndexMilestone")
+				local ok, msg = claimFn:InvokeServer(m.id)
+				if ok then
+					showFloatingPopup(string.format("🏆 CLAIMED %s! (+%s 💎)", m.name:upper(), FormatNumber.formatCompact(m.gemsReward)), Color3.fromRGB(0, 255, 180), 0)
+					openPetIndexModal(activeFilter)
+				end
+			end)
+		else
+			claimBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 48)
+			claimBtn.Text = string.format("🔒 %d/%d", discoveredCount, m.requiredCount)
+			claimBtn.TextColor3 = Color3.fromRGB(140, 145, 160)
+		end
+	end
+
+	-- Category Filter Bar
+	local filterBar = Instance.new("Frame")
+	filterBar.Size = UDim2.new(0.92, 0, 0, 28)
+	filterBar.Position = UDim2.new(0.04, 0, 0, 212)
+	filterBar.BackgroundTransparency = 1
+	filterBar.Parent = modal
+
+	local fLayout = Instance.new("UIListLayout")
+	fLayout.FillDirection = Enum.FillDirection.Horizontal
+	fLayout.Padding = UDim.new(0, 6)
+	fLayout.Parent = filterBar
+
+	local filterOptions = {
+		{ id = "All", label = "All Pets" },
+		{ id = "BasicEgg", label = "Prism Egg" },
+		{ id = "MagmaEgg", label = "Magma Egg" },
+		{ id = "CosmicEgg", label = "Cosmic Void" },
+		{ id = "RobuxEgg", label = "Exclusive" },
+	}
+
+	for _, opt in ipairs(filterOptions) do
+		local isSel = (opt.id == activeFilter)
+		local fBtn = Instance.new("TextButton")
+		fBtn.Size = UDim2.new(0.188, 0, 1, 0)
+		fBtn.BackgroundColor3 = if isSel then Color3.fromRGB(0, 165, 215) else Color3.fromRGB(32, 36, 50)
+		fBtn.Text = opt.label
+		fBtn.TextColor3 = if isSel then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(190, 195, 215)
+		fBtn.Font = Enum.Font.GothamBold
+		fBtn.TextSize = 11
+		fBtn.BorderSizePixel = 0
+		fBtn.Parent = filterBar
+
+		local fCorner = Instance.new("UICorner")
+		fCorner.CornerRadius = UDim.new(0, 6)
+		fCorner.Parent = fBtn
+
+		fBtn.MouseButton1Click:Connect(function()
+			openPetIndexModal(opt.id)
+		end)
+	end
+
+	-- Pet Catalog Grid in a ScrollingFrame
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(0.92, 0, 0, 270)
+	scroll.Position = UDim2.new(0.04, 0, 0, 246)
+	scroll.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 6
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.Parent = modal
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 8)
+	sCorner.Parent = scroll
+
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.new(0, 185, 0, 175)
+	grid.CellPadding = UDim2.new(0, 8, 0, 8)
+	grid.Parent = scroll
+
+	local pListPad = Instance.new("UIPadding")
+	pListPad.PaddingTop = UDim.new(0, 8)
+	pListPad.PaddingLeft = UDim.new(0, 8)
+	pListPad.PaddingRight = UDim.new(0, 8)
+	pListPad.PaddingBottom = UDim.new(0, 8)
+	pListPad.Parent = scroll
+
+	-- Fixed ordered list of pets
+	local petOrder = {
+		"CrystalDoge", "SparkleKitty", "NeonBunny",
+		"InfernoDragon", "VoidPhoenix",
+		"MagmaHound", "VolcanicGolem", "ElderMagmaDrake",
+		"AstralKitsune", "VoidLeviathan", "ChronosDrake"
+	}
+
+	for _, petId in ipairs(petOrder) do
+		local pet = PetConfig.PETS[petId]
+		if pet then
+			if activeFilter == "All" or pet.originEgg == activeFilter then
+				local isDiscovered = (petIndex[petId] == true)
+				local rarityColor = PetConfig.getRarityColor(pet.rarity)
+				local ownedCount = cachedData.OwnedPets and cachedData.OwnedPets[petId] or 0
+
+				local card = Instance.new("Frame")
+				card.BackgroundColor3 = if isDiscovered then Color3.fromRGB(24, 28, 40) else Color3.fromRGB(20, 22, 30)
+				card.BorderSizePixel = 0
+				card.Parent = scroll
+
+				local cCorner = Instance.new("UICorner")
+				cCorner.CornerRadius = UDim.new(0, 10)
+				cCorner.Parent = card
+
+				local cStroke = Instance.new("UIStroke")
+				cStroke.Color = if isDiscovered then rarityColor else Color3.fromRGB(45, 48, 60)
+				cStroke.Thickness = if isDiscovered then 1.5 else 1
+				cStroke.Transparency = if isDiscovered then 0.2 else 0.6
+				cStroke.Parent = card
+
+				-- Rarity Pill Badge
+				local rarityBadge = Instance.new("TextLabel")
+				rarityBadge.Size = UDim2.new(0.9, 0, 0, 18)
+				rarityBadge.Position = UDim2.new(0.05, 0, 0, 6)
+				rarityBadge.BackgroundColor3 = if isDiscovered then rarityColor else Color3.fromRGB(38, 40, 50)
+				rarityBadge.BackgroundTransparency = if isDiscovered then 0.75 else 0.5
+				rarityBadge.Text = if isDiscovered then pet.rarity:upper() else string.format("??? • %s", pet.rarity:upper())
+				rarityBadge.TextColor3 = if isDiscovered then rarityColor else Color3.fromRGB(150, 155, 170)
+				rarityBadge.Font = Enum.Font.GothamBlack
+				rarityBadge.TextSize = 10
+				rarityBadge.BorderSizePixel = 0
+				rarityBadge.Parent = card
+
+				local rbCorner = Instance.new("UICorner")
+				rbCorner.CornerRadius = UDim.new(0, 4)
+				rbCorner.Parent = rarityBadge
+
+				-- Pet Icon
+				local iconLabel = Instance.new("TextLabel")
+				iconLabel.Size = UDim2.new(1, 0, 0, 44)
+				iconLabel.Position = UDim2.new(0, 0, 0, 28)
+				iconLabel.BackgroundTransparency = 1
+				iconLabel.Text = if isDiscovered then pet.icon else "❓"
+				iconLabel.TextSize = if isDiscovered then 36 else 30
+				iconLabel.Parent = card
+
+				-- Pet Name
+				local nameLabel = Instance.new("TextLabel")
+				nameLabel.Size = UDim2.new(0.92, 0, 0, 20)
+				nameLabel.Position = UDim2.new(0.04, 0, 0, 74)
+				nameLabel.BackgroundTransparency = 1
+				nameLabel.Text = if isDiscovered then pet.name else "???"
+				nameLabel.TextColor3 = if isDiscovered then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(150, 155, 170)
+				nameLabel.Font = Enum.Font.GothamBold
+				nameLabel.TextSize = 12
+				nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+				nameLabel.Parent = card
+
+				-- Multipliers
+				local multLabel = Instance.new("TextLabel")
+				multLabel.Size = UDim2.new(0.92, 0, 0, 16)
+				multLabel.Position = UDim2.new(0.04, 0, 0, 96)
+				multLabel.BackgroundTransparency = 1
+				if isDiscovered then
+					multLabel.Text = string.format("+%.0f%% Cash • +%.0f%% Gems", (pet.cashMultiplier - 1) * 100, (pet.gemMultiplier - 1) * 100)
+					multLabel.TextColor3 = Color3.fromRGB(0, 230, 140)
+				else
+					multLabel.Text = "🔒 Multipliers Hidden"
+					multLabel.TextColor3 = Color3.fromRGB(120, 125, 140)
+				end
+				multLabel.Font = Enum.Font.GothamMedium
+				multLabel.TextSize = 10
+				multLabel.Parent = card
+
+				-- Egg Origin Source
+				local eggDef = PetConfig.EGGS[pet.originEgg]
+				local originName = if eggDef then eggDef.name else "Egg"
+				local originLabel = Instance.new("TextLabel")
+				originLabel.Size = UDim2.new(0.92, 0, 0, 16)
+				originLabel.Position = UDim2.new(0.04, 0, 0, 116)
+				originLabel.BackgroundTransparency = 1
+				originLabel.Text = "🥚 " .. originName
+				originLabel.TextColor3 = Color3.fromRGB(255, 215, 120)
+				originLabel.Font = Enum.Font.GothamMedium
+				originLabel.TextSize = 10
+				originLabel.Parent = card
+
+				-- Discovery status footer pill
+				local statusPill = Instance.new("TextLabel")
+				statusPill.Size = UDim2.new(0.9, 0, 0, 24)
+				statusPill.Position = UDim2.new(0.05, 0, 0, 142)
+				statusPill.BorderSizePixel = 0
+				statusPill.Font = Enum.Font.GothamBold
+				statusPill.TextSize = 10
+
+				local spCorner = Instance.new("UICorner")
+				spCorner.CornerRadius = UDim.new(0, 6)
+				spCorner.Parent = statusPill
+
+				if isDiscovered then
+					statusPill.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+					statusPill.Text = if ownedCount > 0 then string.format("✓ Owned (%dx)", ownedCount) else "✓ Discovered"
+					statusPill.TextColor3 = Color3.fromRGB(100, 255, 170)
+				else
+					statusPill.BackgroundColor3 = Color3.fromRGB(30, 32, 42)
+					statusPill.Text = "🔒 Undiscovered"
+					statusPill.TextColor3 = Color3.fromRGB(140, 145, 160)
+				end
+				statusPill.Parent = card
+			end
+		end
+	end
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -42, 0, 8)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	-- Animate In
 	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
 	}):Play()
@@ -3272,6 +3771,9 @@ function UIController.buildHUD()
 	createMenuButton("ShopBtn", "🛒 Shop", Color3.fromRGB(220, 100, 30), openEquipmentShopModal)
 	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
+	createMenuButton("IndexBtn", "📖 Pet Index", Color3.fromRGB(0, 165, 215), function()
+		openPetIndexModal()
+	end)
 	createMenuButton("TrailsBtn", "✨ Trails", Color3.fromRGB(160, 40, 220), openTrailsShopModal)
 	createMenuButton("TreeBtn", "🌳 Upgrades", Color3.fromRGB(0, 175, 120), openUpgradeTreeModal)
 	createMenuButton("VIPBtn", "👑 VIP Pass", Color3.fromRGB(190, 140, 15), openVIPModal)

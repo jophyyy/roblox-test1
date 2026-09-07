@@ -195,17 +195,16 @@ function MapService.buildMountains(folder: Folder)
 		end
 	end
 
-	-- 3 Perimeter Mountain Walls for Zone 1
-	createRidge(-210, 210, 210, 210, false)   -- South Wall
-	createRidge(-210, -210, -140, 210, true)  -- West Wall
-	createRidge(210, 210, -140, 210, true)    -- East Wall
+	-- Perimeter Mountain Walls for Zone 1 (West and East, leaving North open to Magma Caverns and South open to Cosmic Void)
+	createRidge(-210, -210, -140, 140, true)  -- West Wall
+	createRidge(210, 210, -140, 140, true)    -- East Wall
 
 	-- Corner Bastions (Grand diagonal corner peaks)
 	local corners = {
 		Vector3.new(-210, 0, -140),
 		Vector3.new(210, 0, -140),
-		Vector3.new(-210, 0, 210),
-		Vector3.new(210, 0, 210),
+		Vector3.new(-210, 0, 140),
+		Vector3.new(210, 0, 140),
 	}
 	for _, corner in ipairs(corners) do
 		createStudPart(mountainsFolder, "CornerPeakL", Vector3.new(50, 45, 50), CFrame.new(corner + Vector3.new(0, 22.5, 0)), rockDark)
@@ -237,10 +236,10 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 		createDungeonBrazier(pathsFolder, "PlazaBrazier_" .. bIdx, CFrame.new(offset))
 	end
 
-	-- 4 Main Exploration Pathways Leading from Plaza outward into the Mining Fields
+	-- 4 Main Exploration Pathways Leading from Plaza outward into the Exploration Zones
 	local pathTargets = {
 		{ name = "Path_North", target = Vector3.new(0, 0.2, -140) },
-		{ name = "Path_South", target = Vector3.new(0, 0.2, 60) },
+		{ name = "Path_South", target = Vector3.new(0, 0.2, 140) },
 		{ name = "Path_West", target = Vector3.new(-60, 0.2, 0) },
 		{ name = "Path_East", target = Vector3.new(60, 0.2, 0) },
 	}
@@ -267,6 +266,8 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 		Vector3.new(0, 0, -75),
 		Vector3.new(0, 0, -110),
 		Vector3.new(0, 0, 35),
+		Vector3.new(0, 0, 75),
+		Vector3.new(0, 0, 110),
 		Vector3.new(-35, 0, 0),
 		Vector3.new(35, 0, 0),
 	}
@@ -2075,9 +2076,13 @@ function MapService.init()
 	MapService.buildMagmaEggStand(mapFolder)
 	MapService.buildBossArena(mapFolder)
 	MapService.buildTrainingQuarry(mapFolder)
+	MapService.buildZone3Terrain(mapFolder)
+	MapService.buildCosmicGate(mapFolder)
+	MapService.buildCosmicEggStand(mapFolder)
+	MapService.buildCosmicBossArena(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)
-	print("✅ [MapService] Retro Roguelike Map Generation Complete! (Zone 1 Meadow & Zone 2 Magma Caverns Active)")
+	print("✅ [MapService] Retro Roguelike Map Generation Complete! (Zone 1 Meadow, Zone 2 Magma, Quarry & Zone 3 Cosmic Active)")
 end
 
 -- 9b. Mystical Trail Artisan Stall & NPC ("Zephyr")
@@ -2473,4 +2478,715 @@ function MapService.buildTrainingQuarry(folder: Folder)
 	print("⚡ [MapService] The Power Quarry built successfully with 6 Training Ores!")
 end
 
+-- Creates an authentic retro roguelike carved obsidian brazier with ethereal cosmic flame and starlight sparks
+local function createCosmicBrazier(parent: Instance, name: string, cf: CFrame): Model
+	local model = Instance.new("Model")
+	model.Name = name
+
+	local voidObsidian = Color3.fromRGB(22, 18, 34)
+	local astralTrim = Color3.fromRGB(46, 36, 68)
+	local runePurple = Color3.fromRGB(150, 50, 255)
+
+	-- Step 1: Broad Studded Stone Pedestal Base
+	createStudPart(model, "BrazierBase", Vector3.new(3.8, 0.8, 3.8), cf * CFrame.new(0, 0.4, 0), voidObsidian)
+
+	-- Step 2: Carved Column Pillar with Studs
+	createStudPart(model, "BrazierPillar", Vector3.new(2.4, 4.0, 2.4), cf * CFrame.new(0, 2.8, 0), astralTrim)
+
+	-- Step 3: Flared Basin Capital
+	createStudPart(model, "BrazierCapital", Vector3.new(4.2, 0.8, 4.2), cf * CFrame.new(0, 5.2, 0), voidObsidian)
+
+	-- Step 4: Dark Astral Silver Fire Bowl Rim
+	local bowl = createStudPart(model, "AstralBowl", Vector3.new(4.4, 0.6, 4.4), cf * CFrame.new(0, 5.8, 0), Color3.fromRGB(35, 30, 50))
+	bowl.Material = Enum.Material.Metal
+
+	-- Step 5: Glowing Rune Core inside bowl
+	local coals = createStudPart(model, "GlowingVoidCore", Vector3.new(3.2, 0.4, 3.2), cf * CFrame.new(0, 6.1, 0), runePurple)
+	coals.Material = Enum.Material.Neon
+
+	-- Ethereal Violet and Cyan Fire Particle Emitter
+	local attachment = Instance.new("Attachment")
+	attachment.Position = Vector3.new(0, 0.4, 0)
+	attachment.Parent = coals
+
+	local fire = Instance.new("ParticleEmitter")
+	fire.Name = "CosmicFire"
+	fire.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 160, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(140, 40, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 220, 255)),
+	})
+	fire.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.2),
+		NumberSequenceKeypoint.new(0.5, 1.8),
+		NumberSequenceKeypoint.new(1, 0.2),
+	})
+	fire.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0.7, 0.3),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	fire.LightEmission = 0.9
+	fire.LightInfluence = 0
+	fire.Lifetime = NumberRange.new(0.8, 1.3)
+	fire.Rate = 16
+	fire.Speed = NumberRange.new(3.5, 6.0)
+	fire.SpreadAngle = Vector2.new(10, 10)
+	fire.Acceleration = Vector3.new(0, 4, 0)
+	fire.Parent = attachment
+
+	-- Rising Glowing Stardust Sparks
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Name = "StardustSparks"
+	sparks.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 220, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 230, 255)),
+	})
+	sparks.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(1, 0.05),
+	})
+	sparks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	sparks.LightEmission = 1.0
+	sparks.Lifetime = NumberRange.new(1.2, 2.2)
+	sparks.Rate = 10
+	sparks.Speed = NumberRange.new(4.0, 7.5)
+	sparks.SpreadAngle = Vector2.new(15, 15)
+	sparks.Acceleration = Vector3.new(0, 3, 0)
+	sparks.Parent = attachment
+
+	-- Cosmic PointLight
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(160, 60, 255)
+	light.Brightness = 2.2
+	light.Range = 22
+	light.Shadows = true
+	light.Parent = coals
+
+	table.insert(brazierLights, light)
+	model.Parent = parent
+	return model
+end
+
+-- 17. Zone 3 Gate: Grand Cosmic Void Portal (At Z = 140)
+function MapService.buildCosmicGate(folder: Folder)
+	local gateModel = Instance.new("Model")
+	gateModel.Name = "CosmicGate"
+
+	local gateZ = 140
+	local obsidianDark = Color3.fromRGB(18, 14, 28)
+	local astralTrim = Color3.fromRGB(44, 34, 66)
+	local cosmicPurple = Color3.fromRGB(150, 60, 255)
+	local stardustCyan = Color3.fromRGB(0, 230, 255)
+	local astralGold = Color3.fromRGB(255, 215, 0)
+
+	-- Flanking Grand Gate Pillars (X = -16 and X = 16)
+	createStudPart(gateModel, "GatePillarL", Vector3.new(8, 30, 8), CFrame.new(-16, 15, gateZ), obsidianDark)
+	createStudPart(gateModel, "GatePillarR", Vector3.new(8, 30, 8), CFrame.new(16, 15, gateZ), obsidianDark)
+	createStudPart(gateModel, "PillarCapL", Vector3.new(10, 2.5, 10), CFrame.new(-16, 31.25, gateZ), astralTrim)
+	createStudPart(gateModel, "PillarCapR", Vector3.new(10, 2.5, 10), CFrame.new(16, 31.25, gateZ), astralTrim)
+
+	-- Glowing Astral Rune Insets on Pillars
+	local runeL = createStudPart(gateModel, "PillarRuneL", Vector3.new(2, 22, 8.2), CFrame.new(-16, 15, gateZ), cosmicPurple)
+	runeL.Material = Enum.Material.Neon
+	local runeR = createStudPart(gateModel, "PillarRuneR", Vector3.new(2, 22, 8.2), CFrame.new(16, 15, gateZ), cosmicPurple)
+	runeR.Material = Enum.Material.Neon
+
+	-- Spired Celestial Finials on Gate Towers
+	for s = -1, 1 do
+		local finL = createStudPart(gateModel, "SpireL", Vector3.new(1.8, 4.0, 1.8), CFrame.new(-16 + (s * 3.2), 34, gateZ), obsidianDark)
+		local finR = createStudPart(gateModel, "SpireR", Vector3.new(1.8, 4.0, 1.8), CFrame.new(16 + (s * 3.2), 34, gateZ), obsidianDark)
+		if s == 0 then
+			local orbL = createStudPart(gateModel, "OrbL", Vector3.new(2.2, 2.2, 2.2), CFrame.new(-16, 37, gateZ), stardustCyan)
+			orbL.Material = Enum.Material.Neon
+			local orbR = createStudPart(gateModel, "OrbR", Vector3.new(2.2, 2.2, 2.2), CFrame.new(16, 37, gateZ), stardustCyan)
+			orbR.Material = Enum.Material.Neon
+		end
+	end
+
+	-- Tower Cosmic Braziers on top
+	createCosmicBrazier(gateModel, "TowerBrazierL", CFrame.new(-16, 32.5, gateZ))
+	createCosmicBrazier(gateModel, "TowerBrazierR", CFrame.new(16, 32.5, gateZ))
+
+	-- Grand Overhead Obsidian Arch Lintel
+	createStudPart(gateModel, "GateArchBase", Vector3.new(40, 6, 8), CFrame.new(0, 28, gateZ), obsidianDark)
+	local archGlow = createStudPart(gateModel, "GateArchVein", Vector3.new(32, 1.2, 8.2), CFrame.new(0, 28, gateZ), cosmicPurple)
+	archGlow.Material = Enum.Material.Neon
+
+	-- Center Apex Star Crystal
+	local apexStar = createStudPart(gateModel, "ApexStar", Vector3.new(4, 4, 4), CFrame.new(0, 32, gateZ) * CFrame.Angles(0, 0, math.rad(45)), stardustCyan)
+	apexStar.Material = Enum.Material.Neon
+
+	-- Overhead Stone Keystone Plaque (Facing North toward approaching player at Z < 140)
+	local plaque = createStudPart(gateModel, "GatePlaque", Vector3.new(28, 4.5, 1.6), CFrame.new(0, 34, gateZ - 4.1), obsidianDark)
+	local plaqueGui = Instance.new("BillboardGui")
+	plaqueGui.Name = "CosmicGatePlaqueGui"
+	plaqueGui.Size = UDim2.new(0, 360, 0, 70)
+	plaqueGui.StudsOffset = Vector3.new(0, 0.5, -1)
+	plaqueGui.AlwaysOnTop = false
+	plaqueGui.MaxDistance = 85
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "🌌 ZONE 3: THE COSMIC VOID 🌌"
+	titleLabel.TextColor3 = Color3.fromRGB(180, 130, 255)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.15
+	titleLabel.Parent = plaqueGui
+
+	local reqLabel = Instance.new("TextLabel")
+	reqLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	reqLabel.Position = UDim2.new(0, 0, 0.55, 0)
+	reqLabel.BackgroundTransparency = 1
+	reqLabel.Text = "🔒 Requires 10 Rebirths to Enter"
+	reqLabel.TextColor3 = Color3.fromRGB(255, 100, 140)
+	reqLabel.Font = Enum.Font.GothamBold
+	reqLabel.TextSize = 14
+	reqLabel.TextStrokeTransparency = 0.2
+	reqLabel.Parent = plaqueGui
+	plaqueGui.Parent = plaque
+
+	-- PHYSICAL GATEKEEPING BARRIER PART (Toggled client-side based on Rebirths >= 10)
+	local barrier = Instance.new("Part")
+	barrier.Name = "CosmicGateBarrier"
+	barrier.Size = Vector3.new(24, 25, 2.5)
+	barrier.CFrame = CFrame.new(0, 12.5, gateZ)
+	barrier.Color = cosmicPurple
+	barrier.Material = Enum.Material.ForceField
+	barrier.Transparency = 0.35
+	barrier.Anchored = true
+	barrier.CanCollide = true -- Server default safe, ZoneClient sets to false if Rebirths >= 10
+	barrier.CanTouch = true
+	barrier.CastShadow = false
+	barrier.Parent = gateModel
+
+	-- Swirling Stardust Particle Veil on the barrier
+	local barrierAttach = Instance.new("Attachment")
+	barrierAttach.Parent = barrier
+
+	local barrierDust = Instance.new("ParticleEmitter")
+	barrierDust.Name = "BarrierStardust"
+	barrierDust.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 100, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 220, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(240, 240, 255)),
+	})
+	barrierDust.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
+		NumberSequenceKeypoint.new(0.5, 1.2),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	barrierDust.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(0.8, 0.6),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	barrierDust.Lifetime = NumberRange.new(1.5, 2.5)
+	barrierDust.Rate = 24
+	barrierDust.Speed = NumberRange.new(1.0, 3.0)
+	barrierDust.SpreadAngle = Vector2.new(45, 45)
+	barrierDust.LightEmission = 0.95
+	barrierDust.Parent = barrierAttach
+
+	gateModel.Parent = folder
+end
+
+-- 18. Zone 3: The Cosmic Void Terrain, Stardust Rivers, and Floating Asteroids
+function MapService.buildZone3Terrain(folder: Folder)
+	local zone3Folder = Instance.new("Folder")
+	zone3Folder.Name = "Zone3_CosmicVoid"
+	zone3Folder.Parent = folder
+
+	local voidObsidian = Color3.fromRGB(16, 14, 28)
+	local voidWall = Color3.fromRGB(28, 22, 42)
+	local voidPeak = Color3.fromRGB(44, 34, 62)
+	local nebulaCyan = Color3.fromRGB(0, 215, 255)
+	local nebulaMagenta = Color3.fromRGB(210, 45, 225)
+	local astralTrim = Color3.fromRGB(38, 30, 56)
+
+	-- 1. Main Cosmic Obsidian Base Ground (Y = -5 to 0.2, covers Z = 138 to 300)
+	createStudPart(
+		zone3Folder,
+		"CosmicGround",
+		Vector3.new(245, 10.2, 162),
+		CFrame.new(0, -4.9, 219),
+		voidObsidian
+	)
+
+	-- 2. Massive Dividing Wall Cliffs at Z = 140 (Connecting Outer Mountains to Cosmic Gate)
+	-- West Wall: X = -210 to -16 (Width 194)
+	createStudPart(zone3Folder, "DividingCliffWest3", Vector3.new(194, 28, 18), CFrame.new(-113, 14, 140), voidWall)
+	-- East Wall: X = 16 to 210 (Width 194)
+	createStudPart(zone3Folder, "DividingCliffEast3", Vector3.new(194, 28, 18), CFrame.new(113, 14, 140), voidWall)
+
+	-- Jagged crystal peaks on top of the dividing walls
+	for i = 1, 6 do
+		local xW = -28 - (i * 26)
+		local xE = 28 + (i * 26)
+		local h = 10 + ((i * 5) % 12)
+		createStudPart(zone3Folder, "CosmicCliffPeakW_" .. i, Vector3.new(20, h, 14), CFrame.new(xW, 28 + (h / 2), 140), voidPeak)
+		createStudPart(zone3Folder, "CosmicCliffPeakE_" .. i, Vector3.new(20, h, 14), CFrame.new(xE, 28 + (h / 2), 140), voidPeak)
+	end
+
+	-- 3. Perimeter Mountain Ridges Enclosing Zone 3
+	local function createCosmicRidge(startX: number, endX: number, startZ: number, endZ: number, isZAxis: boolean)
+		local count = 6
+		for i = 1, count do
+			local alpha = (i - 0.5) / count
+			local cx = startX + (endX - startX) * alpha
+			local cz = startZ + (endZ - startZ) * alpha
+
+			createStudPart(
+				zone3Folder,
+				"CosmicRockBase",
+				if isZAxis then Vector3.new(40, 22, 45) else Vector3.new(45, 22, 40),
+				CFrame.new(cx, 11, cz),
+				voidWall
+			)
+
+			local midOffset = if i % 2 == 0 then 4 else -4
+			createStudPart(
+				zone3Folder,
+				"CosmicRockMid",
+				if isZAxis then Vector3.new(30, 26, 36) else Vector3.new(36, 26, 30),
+				CFrame.new(cx + (if isZAxis then midOffset else 0), 24, cz + (if not isZAxis then midOffset else 0)),
+				voidPeak
+			)
+		end
+	end
+
+	-- South Wall of Cosmic Void at Z = 298
+	createCosmicRidge(-120, 120, 298, 298, false)
+	-- West Wall of Cosmic Void at X = -120 (Z = 140 to 298)
+	createCosmicRidge(-120, -120, 140, 298, true)
+	-- East Wall of Cosmic Void at X = 120 (Z = 140 to 298)
+	createCosmicRidge(120, 120, 140, 298, true)
+
+	-- Cosmic Corner Bastions
+	createStudPart(zone3Folder, "CosmicCornerL", Vector3.new(45, 55, 45), CFrame.new(-120, 27.5, 298), voidWall)
+	createStudPart(zone3Folder, "CosmicCornerR", Vector3.new(45, 55, 45), CFrame.new(120, 27.5, 298), voidWall)
+
+	-- 4. Central Cosmic Avenue leading from Gate (Z = 140) to Cosmic Egg (Z = 210)
+	createStudPart(zone3Folder, "CosmicAvenue", Vector3.new(12, 0.35, 68), CFrame.new(0, 0.25, 175), Color3.fromRGB(28, 24, 45))
+
+	-- Avenue Cosmic Braziers lighting the way
+	createCosmicBrazier(zone3Folder, "AvenueBrazier_1", CFrame.new(-8, 0.3, 165))
+	createCosmicBrazier(zone3Folder, "AvenueBrazier_2", CFrame.new(8, 0.3, 165))
+	createCosmicBrazier(zone3Folder, "AvenueBrazier_3", CFrame.new(-8, 0.3, 190))
+	createCosmicBrazier(zone3Folder, "AvenueBrazier_4", CFrame.new(8, 0.3, 190))
+
+	-- 5. Luminous Stardust / Nebula Rivers (Glowing channels cut through obsidian ground)
+	local riverSegments = {
+		{ name = "RiverWest_1", size = Vector3.new(80, 0.3, 10), cf = CFrame.new(-50, 0.15, 185) * CFrame.Angles(0, math.rad(-15), 0), col = nebulaCyan },
+		{ name = "RiverWest_2", size = Vector3.new(65, 0.3, 12), cf = CFrame.new(-55, 0.15, 225) * CFrame.Angles(0, math.rad(20), 0), col = nebulaMagenta },
+		{ name = "RiverEast_1", size = Vector3.new(80, 0.3, 10), cf = CFrame.new(50, 0.15, 185) * CFrame.Angles(0, math.rad(15), 0), col = nebulaMagenta },
+		{ name = "RiverEast_2", size = Vector3.new(65, 0.3, 12), cf = CFrame.new(55, 0.15, 225) * CFrame.Angles(0, math.rad(-20), 0), col = nebulaCyan },
+	}
+
+	for _, riv in ipairs(riverSegments) do
+		local rPart = createStudPart(zone3Folder, riv.name, riv.size, riv.cf, riv.col)
+		rPart.Material = Enum.Material.Neon
+		rPart.CanCollide = false
+
+		-- Rising nebula particles
+		local rAttach = Instance.new("Attachment")
+		rAttach.Position = Vector3.new(0, 0.2, 0)
+		rAttach.Parent = rPart
+
+		local mist = Instance.new("ParticleEmitter")
+		mist.Name = "NebulaMist"
+		mist.Color = ColorSequence.new(riv.col)
+		mist.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1.5),
+			NumberSequenceKeypoint.new(1, 3.5),
+		})
+		mist.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.4),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		mist.Lifetime = NumberRange.new(2.0, 3.5)
+		mist.Rate = 8
+		mist.Speed = NumberRange.new(1.0, 2.5)
+		mist.SpreadAngle = Vector2.new(25, 25)
+		mist.Acceleration = Vector3.new(0, 1.5, 0)
+		mist.LightEmission = 0.85
+		mist.Parent = rAttach
+	end
+
+	-- Astral Bridges over Nebula Channels (for smooth navigation)
+	createStudPart(zone3Folder, "AstralBridgeW", Vector3.new(22, 0.6, 12), CFrame.new(-50, 0.45, 215), astralTrim)
+	createStudPart(zone3Folder, "AstralBridgeE", Vector3.new(22, 0.6, 12), CFrame.new(50, 0.45, 215), astralTrim)
+
+	-- 6. Hexagonal Obsidian Spire Formations (Crystal Spire Clusters)
+	local spirePositions = {
+		Vector3.new(-75, 0.2, 170),
+		Vector3.new(-82, 0.2, 182),
+		Vector3.new(-70, 0.2, 260),
+		Vector3.new(-80, 0.2, 245),
+		Vector3.new(75, 0.2, 170),
+		Vector3.new(82, 0.2, 182),
+		Vector3.new(70, 0.2, 260),
+		Vector3.new(80, 0.2, 245),
+	}
+	for sIdx, sPos in ipairs(spirePositions) do
+		local height = 12 + ((sIdx * 4) % 16)
+		local spire = createStudPart(zone3Folder, "CosmicSpire_" .. sIdx, Vector3.new(5.5, height, 5.5), CFrame.new(sPos + Vector3.new(0, height / 2, 0)), voidWall)
+		-- Glowing crystal veins on spires
+		local vein = createStudPart(zone3Folder, "SpireVein_" .. sIdx, Vector3.new(1.4, height * 0.85, 1.4), CFrame.new(sPos + Vector3.new(0, height / 2, 0)), if sIdx % 2 == 0 then nebulaCyan else nebulaMagenta)
+		vein.Material = Enum.Material.Neon
+		vein.CanCollide = false
+	end
+
+	-- 7. Floating Asteroid Chunks Hovering Above the Void Floor
+	local asteroidConfigs = {
+		{ pos = Vector3.new(-45, 26, 170), size = Vector3.new(12, 8, 11), col = voidPeak },
+		{ pos = Vector3.new(50, 30, 175), size = Vector3.new(14, 9, 13), col = voidWall },
+		{ pos = Vector3.new(-60, 32, 240), size = Vector3.new(15, 10, 14), col = voidPeak },
+		{ pos = Vector3.new(55, 28, 245), size = Vector3.new(13, 8, 12), col = voidWall },
+		{ pos = Vector3.new(-30, 35, 275), size = Vector3.new(11, 7, 10), col = voidPeak },
+		{ pos = Vector3.new(35, 34, 270), size = Vector3.new(12, 8, 11), col = voidWall },
+	}
+	for aIdx, aConf in ipairs(asteroidConfigs) do
+		local rock = createStudPart(zone3Folder, "FloatingAsteroid_" .. aIdx, aConf.size, CFrame.new(aConf.pos) * CFrame.Angles(math.rad(aIdx * 25), math.rad(aIdx * 40), 0), aConf.col)
+		-- Embedded glowing starlight crystal on asteroid
+		local crystal = createStudPart(zone3Folder, "AsteroidCrystal_" .. aIdx, Vector3.new(2.5, 4.0, 2.5), CFrame.new(aConf.pos + Vector3.new(0, aConf.size.Y * 0.4, 0)), nebulaCyan)
+		crystal.Material = Enum.Material.Neon
+	end
+end
+
+-- 19. Zone 3: Ancient Cosmic Egg Hatching Shrine (At Z = 210)
+function MapService.buildCosmicEggStand(folder: Folder)
+	local eggShrine = Instance.new("Model")
+	eggShrine.Name = "CosmicEggHatchShrine"
+
+	-- Positioned prominently in the heart of The Cosmic Void at Z = 210
+	local shrineCF = CFrame.new(0, 0.4, 210)
+
+	local obsidian = Color3.fromRGB(18, 14, 28)
+	local astralMid = Color3.fromRGB(40, 30, 62)
+	local cosmicGold = Color3.fromRGB(255, 215, 0)
+	local astralPurple = Color3.fromRGB(160, 60, 255)
+	local stardustCyan = Color3.fromRGB(0, 230, 255)
+
+	-- 1. Tiered Carved Obsidian Pedestal Base
+	createStudPart(eggShrine, "CosmicPedestalBase", Vector3.new(8.0, 0.6, 8.0), shrineCF * CFrame.new(0, 0.3, 0), obsidian)
+	createStudPart(eggShrine, "CosmicPedestalStep", Vector3.new(6.4, 0.6, 6.4), shrineCF * CFrame.new(0, 0.9, 0), astralMid)
+
+	-- 2. Carved Central Pillar Column with Studs
+	createStudPart(eggShrine, "CosmicPedestalColumn", Vector3.new(4.0, 2.2, 4.0), shrineCF * CFrame.new(0, 2.3, 0), obsidian)
+
+	-- 3. Inscribed Celestial Gold Trim Capital
+	local capital = createStudPart(eggShrine, "CosmicPedestalCapital", Vector3.new(5.2, 0.6, 5.2), shrineCF * CFrame.new(0, 3.7, 0), cosmicGold)
+	capital.Material = Enum.Material.SmoothPlastic
+
+	-- 4. Obsidian Nest Bowl
+	local bowl = createStudPart(eggShrine, "CosmicNestBowl", Vector3.new(4.6, 0.4, 4.6), shrineCF * CFrame.new(0, 4.1, 0), Color3.fromRGB(14, 10, 22))
+	bowl.Material = Enum.Material.SmoothPlastic
+
+	-- 5. Glowing Astral Rune Core Disc beneath egg
+	local runeCore = createStudPart(eggShrine, "CosmicRuneCore", Vector3.new(3.4, 0.25, 3.4), shrineCF * CFrame.new(0, 4.35, 0), astralPurple)
+	runeCore.Material = Enum.Material.Neon
+
+	-- 6. 3D Physical Cosmic Egg
+	local eggPart = Instance.new("Part")
+	eggPart.Name = "CosmicEggPart"
+	eggPart.Size = Vector3.new(2.8, 3.8, 2.8)
+	eggPart.CFrame = shrineCF * CFrame.new(0, 6.0, 0)
+	eggPart.Color = Color3.fromRGB(25, 18, 55)
+	eggPart.Material = Enum.Material.SmoothPlastic
+	eggPart.Anchored = true
+	eggPart.CanCollide = true
+	eggPart.CanTouch = true
+	eggPart.Parent = eggShrine
+
+	local eggMesh = Instance.new("SpecialMesh")
+	eggMesh.MeshType = Enum.MeshType.Sphere
+	eggMesh.Scale = Vector3.new(1.0, 1.0, 1.0)
+	eggMesh.Parent = eggPart
+
+	-- Luminous Astral Neon Waist Band
+	local eggBand = Instance.new("Part")
+	eggBand.Name = "CosmicEggWaistBand"
+	eggBand.Size = Vector3.new(2.9, 0.4, 2.9)
+	eggBand.CFrame = shrineCF * CFrame.new(0, 5.85, 0)
+	eggBand.Color = stardustCyan
+	eggBand.Material = Enum.Material.Neon
+	eggBand.Anchored = true
+	eggBand.CanCollide = false
+	eggBand.Parent = eggShrine
+
+	local bandMesh = Instance.new("SpecialMesh")
+	bandMesh.MeshType = Enum.MeshType.Sphere
+	bandMesh.Scale = Vector3.new(1.03, 0.18, 1.03)
+	bandMesh.Parent = eggBand
+
+	-- Celestial PointLight radiating from the Cosmic Egg
+	local eggLight = Instance.new("PointLight")
+	eggLight.Color = Color3.fromRGB(160, 60, 255)
+	eggLight.Brightness = 2.8
+	eggLight.Range = 22
+	eggLight.Parent = eggPart
+
+	-- Swirling Stardust Particle Emitter
+	local eggAttach = Instance.new("Attachment")
+	eggAttach.Parent = eggPart
+
+	local eggSparks = Instance.new("ParticleEmitter")
+	eggSparks.Name = "CosmicEggSparks"
+	eggSparks.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 220, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(140, 40, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 230, 255)),
+	})
+	eggSparks.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(0.5, 0.7),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	eggSparks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	eggSparks.LightEmission = 0.95
+	eggSparks.Lifetime = NumberRange.new(1.2, 2.0)
+	eggSparks.Rate = 14
+	eggSparks.Speed = NumberRange.new(1.2, 3.2)
+	eggSparks.SpreadAngle = Vector2.new(30, 30)
+	eggSparks.Acceleration = Vector3.new(0, 3.5, 0)
+	eggSparks.Parent = eggAttach
+
+	-- Overhead Info Billboard (AlwaysOnTop = false)
+	local eggGui = Instance.new("BillboardGui")
+	eggGui.Name = "CosmicEggTitleGui"
+	eggGui.Size = UDim2.new(0, 300, 0, 78)
+	eggGui.StudsOffset = Vector3.new(0, 3.8, 0)
+	eggGui.AlwaysOnTop = false
+	eggGui.MaxDistance = 65
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "🌌 COSMIC EGG 🌌"
+	titleLabel.TextColor3 = Color3.fromRGB(180, 130, 255)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = eggGui
+
+	local costLabel = Instance.new("TextLabel")
+	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
+	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
+	costLabel.BackgroundTransparency = 1
+	costLabel.Text = "[E] 1x (25,000 💎)  •  [F] 3x (75,000 💎)"
+	costLabel.TextColor3 = stardustCyan
+	costLabel.Font = Enum.Font.GothamBold
+	costLabel.TextSize = 13
+	costLabel.TextStrokeTransparency = 0.2
+	costLabel.Parent = eggGui
+
+	local chancesLabel = Instance.new("TextLabel")
+	chancesLabel.Size = UDim2.new(1, 0, 0.28, 0)
+	chancesLabel.Position = UDim2.new(0, 0, 0.68, 0)
+	chancesLabel.BackgroundTransparency = 1
+	chancesLabel.Text = "🦊 Kitsune 60%  •  🐋 Leviathan 32%  •  🐲 Chronos 8%"
+	chancesLabel.TextColor3 = Color3.fromRGB(235, 230, 255)
+	chancesLabel.Font = Enum.Font.GothamMedium
+	chancesLabel.TextSize = 12
+	chancesLabel.TextStrokeTransparency = 0.25
+	chancesLabel.Parent = eggGui
+
+	eggGui.Parent = eggPart
+
+	-- Visual rune indicator pads on pedestal step
+	local padLeft = createStudPart(eggShrine, "HatchPad_Cosmic1x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(-3.0, 0.45, 1.2), astralPurple)
+	padLeft.Material = Enum.Material.Neon
+	padLeft.CanCollide = false
+
+	local padRight = createStudPart(eggShrine, "HatchPad_Cosmic3x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(3.0, 0.45, 1.2), stardustCyan)
+	padRight.Material = Enum.Material.Neon
+	padRight.CanCollide = false
+
+	-- Distinct Interaction Parts to place [E] on LEFT and [F] on RIGHT
+	local leftPart = Instance.new("Part")
+	leftPart.Name = "CosmicEggInteractionPart_Left"
+	leftPart.Size = Vector3.new(3.5, 5, 4.5)
+	leftPart.CFrame = shrineCF * CFrame.new(-3.0, 3.0, 1.0)
+	leftPart.Transparency = 1
+	leftPart.CanCollide = false
+	leftPart.CanTouch = true
+	leftPart.CanQuery = true
+	leftPart.Anchored = true
+	leftPart.Parent = eggShrine
+
+	local rightPart = Instance.new("Part")
+	rightPart.Name = "CosmicEggInteractionPart_Right"
+	rightPart.Size = Vector3.new(3.5, 5, 4.5)
+	rightPart.CFrame = shrineCF * CFrame.new(3.0, 3.0, 1.0)
+	rightPart.Transparency = 1
+	rightPart.CanCollide = false
+	rightPart.CanTouch = true
+	rightPart.CanQuery = true
+	rightPart.Anchored = true
+	rightPart.Parent = eggShrine
+
+	-- Prompt 1: [E] Hatch 1x
+	local prompt1 = Instance.new("ProximityPrompt")
+	prompt1.Name = "CosmicHatch1Prompt"
+	prompt1.ActionText = "Hatch 1x"
+	prompt1.ObjectText = "Cosmic Egg (25,000 💎)"
+	prompt1.KeyboardKeyCode = Enum.KeyCode.E
+	prompt1.HoldDuration = 0
+	prompt1.MaxActivationDistance = 14
+	prompt1.RequiresLineOfSight = false
+	prompt1.ClickablePrompt = true
+	prompt1.UIOffset = Vector2.new(-25, 0)
+	prompt1.Parent = leftPart
+
+	-- Prompt 2: [F] Hatch 3x
+	local prompt3 = Instance.new("ProximityPrompt")
+	prompt3.Name = "CosmicHatch3Prompt"
+	prompt3.ActionText = "Hatch 3x"
+	prompt3.ObjectText = "Cosmic Egg (75,000 💎)"
+	prompt3.KeyboardKeyCode = Enum.KeyCode.F
+	prompt3.HoldDuration = 0
+	prompt3.MaxActivationDistance = 14
+	prompt3.RequiresLineOfSight = false
+	prompt3.ClickablePrompt = true
+	prompt3.UIOffset = Vector2.new(25, 0)
+	prompt3.Parent = rightPart
+
+	local lastHatchTime: { [Player]: number } = {}
+	prompt1.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
+			return
+		end
+		lastHatchTime[player] = now
+
+		print("🌌 [MapService] ProximityPrompt 1x Cosmic Egg Hatch triggered by " .. player.Name)
+		local ok, petIds, errReason = PetService.hatchEgg(player, "CosmicEgg", 1)
+		if ok and petIds then
+			print("✨ [MapService] " .. player.Name .. " hatched Cosmic 1x: " .. tostring(petIds[1]))
+		else
+			print("⚠️ [MapService] Cosmic 1x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
+		end
+	end)
+
+	prompt3.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
+			return
+		end
+		lastHatchTime[player] = now
+
+		print("🌌 [MapService] ProximityPrompt 3x Cosmic Egg Hatch triggered by " .. player.Name)
+		local ok, petIds, errReason = PetService.hatchEgg(player, "CosmicEgg", 3)
+		if ok and petIds then
+			print("✨ [MapService] " .. player.Name .. " hatched Cosmic 3x: " .. table.concat(petIds, ", "))
+		else
+			print("⚠️ [MapService] Cosmic 3x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
+		end
+	end)
+
+	-- 4 Corner Cosmic Braziers around shrine
+	createCosmicBrazier(eggShrine, "CosmicBrazier_1", shrineCF * CFrame.new(-6, 0, -6))
+	createCosmicBrazier(eggShrine, "CosmicBrazier_2", shrineCF * CFrame.new(6, 0, -6))
+	createCosmicBrazier(eggShrine, "CosmicBrazier_3", shrineCF * CFrame.new(-6, 0, 6))
+	createCosmicBrazier(eggShrine, "CosmicBrazier_4", shrineCF * CFrame.new(6, 0, 6))
+
+	eggShrine.Parent = folder
+end
+
+-- 20. Zone 3: The Astral Citadel Boss Arena (At Z = 260)
+function MapService.buildCosmicBossArena(folder: Folder)
+	local arenaFolder = Instance.new("Folder")
+	arenaFolder.Name = "CosmicBossArena"
+	arenaFolder.Parent = folder
+
+	local center = Vector3.new(0, 0.4, 260)
+	local darkObsidian = Color3.fromRGB(18, 14, 28)
+	local astralTrim = Color3.fromRGB(44, 34, 66)
+	local cosmicPurple = Color3.fromRGB(150, 60, 255)
+	local stardustCyan = Color3.fromRGB(0, 230, 255)
+
+	-- 1. Main Octagonal/Stepped Battle Dais
+	createStudPart(arenaFolder, "ArenaBasePlinth", Vector3.new(64, 0.8, 64), CFrame.new(center + Vector3.new(0, 0.4, 0)), darkObsidian)
+	createStudPart(arenaFolder, "ArenaTierMid", Vector3.new(56, 0.5, 56), CFrame.new(center + Vector3.new(0, 0.85, 0)), astralTrim)
+
+	-- Astral Rune Ring Inset
+	local runeRing = createStudPart(arenaFolder, "RuneRing", Vector3.new(48, 0.2, 48), CFrame.new(center + Vector3.new(0, 1.1, 0)), cosmicPurple)
+	runeRing.Material = Enum.Material.Neon
+
+	-- Raised Center Boss Pentagram Pad
+	createStudPart(arenaFolder, "ArenaBossPad", Vector3.new(38, 0.35, 38), CFrame.new(center + Vector3.new(0, 1.25, 0)), darkObsidian)
+
+	-- Glowing Center Boss Spawn Sigil
+	local sigil = createStudPart(arenaFolder, "BossSigil", Vector3.new(18, 0.1, 18), CFrame.new(center + Vector3.new(0, 1.45, 0)), stardustCyan)
+	sigil.Material = Enum.Material.Neon
+	sigil.CanCollide = false
+
+	-- 2. 4 Grand Astral Citadel Towers at Arena Perimeter
+	local towerOffsets = {
+		Vector3.new(-24, 0, -24),
+		Vector3.new(24, 0, -24),
+		Vector3.new(-24, 0, 24),
+		Vector3.new(24, 0, 24),
+	}
+	for tIdx, tOff in ipairs(towerOffsets) do
+		local towerPos = center + tOff
+		createStudPart(arenaFolder, "CitadelPillar_" .. tIdx, Vector3.new(6, 20, 6), CFrame.new(towerPos + Vector3.new(0, 10, 0)), darkObsidian)
+		createStudPart(arenaFolder, "CitadelCap_" .. tIdx, Vector3.new(8, 2, 8), CFrame.new(towerPos + Vector3.new(0, 20.5, 0)), astralTrim)
+		createCosmicBrazier(arenaFolder, "CitadelBrazier_" .. tIdx, CFrame.new(towerPos + Vector3.new(0, 21.5, 0)))
+	end
+
+	-- 3. Entrance Portal Archway (Facing North at Z = 232)
+	local archZ = 232
+	createStudPart(arenaFolder, "ArenaGatePillarL", Vector3.new(6, 22, 6), CFrame.new(-12, 11, archZ), darkObsidian)
+	createStudPart(arenaFolder, "ArenaGatePillarR", Vector3.new(6, 22, 6), CFrame.new(12, 11, archZ), darkObsidian)
+	createStudPart(arenaFolder, "ArenaGateArch", Vector3.new(30, 4, 6), CFrame.new(0, 21, archZ), astralTrim)
+
+	-- Arch Glowing Sign (AlwaysOnTop = false)
+	local archSign = createStudPart(arenaFolder, "ArenaGateSign", Vector3.new(26, 4, 1.2), CFrame.new(0, 21, archZ - 3.1), darkObsidian)
+	local signGui = Instance.new("BillboardGui")
+	signGui.Name = "ArenaSignGui"
+	signGui.Size = UDim2.new(0, 360, 0, 65)
+	signGui.StudsOffset = Vector3.new(0, 0.4, -0.8)
+	signGui.AlwaysOnTop = false
+	signGui.MaxDistance = 85
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "⚔️ THE ASTRAL CITADEL ⚔️"
+	titleLabel.TextColor3 = Color3.fromRGB(180, 130, 255)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = signGui
+
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	subLabel.Position = UDim2.new(0, 0, 0.55, 0)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Text = "[WORLD BOSS: 250,000 HP • 40 DMG]"
+	subLabel.TextColor3 = stardustCyan
+	subLabel.Font = Enum.Font.GothamBold
+	subLabel.TextSize = 13
+	subLabel.TextStrokeTransparency = 0.2
+	subLabel.Parent = signGui
+	signGui.Parent = archSign
+
+	-- Road connecting Cosmic Egg (Z = 210) to Arena Gate (Z = 232)
+	createStudPart(arenaFolder, "ArenaAccessRoad", Vector3.new(10, 0.35, 22), CFrame.new(0, 0.25, 221), Color3.fromRGB(35, 28, 50))
+	createCosmicBrazier(arenaFolder, "RoadBrazierL", CFrame.new(-7, 0.3, 221))
+	createCosmicBrazier(arenaFolder, "RoadBrazierR", CFrame.new(7, 0.3, 221))
+end
+
 return MapService
+

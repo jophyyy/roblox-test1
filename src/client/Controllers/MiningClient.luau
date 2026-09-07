@@ -250,23 +250,28 @@ function MiningClient.performSwing()
 	AudioController.playSound("rbxassetid://9114223170", 0.5, 1.0 + (math.random() * 0.2 - 0.1))
 
 	-- Target Detection: Priority 1 - Boss (if clicking on Boss or within melee reach of Boss)
-	local isHittingBoss = false
+	local targetBossId: string? = nil
 	local bossFolder = Workspace:FindFirstChild("BossFolder")
-	local bossModel = bossFolder and bossFolder:FindFirstChild("InfernalMagmaGolem")
-	if bossModel and bossModel.PrimaryPart and rootPart then
-		local distToBoss = (bossModel.PrimaryPart.Position - rootPart.Position).Magnitude
-		if mouse.Target and mouse.Target:IsDescendantOf(bossModel) and distToBoss <= 22 then
-			isHittingBoss = true
-		elseif distToBoss <= 16 then
-			isHittingBoss = true
+	if bossFolder and rootPart then
+		for _, bModel in bossFolder:GetChildren() do
+			if bModel:IsA("Model") and bModel.PrimaryPart then
+				local distToBoss = (bModel.PrimaryPart.Position - rootPart.Position).Magnitude
+				if mouse.Target and mouse.Target:IsDescendantOf(bModel) and distToBoss <= 26 then
+					targetBossId = bModel.Name
+					break
+				elseif distToBoss <= 18 then
+					targetBossId = bModel.Name
+					break
+				end
+			end
 		end
 	end
 
-	if isHittingBoss then
+	if targetBossId then
 		task.spawn(function()
 			local attackBossFn = Remotes.getFunction("AttackBoss")
 			local ok, success, res = pcall(function()
-				return attackBossFn:InvokeServer()
+				return attackBossFn:InvokeServer(targetBossId)
 			end)
 			if ok and success and res and res.powerGained then
 				MiningClient.showPowerGainPopup(res.powerGained)

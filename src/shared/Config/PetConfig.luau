@@ -94,6 +94,33 @@ local PetConfig = {
 			color = Color3.fromRGB(255, 40, 0),
 			meshType = "Diamond",
 		},
+		AstralKitsune = {
+			id = "AstralKitsune",
+			name = "Astral Kitsune",
+			rarity = "Rare",
+			cashMultiplier = 25.0,
+			gemMultiplier = 15.0,
+			color = Color3.fromRGB(170, 110, 255),
+			meshType = "Sphere",
+		},
+		VoidLeviathan = {
+			id = "VoidLeviathan",
+			name = "Void Leviathan",
+			rarity = "Epic",
+			cashMultiplier = 60.0,
+			gemMultiplier = 40.0,
+			color = Color3.fromRGB(30, 25, 60),
+			meshType = "Block",
+		},
+		ChronosDrake = {
+			id = "ChronosDrake",
+			name = "Chronos Void Drake",
+			rarity = "Mythic",
+			cashMultiplier = 180.0,
+			gemMultiplier = 100.0,
+			color = Color3.fromRGB(0, 240, 255),
+			meshType = "Diamond",
+		},
 	} :: { [string]: PetDef },
 
 	EGGS = {
@@ -110,13 +137,13 @@ local PetConfig = {
 		},
 		CosmicEgg = {
 			id = "CosmicEgg",
-			name = "Cosmic Egg",
-			cost = 750,
+			name = "Cosmic Void Egg",
+			cost = 25000,
 			currency = "Gems",
 			dropPool = {
-				{ petId = "NeonBunny", weight = 60 },
-				{ petId = "InfernoDragon", weight = 35 },
-				{ petId = "VoidPhoenix", weight = 5 },
+				{ petId = "AstralKitsune", weight = 60 },
+				{ petId = "VoidLeviathan", weight = 35 },
+				{ petId = "ChronosDrake", weight = 5 },
 			},
 		},
 		MagmaEgg = {

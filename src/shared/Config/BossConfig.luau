@@ -27,21 +27,47 @@ export type BossDef = {
 
 local BossConfig = {}
 
-BossConfig.BOSS = {
-	id = "InfernalMagmaGolem",
-	name = "Infernal Magma Golem",
-	title = "World Boss • Zone 2",
-	maxHealth = 50000,
-	attackDamage = 25,
-	attackCooldown = 2.0,
-	attackRadius = 12,
-	aggroRadius = 45,
-	respawnTime = 20,
-	arenaCenter = Vector3.new(0, 0.4, -260),
-	arenaRadius = 50,
-	rewardCash = 1000000,
-	rewardGems = 5000,
-} :: BossDef
+BossConfig.BOSSES = {
+	InfernalMagmaGolem = {
+		id = "InfernalMagmaGolem",
+		name = "Infernal Magma Golem",
+		title = "World Boss • Zone 2",
+		maxHealth = 50000,
+		attackDamage = 25,
+		attackCooldown = 2.0,
+		attackRadius = 12,
+		aggroRadius = 45,
+		respawnTime = 20,
+		arenaCenter = Vector3.new(0, 0.4, -260),
+		arenaRadius = 50,
+		rewardCash = 1000000,
+		rewardGems = 5000,
+	},
+	VoidHarbinger = {
+		id = "VoidHarbinger",
+		name = "Void Harbinger Chronos",
+		title = "World Boss • Zone 3",
+		maxHealth = 250000,
+		attackDamage = 40,
+		attackCooldown = 2.0,
+		attackRadius = 15,
+		aggroRadius = 50,
+		respawnTime = 25,
+		arenaCenter = Vector3.new(0, 0.4, 260),
+		arenaRadius = 55,
+		rewardCash = 25000000,
+		rewardGems = 25000,
+	},
+} :: { [string]: BossDef }
+
+BossConfig.BOSS = BossConfig.BOSSES.InfernalMagmaGolem
+
+function BossConfig.getBoss(bossId: string?): BossDef
+	if bossId and BossConfig.BOSSES[bossId] then
+		return BossConfig.BOSSES[bossId]
+	end
+	return BossConfig.BOSSES.InfernalMagmaGolem
+end
 
 BossConfig.PICKAXE_TRAITS = {
 	shovel_rusty = {

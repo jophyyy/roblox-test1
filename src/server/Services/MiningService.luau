@@ -18,7 +18,7 @@ local PetService = require(script.Parent.PetService)
 export type ActiveOre = {
 	id: string,
 	oreType: string,
-	zone: "Zone1" | "Zone2",
+	zone: "Zone1" | "Zone2" | "Zone3",
 	maxHealth: number,
 	health: number,
 	model: Model,
@@ -341,8 +341,8 @@ function MiningService.init()
 	oresFolder.Name = "ActiveOres"
 	oresFolder.Parent = Workspace
 
-	-- 2. Populate Map with Initial Active Ores for Zone 1 and Zone 2
-	print(string.format("⛏️ [MiningService] Spawning initial %d Zone 1 ores and %d Zone 2 ores...", OreConfig.TOTAL_ACTIVE_ORES_ZONE1, OreConfig.TOTAL_ACTIVE_ORES_ZONE2))
+	-- 2. Populate Map with Initial Active Ores for Zone 1, Zone 2, and Zone 3
+	print(string.format("⛏️ [MiningService] Spawning initial %d Zone 1, %d Zone 2, and %d Zone 3 ores...", OreConfig.TOTAL_ACTIVE_ORES_ZONE1, OreConfig.TOTAL_ACTIVE_ORES_ZONE2, OreConfig.TOTAL_ACTIVE_ORES_ZONE3))
 	for _ = 1, OreConfig.TOTAL_ACTIVE_ORES_ZONE1 do
 		local oreDef = OreConfig.getRandomOreTypeForZone("Zone1")
 		local pos = OreConfig.getRandomPositionForZone("Zone1")
@@ -351,6 +351,11 @@ function MiningService.init()
 	for _ = 1, OreConfig.TOTAL_ACTIVE_ORES_ZONE2 do
 		local oreDef = OreConfig.getRandomOreTypeForZone("Zone2")
 		local pos = OreConfig.getRandomPositionForZone("Zone2")
+		MiningService.spawnOre(oreDef, pos)
+	end
+	for _ = 1, OreConfig.TOTAL_ACTIVE_ORES_ZONE3 do
+		local oreDef = OreConfig.getRandomOreTypeForZone("Zone3")
+		local pos = OreConfig.getRandomPositionForZone("Zone3")
 		MiningService.spawnOre(oreDef, pos)
 	end
 

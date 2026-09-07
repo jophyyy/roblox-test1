@@ -2,7 +2,7 @@
 export type OreDef = {
 	id: string,
 	name: string,
-	zone: "Zone1" | "Zone2",
+	zone: "Zone1" | "Zone2" | "Zone3",
 	maxHealth: number,
 	cashReward: number,
 	gemsReward: number,
@@ -17,6 +17,7 @@ local OreConfig = {}
 
 OreConfig.TOTAL_ACTIVE_ORES_ZONE1 = 20
 OreConfig.TOTAL_ACTIVE_ORES_ZONE2 = 16
+OreConfig.TOTAL_ACTIVE_ORES_ZONE3 = 16
 OreConfig.RESPAWN_DELAY = 1.8
 OreConfig.MAX_MINE_DISTANCE = 14
 
@@ -158,6 +159,62 @@ OreConfig.ORES = {
 		weight = 5,
 		icon = "👑",
 	},
+
+	-- ==========================================
+	-- ZONE 3: THE COSMIC VOID ORES
+	-- ==========================================
+	StarlightCrystal = {
+		id = "StarlightCrystal",
+		name = "Starlight Crystal",
+		zone = "Zone3",
+		maxHealth = 60000,
+		cashReward = 1800000,
+		gemsReward = 4000,
+		color = Color3.fromRGB(240, 240, 255),
+		accentColor = Color3.fromRGB(140, 220, 255),
+		scale = 1.8,
+		weight = 35,
+		icon = "🌟",
+	},
+	NebulaGeode = {
+		id = "NebulaGeode",
+		name = "Nebula Geode",
+		zone = "Zone3",
+		maxHealth = 150000,
+		cashReward = 6500000,
+		gemsReward = 12000,
+		color = Color3.fromRGB(160, 40, 240),
+		accentColor = Color3.fromRGB(255, 100, 255),
+		scale = 2.0,
+		weight = 25,
+		icon = "🌌",
+	},
+	AstralVoidstone = {
+		id = "AstralVoidstone",
+		name = "Astral Voidstone",
+		zone = "Zone3",
+		maxHealth = 350000,
+		cashReward = 22000000,
+		gemsReward = 35000,
+		color = Color3.fromRGB(40, 25, 60),
+		accentColor = Color3.fromRGB(0, 240, 255),
+		scale = 2.2,
+		weight = 15,
+		icon = "🪐",
+	},
+	DarkMatterCore = {
+		id = "DarkMatterCore",
+		name = "Dark Matter Core",
+		zone = "Zone3",
+		maxHealth = 800000,
+		cashReward = 75000000,
+		gemsReward = 100000,
+		color = Color3.fromRGB(15, 10, 25),
+		accentColor = Color3.fromRGB(255, 215, 0),
+		scale = 2.5,
+		weight = 5,
+		icon = "💠",
+	},
 } :: { [string]: OreDef }
 
 -- Spawning boundaries for Zone 1 (Meadow quadrants surrounding plaza)
@@ -174,7 +231,13 @@ OreConfig.SPAWN_ZONES_2 = {
 	{ minX = 20, maxX = 100, minZ = -275, maxZ = -165 },
 }
 
-function OreConfig.getRandomOreTypeForZone(zone: "Zone1" | "Zone2"): OreDef
+-- Spawning boundaries for Zone 3 (The Cosmic Void: Z = 165 to 275)
+OreConfig.SPAWN_ZONES_3 = {
+	{ minX = -100, maxX = -20, minZ = 165, maxZ = 275 },
+	{ minX = 20, maxX = 100, minZ = 165, maxZ = 275 },
+}
+
+function OreConfig.getRandomOreTypeForZone(zone: "Zone1" | "Zone2" | "Zone3"): OreDef
 	local pool = {}
 	local totalWeight = 0
 	for _, ore in OreConfig.ORES do
@@ -193,11 +256,22 @@ function OreConfig.getRandomOreTypeForZone(zone: "Zone1" | "Zone2"): OreDef
 		end
 	end
 
-	return if zone == "Zone2" then OreConfig.ORES.MagmaBasalt else OreConfig.ORES.Stone
+	if zone == "Zone3" then
+		return OreConfig.ORES.StarlightCrystal
+	elseif zone == "Zone2" then
+		return OreConfig.ORES.MagmaBasalt
+	else
+		return OreConfig.ORES.Stone
+	end
 end
 
-function OreConfig.getRandomPositionForZone(zone: "Zone1" | "Zone2"): Vector3
-	if zone == "Zone2" then
+function OreConfig.getRandomPositionForZone(zone: "Zone1" | "Zone2" | "Zone3"): Vector3
+	if zone == "Zone3" then
+		local bounds = OreConfig.SPAWN_ZONES_3[math.random(1, #OreConfig.SPAWN_ZONES_3)]
+		local x = math.random(bounds.minX, bounds.maxX)
+		local z = math.random(bounds.minZ, bounds.maxZ)
+		return Vector3.new(x, 0.4, z)
+	elseif zone == "Zone2" then
 		local bounds = OreConfig.SPAWN_ZONES_2[math.random(1, #OreConfig.SPAWN_ZONES_2)]
 		local x = math.random(bounds.minX, bounds.maxX)
 		local z = math.random(bounds.minZ, bounds.maxZ)

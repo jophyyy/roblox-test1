@@ -35,6 +35,14 @@ ZoneConfig.ZONES = {
 		icon = "⚡",
 		bounds = { minX = 68, maxX = 148, minZ = -45, maxZ = 45 },
 	},
+	Zone3 = {
+		id = "Zone3",
+		name = "The Cosmic Void",
+		rebirthRequired = 10,
+		color = Color3.fromRGB(190, 60, 255),
+		icon = "🌌",
+		bounds = { minX = -120, maxX = 120, minZ = 140, maxZ = 300 },
+	},
 } :: { [string]: ZoneDef }
 
 return ZoneConfig

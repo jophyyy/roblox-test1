@@ -14,8 +14,12 @@ local player = Players.LocalPlayer
 local cachedRebirths = 0
 local currentZoneId = "Zone1"
 local lastWarnTime = 0
-local barrierPart: BasePart? = nil
-local barrierTouchConn: RBXScriptConnection? = nil
+
+local magmaBarrierPart: BasePart? = nil
+local magmaBarrierTouchConn: RBXScriptConnection? = nil
+
+local cosmicBarrierPart: BasePart? = nil
+local cosmicBarrierTouchConn: RBXScriptConnection? = nil
 
 -- UI References
 local toastGui: ScreenGui
@@ -64,7 +68,7 @@ local function buildZoneUI()
 	-- 1. Gate Lockout Warning Banner (Floating Top-Center Pill)
 	warningFrame = Instance.new("Frame")
 	warningFrame.Name = "GateWarningBanner"
-	warningFrame.Size = UDim2.new(0, 480, 0, 52)
+	warningFrame.Size = UDim2.new(0, 520, 0, 52)
 	warningFrame.Position = UDim2.new(0.5, 0, -0.15, 0) -- Hidden above screen
 	warningFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	warningFrame.BackgroundColor3 = Color3.fromRGB(28, 14, 16)
@@ -85,17 +89,17 @@ local function buildZoneUI()
 	warningText.Size = UDim2.new(1, -20, 1, 0)
 	warningText.Position = UDim2.new(0, 10, 0, 0)
 	warningText.BackgroundTransparency = 1
-	warningText.Text = "🔒 Requires 5 Rebirths to Enter Magma Caverns!"
+	warningText.Text = "🔒 Requires 5 Rebirths to Enter!"
 	warningText.TextColor3 = Color3.fromRGB(255, 220, 220)
 	warningText.Font = Enum.Font.GothamBlack
-	warningText.TextSize = 16
+	warningText.TextSize = 15
 	warningText.TextStrokeTransparency = 0.2
 	warningText.Parent = warningFrame
 
 	-- 2. Cinematic Zone Transition Banner (Sliding Card at Upper Third)
 	zoneBannerFrame = Instance.new("Frame")
 	zoneBannerFrame.Name = "ZoneTransitionBanner"
-	zoneBannerFrame.Size = UDim2.new(0, 380, 0, 72)
+	zoneBannerFrame.Size = UDim2.new(0, 400, 0, 72)
 	zoneBannerFrame.Position = UDim2.new(0.5, 0, 0.15, 0)
 	zoneBannerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	zoneBannerFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
@@ -121,7 +125,7 @@ local function buildZoneUI()
 	zoneTitleText.Text = "🌋 ENTERING: MAGMA CAVERNS"
 	zoneTitleText.TextColor3 = Color3.fromRGB(255, 140, 30)
 	zoneTitleText.Font = Enum.Font.GothamBlack
-	zoneTitleText.TextSize = 20
+	zoneTitleText.TextSize = 19
 	zoneTitleText.TextTransparency = 1
 	zoneTitleText.TextStrokeTransparency = 1
 	zoneTitleText.Parent = zoneBannerFrame
@@ -140,11 +144,11 @@ local function buildZoneUI()
 	zoneSubText.Parent = zoneBannerFrame
 end
 
--- Displays warning when touching the locked Magma Gate
+-- Displays warning when touching a locked Gate
 local isWarningShowing = false
-function ZoneClient.showGateLockWarning()
+function ZoneClient.showGateLockWarning(zoneId: string?)
 	local now = os.clock()
-	if isWarningShowing or (now - lastWarnTime) < 2.2 then
+	if isWarningShowing or (now - lastWarnTime) < 2.0 then
 		return
 	end
 	lastWarnTime = now
@@ -152,8 +156,11 @@ function ZoneClient.showGateLockWarning()
 
 	playWarningSound()
 
-	local reqRebirths = ZoneConfig.ZONES.Zone2.rebirthRequired
-	warningText.Text = string.format("🔒 Requires %d Rebirths to Enter Magma Caverns! (You have %d/%d)", reqRebirths, cachedRebirths, reqRebirths)
+	local targetZone = zoneId or "Zone2"
+	local reqRebirths = if targetZone == "Zone3" then ZoneConfig.ZONES.Zone3.rebirthRequired else ZoneConfig.ZONES.Zone2.rebirthRequired
+	local zoneName = if targetZone == "Zone3" then "The Cosmic Void" else "Magma Caverns"
+
+	warningText.Text = string.format("🔒 Requires %d Rebirths to Enter %s! (You have %d/%d)", reqRebirths, zoneName, cachedRebirths, reqRebirths)
 
 	-- Shake & slide into view at top-center (Y = 0.11)
 	warningFrame.Position = UDim2.new(0.5, 0, -0.15, 0)
@@ -176,7 +183,6 @@ function ZoneClient.showGateLockWarning()
 end
 
 -- Displays cinematic transition banner when crossing zone threshold
-local isTransitionShowing = false
 function ZoneClient.showZoneTransition(zoneId: string)
 	local zone = ZoneConfig.ZONES[zoneId]
 	if not zone then return end
@@ -187,6 +193,8 @@ function ZoneClient.showZoneTransition(zoneId: string)
 	zoneTitleText.TextColor3 = zone.color
 	if zoneId == "Zone2" then
 		zoneSubText.Text = "Zone 2 • Magma & Molten Ores (5+ Rebirths)"
+	elseif zoneId == "Zone3" then
+		zoneSubText.Text = "Zone 3 • Cosmic Void & Astral Ores (10+ Rebirths)"
 	elseif zoneId == "TrainingQuarry" then
 		zoneSubText.Text = "Rebirth Training Grounds • Multi-Tier Power Ores"
 	else
@@ -224,58 +232,99 @@ function ZoneClient.showZoneTransition(zoneId: string)
 	end)
 end
 
--- Searches for MagmaGateBarrier in Workspace and configures collision
-local function setupBarrier()
-	if barrierTouchConn then
-		barrierTouchConn:Disconnect()
-		barrierTouchConn = nil
+-- Searches for Gate Barriers in Workspace and configures collision & touched handlers
+local function setupBarriers()
+	if magmaBarrierTouchConn then
+		magmaBarrierTouchConn:Disconnect()
+		magmaBarrierTouchConn = nil
+	end
+	if cosmicBarrierTouchConn then
+		cosmicBarrierTouchConn:Disconnect()
+		cosmicBarrierTouchConn = nil
 	end
 
 	local map = Workspace:FindFirstChild("Map")
 	if not map then return end
 
+	-- 1. Magma Gate Barrier (Zone 2, Z = -140)
 	local magmaGate = map:FindFirstChild("MagmaGate")
-	if not magmaGate then return end
+	if magmaGate then
+		local barrier = magmaGate:FindFirstChild("MagmaGateBarrier") :: BasePart?
+		if barrier then
+			magmaBarrierPart = barrier
+			magmaBarrierTouchConn = barrier.Touched:Connect(function(hit)
+				local char = hit.Parent
+				if not char or char ~= player.Character then return end
 
-	local barrier = magmaGate:FindFirstChild("MagmaGateBarrier") :: BasePart?
-	if not barrier then return end
+				local reqRebirths = ZoneConfig.ZONES.Zone2.rebirthRequired
+				if cachedRebirths < reqRebirths then
+					ZoneClient.showGateLockWarning("Zone2")
 
-	barrierPart = barrier
-
-	-- Update collision state
-	ZoneClient.updateRebirths(cachedRebirths)
-
-	-- Connect touch detection for feedback when locked
-	barrierTouchConn = barrier.Touched:Connect(function(hit)
-		local char = hit.Parent
-		if not char or char ~= player.Character then return end
-
-		local reqRebirths = ZoneConfig.ZONES.Zone2.rebirthRequired
-		if cachedRebirths < reqRebirths then
-			ZoneClient.showGateLockWarning()
-
-			-- Gentle bounce back so player cannot clip through
-			local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
-			if root and root.Position.Z < -135 then
-				root.CFrame = CFrame.new(root.Position.X, root.Position.Y, -135)
-			end
+					-- Gentle bounce back
+					local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+					if root and root.Position.Z < -135 then
+						root.CFrame = CFrame.new(root.Position.X, root.Position.Y, -135)
+					end
+				end
+			end)
 		end
-	end)
+	end
+
+	-- 2. Cosmic Gate Barrier (Zone 3, Z = 140)
+	local cosmicGate = map:FindFirstChild("CosmicGate")
+	if cosmicGate then
+		local barrier = cosmicGate:FindFirstChild("CosmicGateBarrier") :: BasePart?
+		if barrier then
+			cosmicBarrierPart = barrier
+			cosmicBarrierTouchConn = barrier.Touched:Connect(function(hit)
+				local char = hit.Parent
+				if not char or char ~= player.Character then return end
+
+				local reqRebirths = ZoneConfig.ZONES.Zone3.rebirthRequired
+				if cachedRebirths < reqRebirths then
+					ZoneClient.showGateLockWarning("Zone3")
+
+					-- Gentle bounce back
+					local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+					if root and root.Position.Z > 135 then
+						root.CFrame = CFrame.new(root.Position.X, root.Position.Y, 135)
+					end
+				end
+			end)
+		end
+	end
+
+	-- Update collision states
+	ZoneClient.updateRebirths(cachedRebirths)
 end
 
--- Updates client Rebirth count and gate barrier CanCollide
+-- Updates client Rebirth count and gate barriers CanCollide
 function ZoneClient.updateRebirths(rebirths: number)
 	cachedRebirths = rebirths
-	local reqRebirths = ZoneConfig.ZONES.Zone2.rebirthRequired
-	local isUnlocked = (cachedRebirths >= reqRebirths)
 
-	if barrierPart and barrierPart.Parent then
-		if isUnlocked then
-			barrierPart.CanCollide = false
-			barrierPart.Transparency = 0.82
+	-- Magma Gate (5 Rebirths)
+	local reqMagma = ZoneConfig.ZONES.Zone2.rebirthRequired
+	local isMagmaUnlocked = (cachedRebirths >= reqMagma)
+	if magmaBarrierPart and magmaBarrierPart.Parent then
+		if isMagmaUnlocked then
+			magmaBarrierPart.CanCollide = false
+			magmaBarrierPart.Transparency = 0.82
 		else
-			barrierPart.CanCollide = true
-			barrierPart.Transparency = 0.35
+			magmaBarrierPart.CanCollide = true
+			magmaBarrierPart.Transparency = 0.35
+		end
+	end
+
+	-- Cosmic Gate (10 Rebirths)
+	local reqCosmic = ZoneConfig.ZONES.Zone3.rebirthRequired
+	local isCosmicUnlocked = (cachedRebirths >= reqCosmic)
+	if cosmicBarrierPart and cosmicBarrierPart.Parent then
+		if isCosmicUnlocked then
+			cosmicBarrierPart.CanCollide = false
+			cosmicBarrierPart.Transparency = 0.82
+		else
+			cosmicBarrierPart.CanCollide = true
+			cosmicBarrierPart.Transparency = 0.35
 		end
 	end
 end
@@ -285,12 +334,12 @@ function ZoneClient.init()
 
 	buildZoneUI()
 
-	-- Try locating barrier
+	-- Try locating barriers
 	task.spawn(function()
 		local attempts = 0
-		while attempts < 30 and not barrierPart do
-			setupBarrier()
-			if barrierPart then break end
+		while attempts < 30 and (not magmaBarrierPart or not cosmicBarrierPart) do
+			setupBarriers()
+			if magmaBarrierPart and cosmicBarrierPart then break end
 			task.wait(0.5)
 			attempts += 1
 		end
@@ -300,7 +349,7 @@ function ZoneClient.init()
 	Workspace.ChildAdded:Connect(function(child)
 		if child.Name == "Map" then
 			task.wait(0.2)
-			setupBarrier()
+			setupBarriers()
 		end
 	end)
 
@@ -335,16 +384,20 @@ function ZoneClient.init()
 			task.wait(0.35)
 			local char = player.Character
 			if char and char:FindFirstChild("HumanoidRootPart") then
+				local rootPart = char:FindFirstChild("HumanoidRootPart") :: BasePart
 				local xPos = rootPart.Position.X
 				local zPos = rootPart.Position.Z
 
 				if zPos <= -145 and currentZoneId ~= "Zone2" then
 					currentZoneId = "Zone2"
 					ZoneClient.showZoneTransition("Zone2")
+				elseif zPos >= 145 and currentZoneId ~= "Zone3" then
+					currentZoneId = "Zone3"
+					ZoneClient.showZoneTransition("Zone3")
 				elseif xPos >= 70 and math.abs(zPos) <= 45 and currentZoneId ~= "TrainingQuarry" then
 					currentZoneId = "TrainingQuarry"
 					ZoneClient.showZoneTransition("TrainingQuarry")
-				elseif zPos >= -133 and xPos < 65 and currentZoneId ~= "Zone1" then
+				elseif zPos >= -133 and zPos <= 133 and xPos < 65 and currentZoneId ~= "Zone1" then
 					currentZoneId = "Zone1"
 					ZoneClient.showZoneTransition("Zone1")
 				end
@@ -352,7 +405,7 @@ function ZoneClient.init()
 		end
 	end)
 
-	print("✅ [ZoneClient] Initialized! Gatekeeping (5 Rebirths) and Zone Transitions Active.")
+	print("✅ [ZoneClient] Initialized! Gatekeeping (5 & 10 Rebirths) and Zone Transitions Active.")
 end
 
 return ZoneClient

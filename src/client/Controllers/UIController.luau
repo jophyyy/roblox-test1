@@ -2223,7 +2223,7 @@ local function openUpgradeTreeModal()
 	subTitle.Size = UDim2.new(0.45, 0, 0, 18)
 	subTitle.Position = UDim2.new(0, 24, 0, 42)
 	subTitle.BackgroundTransparency = 1
-	subTitle.Text = "Unlock primal disciplines to awaken permanent buffs across all realms"
+	subTitle.Text = "Awaken the central core to expand outward into ancient talent branches"
 	subTitle.TextColor3 = Color3.fromRGB(165, 180, 205)
 	subTitle.Font = Enum.Font.Antique
 	subTitle.TextSize = 13
@@ -2275,18 +2275,17 @@ local function openUpgradeTreeModal()
 	-- Scrollable Canvas for Tree
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "TreeScroll"
-	scroll.Size = UDim2.new(1, -40, 1, -85)
-	scroll.Position = UDim2.new(0, 20, 0, 78)
+	scroll.Size = UDim2.new(1, -20, 1, -85)
+	scroll.Position = UDim2.new(0, 10, 0, 78)
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
 	scroll.ScrollBarThickness = 6
-	scroll.CanvasSize = UDim2.new(0, 0, 0, 740)
 	scroll.ZIndex = 41
 	scroll.Parent = modal
 
 	local treeCanvas = Instance.new("Frame")
 	treeCanvas.Name = "TreeCanvas"
-	treeCanvas.Size = UDim2.new(1, 0, 0, 720)
+	treeCanvas.Size = UDim2.new(1, 0, 1, 0)
 	treeCanvas.BackgroundTransparency = 1
 	treeCanvas.ZIndex = 42
 	treeCanvas.Parent = scroll
@@ -2310,7 +2309,7 @@ local function openUpgradeTreeModal()
 		wire.BackgroundColor3 = color
 		wire.BackgroundTransparency = transparency
 		wire.BorderSizePixel = 0
-		wire.ZIndex = 43
+		wire.ZIndex = 42
 		wire.Parent = treeCanvas
 
 		local wCorner = Instance.new("UICorner")
@@ -2319,297 +2318,326 @@ local function openUpgradeTreeModal()
 		return wire
 	end
 
+	-- Hexagon construction helper
+	local function drawHexagon(
+		centerPos: Vector2,
+		radius: number,
+		node: SkillTreeConfig.SkillNode,
+		isUnlocked: boolean,
+		canUnlock: boolean,
+		isBase: boolean,
+		onUnlock: () -> ()
+	): Frame
+		local hexHolder = Instance.new("Frame")
+		hexHolder.Name = "Hex_" .. node.id
+		hexHolder.Size = UDim2.new(0, radius * 2, 0, radius * 2)
+		hexHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+		hexHolder.Position = UDim2.new(0, centerPos.X, 0, centerPos.Y)
+		hexHolder.BackgroundTransparency = 1
+		hexHolder.BorderSizePixel = 0
+		hexHolder.ZIndex = 44
+		hexHolder.Parent = treeCanvas
+
+		-- 1. Filled Hexagon Background (3 overlapping rotated rectangles at 0°, 60°, 120°)
+		local rectW = radius * 1.732
+		local rectH = radius
+		local fillColor = if isUnlocked
+			then node.color:Lerp(Color3.fromRGB(16, 20, 30), 0.65)
+			else Color3.fromRGB(22, 26, 38)
+
+		for _, rot in ipairs({ 0, 60, 120 }) do
+			local rFrame = Instance.new("Frame")
+			rFrame.Name = "HexFill_" .. rot
+			rFrame.Size = UDim2.new(0, rectW, 0, rectH)
+			rFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+			rFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+			rFrame.Rotation = rot
+			rFrame.BackgroundColor3 = fillColor
+			rFrame.BorderSizePixel = 0
+			rFrame.ZIndex = 44
+			rFrame.Parent = hexHolder
+		end
+
+		-- 2. Hexagonal Glowing Border (6 perimeter line segments)
+		local rad60 = math.rad(60)
+		local borderColor = if isUnlocked then node.color else node.color:Lerp(Color3.fromRGB(255, 255, 255), 0.25)
+		local borderThickness = if isUnlocked then 3.5 else 2.5
+
+		for i = 0, 5 do
+			local a1 = i * rad60
+			local a2 = (i + 1) * rad60
+			local v1 = Vector2.new(radius * math.cos(a1), radius * math.sin(a1))
+			local v2 = Vector2.new(radius * math.cos(a2), radius * math.sin(a2))
+			local mid = (v1 + v2) / 2
+			local delta = v2 - v1
+			local length = delta.Magnitude
+			local angle = math.deg(math.atan2(delta.Y, delta.X))
+
+			local edge = Instance.new("Frame")
+			edge.Name = "Edge_" .. i
+			edge.AnchorPoint = Vector2.new(0.5, 0.5)
+			edge.Position = UDim2.new(0.5, mid.X, 0.5, mid.Y)
+			edge.Size = UDim2.new(0, length + 2, 0, borderThickness)
+			edge.Rotation = angle
+			edge.BackgroundColor3 = borderColor
+			edge.BorderSizePixel = 0
+			edge.ZIndex = 45
+			edge.Parent = hexHolder
+
+			local eCorner = Instance.new("UICorner")
+			eCorner.CornerRadius = UDim.new(1, 0)
+			eCorner.Parent = edge
+		end
+
+		-- 3. Center Content inside Hexagon
+		local content = Instance.new("Frame")
+		content.Name = "Content"
+		content.Size = UDim2.new(0, radius * 1.5, 0, radius * 1.5)
+		content.AnchorPoint = Vector2.new(0.5, 0.5)
+		content.Position = UDim2.new(0.5, 0, 0.5, 0)
+		content.BackgroundTransparency = 1
+		content.ZIndex = 46
+		content.Parent = hexHolder
+
+		-- Icon
+		local iconLbl = Instance.new("TextLabel")
+		iconLbl.Size = UDim2.new(1, 0, 0, if isBase then 30 else 24)
+		iconLbl.Position = UDim2.new(0, 0, 0, if isBase then 4 else 6)
+		iconLbl.BackgroundTransparency = 1
+		iconLbl.Text = node.icon
+		iconLbl.TextSize = if isBase then 26 else 22
+		iconLbl.ZIndex = 46
+		iconLbl.Parent = content
+
+		-- Name
+		local nameLbl = Instance.new("TextLabel")
+		nameLbl.Size = UDim2.new(1, 0, 0, 16)
+		nameLbl.Position = UDim2.new(0, 0, 0, if isBase then 34 else 30)
+		nameLbl.BackgroundTransparency = 1
+		nameLbl.Text = node.name
+		nameLbl.TextColor3 = if isUnlocked then Color3.fromRGB(255, 255, 255) else node.color
+		nameLbl.Font = Enum.Font.Antique
+		nameLbl.TextSize = if isBase then 13 else 11
+		nameLbl.ZIndex = 46
+		nameLbl.Parent = content
+
+		-- Perk summary
+		local perkLbl = Instance.new("TextLabel")
+		perkLbl.Size = UDim2.new(1, 0, 0, 14)
+		perkLbl.Position = UDim2.new(0, 0, 0, if isBase then 50 else 46)
+		perkLbl.BackgroundTransparency = 1
+		perkLbl.TextColor3 = Color3.fromRGB(190, 215, 240)
+		perkLbl.Font = Enum.Font.Antique
+		perkLbl.TextSize = 10
+		perkLbl.ZIndex = 46
+
+		if node.branch == "Power" then
+			local mineBonus = math.floor((node.miningPowerMult - 1.0) * 100 + 0.5)
+			local bossBonus = math.floor((node.bossMultiplier - 1.0) * 100 + 0.5)
+			perkLbl.Text = string.format("+%d%% Mine • +%d%% Boss", mineBonus, bossBonus)
+		elseif node.branch == "Speed" then
+			perkLbl.Text = string.format("+%d Walk • +%d Sprint", node.speedBonus, math.floor(node.speedBonus * 1.5))
+		elseif node.branch == "Luck" then
+			local cashBonus = math.floor((node.cashMultiplier - 1.0) * 100 + 0.5)
+			perkLbl.Text = string.format("+%d 💎 • +%d%% Cash", node.bonusGems, cashBonus)
+		else
+			perkLbl.Text = "+10% All • +2 Speed"
+		end
+		perkLbl.Parent = content
+
+		-- Status Button / Tag
+		if isUnlocked then
+			local masteredTag = Instance.new("TextLabel")
+			masteredTag.Size = UDim2.new(0.85, 0, 0, 20)
+			masteredTag.Position = UDim2.new(0.075, 0, 1, -24)
+			masteredTag.BackgroundColor3 = Color3.fromRGB(24, 60, 40)
+			masteredTag.Text = "✓ MASTERED"
+			masteredTag.TextColor3 = Color3.fromRGB(80, 255, 160)
+			masteredTag.Font = Enum.Font.GothamBold
+			masteredTag.TextSize = 9
+			masteredTag.BorderSizePixel = 0
+			masteredTag.ZIndex = 46
+			masteredTag.Parent = content
+
+			local mtCorner = Instance.new("UICorner")
+			mtCorner.CornerRadius = UDim.new(1, 0)
+			mtCorner.Parent = masteredTag
+		elseif canUnlock then
+			local canAfford = (cachedData.Gems or 0) >= node.cost
+			local buyBtn = Instance.new("TextButton")
+			buyBtn.Size = UDim2.new(0.88, 0, 0, 22)
+			buyBtn.Position = UDim2.new(0.06, 0, 1, -25)
+			buyBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 165, 110) else Color3.fromRGB(75, 42, 55)
+			buyBtn.Text = "💎 " .. FormatNumber.formatCompact(node.cost) .. " BUY"
+			buyBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(220, 160, 175)
+			buyBtn.Font = Enum.Font.GothamBold
+			buyBtn.TextSize = 10
+			buyBtn.BorderSizePixel = 0
+			buyBtn.ZIndex = 47
+			buyBtn.Parent = content
+
+			local bbCorner = Instance.new("UICorner")
+			bbCorner.CornerRadius = UDim.new(1, 0)
+			bbCorner.Parent = buyBtn
+
+			buyBtn.MouseButton1Click:Connect(onUnlock)
+		end
+
+		-- 4. Full Hexagon Click Trigger
+		local hitArea = Instance.new("TextButton")
+		hitArea.Name = "HitArea"
+		hitArea.Size = UDim2.new(1, 0, 1, 0)
+		hitArea.Position = UDim2.new(0, 0, 0, 0)
+		hitArea.BackgroundTransparency = 1
+		hitArea.Text = ""
+		hitArea.ZIndex = 48
+		hitArea.Parent = hexHolder
+
+		hitArea.MouseButton1Click:Connect(function()
+			if canUnlock then
+				onUnlock()
+			elseif isUnlocked then
+				showFloatingPopup(node.name .. " is already active!", node.color)
+			end
+		end)
+
+		-- Hover effect
+		hitArea.MouseEnter:Connect(function()
+			if canUnlock or isUnlocked then
+				TweenService:Create(hexHolder, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.new(0, (radius * 2) + 8, 0, (radius * 2) + 8),
+				}):Play()
+			end
+		end)
+		hitArea.MouseLeave:Connect(function()
+			TweenService:Create(hexHolder, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, radius * 2, 0, radius * 2),
+			}):Play()
+		end)
+
+		return hexHolder
+	end
+
 	renderTree = function()
 		treeCanvas:ClearAllChildren()
 
-		local cw = treeCanvas.AbsoluteSize.X
-		if cw < 600 then cw = math.max(600, scroll.AbsoluteSize.X) end
-		local ch = 700
+		local cw = math.max(880, treeCanvas.AbsoluteSize.X)
+		local ch = math.max(680, treeCanvas.AbsoluteSize.Y)
 
-		-- Column Titles at Top (Y = 15)
-		local branches = {
-			{ x = 0.20, name = "⚔️ MIGHT & BOSS SLAYER", sub = "Heavy Impact & Colossus Damage", color = Color3.fromRGB(255, 80, 60) },
-			{ x = 0.50, name = "⚡ VELOCITY & MOBILITY", sub = "WalkSpeed & Sprint Acceleration", color = Color3.fromRGB(40, 210, 255) },
-			{ x = 0.80, name = "👑 FORTUNE & ABUNDANCE", sub = "Bonus Gems & Cash Multipliers", color = Color3.fromRGB(210, 110, 255) },
-		}
-
-		for _, b in ipairs(branches) do
-			local colHeader = Instance.new("Frame")
-			colHeader.Size = UDim2.new(0, 220, 0, 48)
-			colHeader.AnchorPoint = Vector2.new(0.5, 0)
-			colHeader.Position = UDim2.new(b.x, 0, 0, 15)
-			colHeader.BackgroundColor3 = Color3.fromRGB(18, 21, 30)
-			colHeader.BorderSizePixel = 0
-			colHeader.ZIndex = 43
-			colHeader.Parent = treeCanvas
-
-			local chCorner = Instance.new("UICorner")
-			chCorner.CornerRadius = UDim.new(0, 8)
-			chCorner.Parent = colHeader
-
-			local chStroke = Instance.new("UIStroke")
-			chStroke.Color = b.color
-			chStroke.Thickness = 1.5
-			chStroke.Transparency = 0.4
-			chStroke.Parent = colHeader
-
-			local chTitle = Instance.new("TextLabel")
-			chTitle.Size = UDim2.new(1, 0, 0, 24)
-			chTitle.BackgroundTransparency = 1
-			chTitle.Text = b.name
-			chTitle.TextColor3 = b.color
-			chTitle.Font = Enum.Font.Antique
-			chTitle.TextSize = 13
-			chTitle.ZIndex = 44
-			chTitle.Parent = colHeader
-
-			local chSub = Instance.new("TextLabel")
-			chSub.Size = UDim2.new(1, 0, 0, 18)
-			chSub.Position = UDim2.new(0, 0, 0, 24)
-			chSub.BackgroundTransparency = 1
-			chSub.Text = b.sub
-			chSub.TextColor3 = Color3.fromRGB(160, 170, 190)
-			chSub.Font = Enum.Font.Antique
-			chSub.TextSize = 11
-			chSub.ZIndex = 44
-			chSub.Parent = colHeader
+		if treeCanvas.AbsoluteSize.X < 880 or treeCanvas.AbsoluteSize.Y < 680 then
+			scroll.CanvasSize = UDim2.new(0, 880, 0, 680)
+			treeCanvas.Size = UDim2.new(0, 880, 0, 680)
+		else
+			scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+			treeCanvas.Size = UDim2.new(1, 0, 1, 0)
 		end
 
-		-- Draw Connecting Branch Lines
+		-- Background Branch Orientation Labels (faint cosmic guides)
+		local branchLabels = {
+			{ x = 0.18, y = 0.08, name = "⚔️ MIGHT & BOSS SLAYER", color = Color3.fromRGB(255, 80, 60) },
+			{ x = 0.82, y = 0.08, name = "⚡ VELOCITY & MOBILITY", color = Color3.fromRGB(40, 210, 255) },
+			{ x = 0.50, y = 0.96, name = "👑 FORTUNE & ABUNDANCE", color = Color3.fromRGB(210, 110, 255) },
+		}
+
+		for _, bl in ipairs(branchLabels) do
+			local bLbl = Instance.new("TextLabel")
+			bLbl.Size = UDim2.new(0, 220, 0, 22)
+			bLbl.AnchorPoint = Vector2.new(0.5, 0.5)
+			bLbl.Position = UDim2.new(bl.x, 0, bl.y, 0)
+			bLbl.BackgroundTransparency = 1
+			bLbl.Text = bl.name
+			bLbl.TextColor3 = bl.color
+			bLbl.Font = Enum.Font.Antique
+			bLbl.TextSize = 13
+			bLbl.TextTransparency = 0.35
+			bLbl.ZIndex = 41
+			bLbl.Parent = treeCanvas
+		end
+
+		-- 1. Draw Connecting Branch Lines ONLY if both parent and child are visible!
 		for _, nodeId in ipairs(SkillTreeConfig.NODE_ORDER) do
 			local node = SkillTreeConfig.NODES[nodeId]
 			if node and node.parent then
 				local parentNode = SkillTreeConfig.NODES[node.parent]
 				if parentNode then
-					local p0 = Vector2.new(parentNode.position.X * cw, parentNode.position.Y * ch)
-					local p1 = Vector2.new(node.position.X * cw, node.position.Y * ch)
+					local isParentVisible = SkillTreeConfig.isRevealed(parentNode.id, cachedData.UnlockedSkills)
+					local isChildVisible = SkillTreeConfig.isRevealed(node.id, cachedData.UnlockedSkills)
 
-					local isUnlocked = SkillTreeConfig.isUnlocked(node.id, cachedData.UnlockedSkills)
-					local isRevealed = SkillTreeConfig.isRevealed(node.id, cachedData.UnlockedSkills)
+					-- Strict Fog-of-War: Wires to hidden nodes are NOT drawn!
+					if isParentVisible and isChildVisible then
+						local p0 = Vector2.new(parentNode.position.X * cw, parentNode.position.Y * ch)
+						local p1 = Vector2.new(node.position.X * cw, node.position.Y * ch)
 
-					if isUnlocked then
-						drawWire(p0, p1, node.color, 4, 0)
-					elseif isRevealed then
-						drawWire(p0, p1, node.color, 2.5, 0.45)
-					else
-						-- Hidden/Locked connection
-						drawWire(p0, p1, Color3.fromRGB(50, 54, 70), 1.5, 0.8)
+						local isChildUnlocked = SkillTreeConfig.isUnlocked(node.id, cachedData.UnlockedSkills)
+						if isChildUnlocked then
+							drawWire(p0, p1, node.color, 4, 0)
+						else
+							drawWire(p0, p1, node.color, 2.5, 0.35)
+						end
 					end
 				end
 			end
 		end
 
-		-- Render Nodes
+		-- 2. Render Hexagon Nodes (Hidden means completely omitted from screen!)
 		for _, nodeId in ipairs(SkillTreeConfig.NODE_ORDER) do
 			local node = SkillTreeConfig.NODES[nodeId]
 			if not node then continue end
 
+			local isVisible = SkillTreeConfig.isRevealed(node.id, cachedData.UnlockedSkills)
+			if not isVisible then
+				-- HIDDEN: CANNOT EVEN SEE IT! Omit completely!
+				continue
+			end
+
 			local isUnlocked = SkillTreeConfig.isUnlocked(node.id, cachedData.UnlockedSkills)
 			local canUnlock = SkillTreeConfig.canUnlock(node.id, cachedData.UnlockedSkills)
-			local isRevealed = SkillTreeConfig.isRevealed(node.id, cachedData.UnlockedSkills)
+			local isBase = (node.parent == nil)
+			local radius = if isBase then 66 else 56
+			local centerPos = Vector2.new(node.position.X * cw, node.position.Y * ch)
 
-			local card = Instance.new("Frame")
-			card.Name = "NodeCard_" .. node.id
-			card.Size = UDim2.new(0, 215, 0, 96)
-			card.AnchorPoint = Vector2.new(0.5, 0.5)
-			card.Position = UDim2.new(node.position.X, 0, 0, node.position.Y * ch)
-			card.BorderSizePixel = 0
-			card.ZIndex = 44
-			card.Parent = treeCanvas
+			local function onUnlock()
+				local unlockFn = Remotes.getFunction("UnlockSkillNode")
+				local ok, success, msg = pcall(function()
+					return unlockFn:InvokeServer(node.id)
+				end)
 
-			local cCorner = Instance.new("UICorner")
-			cCorner.CornerRadius = UDim.new(0, 10)
-			cCorner.Parent = card
+				if ok and success then
+					local s = Instance.new("Sound")
+					s.SoundId = "rbxassetid://6895079853"
+					s.Volume = 0.22
+					s.PlaybackSpeed = 1.25
+					s.Parent = SoundService
+					s:Play()
+					s.Ended:Connect(function() s:Destroy() end)
 
-			local cStroke = Instance.new("UIStroke")
-			cStroke.Parent = card
+					showFloatingPopup("Mastered " .. node.name .. "!", node.color)
 
-			if isUnlocked then
-				card.BackgroundColor3 = Color3.fromRGB(24, 34, 38)
-				cStroke.Color = node.color
-				cStroke.Thickness = 2
-				cStroke.Transparency = 0
-			elseif canUnlock then
-				card.BackgroundColor3 = Color3.fromRGB(25, 28, 42)
-				cStroke.Color = node.color
-				cStroke.Thickness = 1.5
-				cStroke.Transparency = 0.25
-			else
-				-- Hidden / Shrouded in Fog-of-War
-				card.BackgroundColor3 = Color3.fromRGB(15, 17, 24)
-				cStroke.Color = Color3.fromRGB(45, 48, 62)
-				cStroke.Thickness = 1
-				cStroke.Transparency = 0.5
-			end
-
-			if isRevealed then
-				-- Icon
-				local iconLbl = Instance.new("TextLabel")
-				iconLbl.Size = UDim2.new(0, 36, 0, 36)
-				iconLbl.Position = UDim2.new(0, 10, 0, 8)
-				iconLbl.BackgroundTransparency = 1
-				iconLbl.Text = node.icon
-				iconLbl.TextSize = 24
-				iconLbl.ZIndex = 45
-				iconLbl.Parent = card
-
-				-- Title
-				local nameLbl = Instance.new("TextLabel")
-				nameLbl.Size = UDim2.new(1, -54, 0, 20)
-				nameLbl.Position = UDim2.new(0, 48, 0, 8)
-				nameLbl.BackgroundTransparency = 1
-				nameLbl.Text = node.name
-				nameLbl.TextColor3 = if isUnlocked then node.color else Color3.fromRGB(240, 245, 255)
-				nameLbl.Font = Enum.Font.Antique
-				nameLbl.TextSize = 14
-				nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-				nameLbl.ZIndex = 45
-				nameLbl.Parent = card
-
-				-- Perk Summary Line
-				local perkLbl = Instance.new("TextLabel")
-				perkLbl.Size = UDim2.new(1, -20, 0, 20)
-				perkLbl.Position = UDim2.new(0, 12, 0, 38)
-				perkLbl.BackgroundTransparency = 1
-				perkLbl.TextColor3 = Color3.fromRGB(180, 205, 230)
-				perkLbl.Font = Enum.Font.Antique
-				perkLbl.TextSize = 11
-				perkLbl.TextXAlignment = Enum.TextXAlignment.Left
-				perkLbl.ZIndex = 45
-
-				if node.branch == "Power" then
-					local mineBonus = math.floor((node.miningPowerMult - 1.0) * 100 + 0.5)
-					local bossBonus = math.floor((node.bossMultiplier - 1.0) * 100 + 0.5)
-					perkLbl.Text = string.format("+%d%% Mine • +%d%% Boss", mineBonus, bossBonus)
-				elseif node.branch == "Speed" then
-					perkLbl.Text = string.format("+%d WalkSpeed • +%d Sprint", node.speedBonus, math.floor(node.speedBonus * 1.5))
-				elseif node.branch == "Luck" then
-					local cashBonus = math.floor((node.cashMultiplier - 1.0) * 100 + 0.5)
-					perkLbl.Text = string.format("+%d 💎/Ore • +%d%% Cash", node.bonusGems, cashBonus)
-				else
-					perkLbl.Text = "+10% Mining/Cash • +2 Speed"
-				end
-				perkLbl.Parent = card
-
-				-- Action Button or Mastered Tag
-				if isUnlocked then
-					local tag = Instance.new("TextLabel")
-					tag.Size = UDim2.new(1, -20, 0, 26)
-					tag.Position = UDim2.new(0, 10, 1, -30)
-					tag.BackgroundColor3 = Color3.fromRGB(28, 60, 42)
-					tag.Text = "✓ MASTERED"
-					tag.TextColor3 = Color3.fromRGB(80, 255, 160)
-					tag.Font = Enum.Font.GothamBold
-					tag.TextSize = 11
-					tag.BorderSizePixel = 0
-					tag.ZIndex = 45
-					tag.Parent = card
-
-					local tCorner = Instance.new("UICorner")
-					tCorner.CornerRadius = UDim.new(0, 6)
-					tCorner.Parent = tag
-				elseif canUnlock then
-					local canAfford = (cachedData.Gems or 0) >= node.cost
-					local unlockBtn = Instance.new("TextButton")
-					unlockBtn.Size = UDim2.new(1, -20, 0, 26)
-					unlockBtn.Position = UDim2.new(0, 10, 1, -30)
-					unlockBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 160, 110) else Color3.fromRGB(75, 42, 55)
-					unlockBtn.Text = "💎 " .. FormatNumber.formatCompact(node.cost) .. " UNLOCK"
-					unlockBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(220, 160, 175)
-					unlockBtn.Font = Enum.Font.GothamBold
-					unlockBtn.TextSize = 11
-					unlockBtn.BorderSizePixel = 0
-					unlockBtn.ZIndex = 46
-					unlockBtn.Parent = card
-
-					local ubCorner = Instance.new("UICorner")
-					ubCorner.CornerRadius = UDim.new(0, 6)
-					ubCorner.Parent = unlockBtn
-
-					unlockBtn.MouseButton1Click:Connect(function()
-						local unlockFn = Remotes.getFunction("UnlockSkillNode")
-						local ok, success, msg = pcall(function()
-							return unlockFn:InvokeServer(node.id)
-						end)
-
-						if ok and success then
-							local s = Instance.new("Sound")
-							s.SoundId = "rbxassetid://6895079853"
-							s.Volume = 0.2
-							s.PlaybackSpeed = 1.2
-							s.Parent = SoundService
-							s:Play()
-							s.Ended:Connect(function() s:Destroy() end)
-
-							showFloatingPopup("Mastered " .. node.name .. "!", node.color)
-
-							local getFn = Remotes.getFunction("GetPlayerData")
-							local okData, freshData = pcall(function()
-								return getFn:InvokeServer()
-							end)
-							if okData and freshData then
-								cachedData = freshData
-							end
-
-							gemsBadge.Text = "💎 " .. FormatNumber.formatCompact(cachedData.Gems or 0)
-							UIController.updateHUD()
-							renderTree()
-						else
-							showFloatingPopup(tostring(msg or "Cannot unlock"), Color3.fromRGB(255, 90, 80))
-						end
+					local getFn = Remotes.getFunction("GetPlayerData")
+					local okData, freshData = pcall(function()
+						return getFn:InvokeServer()
 					end)
+					if okData and freshData then
+						cachedData = freshData
+					end
+
+					gemsBadge.Text = "💎 " .. FormatNumber.formatCompact(cachedData.Gems or 0)
+					UIController.updateHUD()
+
+					-- Re-render immediately: Next hexagon appears right now!
+					renderTree()
+				else
+					showFloatingPopup(tostring(msg or "Cannot unlock"), Color3.fromRGB(255, 90, 80))
 				end
-			else
-				-- Shrouded / Hidden Node (Mystery Tier)
-				local lockIcon = Instance.new("TextLabel")
-				lockIcon.Size = UDim2.new(0, 36, 0, 36)
-				lockIcon.Position = UDim2.new(0, 10, 0, 8)
-				lockIcon.BackgroundTransparency = 1
-				lockIcon.Text = "🔒"
-				lockIcon.TextSize = 22
-				lockIcon.ZIndex = 45
-				lockIcon.Parent = card
-
-				local lockName = Instance.new("TextLabel")
-				lockName.Size = UDim2.new(1, -54, 0, 20)
-				lockName.Position = UDim2.new(0, 48, 0, 10)
-				lockName.BackgroundTransparency = 1
-				lockName.Text = "??? Mystery Talent"
-				lockName.TextColor3 = Color3.fromRGB(115, 120, 135)
-				lockName.Font = Enum.Font.Antique
-				lockName.TextSize = 14
-				lockName.TextXAlignment = Enum.TextXAlignment.Left
-				lockName.ZIndex = 45
-				lockName.Parent = card
-
-				local lockPerk = Instance.new("TextLabel")
-				lockPerk.Size = UDim2.new(1, -20, 0, 20)
-				lockPerk.Position = UDim2.new(0, 12, 0, 38)
-				lockPerk.BackgroundTransparency = 1
-				lockPerk.Text = "Master prior talent to reveal"
-				lockPerk.TextColor3 = Color3.fromRGB(80, 85, 100)
-				lockPerk.Font = Enum.Font.Antique
-				lockPerk.TextSize = 11
-				lockPerk.TextXAlignment = Enum.TextXAlignment.Left
-				lockPerk.ZIndex = 45
-				lockPerk.Parent = card
-
-				local lockPill = Instance.new("TextLabel")
-				lockPill.Size = UDim2.new(1, -20, 0, 24)
-				lockPill.Position = UDim2.new(0, 10, 1, -28)
-				lockPill.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
-				lockPill.Text = "🔒 SHROUDED"
-				lockPill.TextColor3 = Color3.fromRGB(90, 95, 110)
-				lockPill.Font = Enum.Font.GothamBold
-				lockPill.TextSize = 10
-				lockPill.BorderSizePixel = 0
-				lockPill.ZIndex = 45
-				lockPill.Parent = card
-
-				local lpCorner = Instance.new("UICorner")
-				lpCorner.CornerRadius = UDim.new(0, 6)
-				lpCorner.Parent = lockPill
 			end
+
+			local hex = drawHexagon(centerPos, radius, node, isUnlocked, canUnlock, isBase, onUnlock)
+
+			-- Smooth pop-in scale for newly revealed hexagons
+			hex.Size = UDim2.new(0, 0, 0, 0)
+			TweenService:Create(hex, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, radius * 2, 0, radius * 2),
+			}):Play()
 		end
 	end
 

@@ -58,10 +58,10 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.10,
 		bonusGems = 0,
 		bossMultiplier = 1.05,
-		position = Vector2.new(0.50, 0.85),
+		position = Vector2.new(0.50, 0.50),
 	},
 
-	-- POWER BRANCH (Left Column)
+	-- POWER BRANCH (Top-Left Diagonal)
 	power_1 = {
 		id = "power_1",
 		name = "Heavy Impact",
@@ -77,7 +77,7 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.0,
 		bonusGems = 0,
 		bossMultiplier = 1.15,
-		position = Vector2.new(0.20, 0.60),
+		position = Vector2.new(0.35, 0.35),
 	},
 	power_2 = {
 		id = "power_2",
@@ -94,7 +94,7 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.0,
 		bonusGems = 0,
 		bossMultiplier = 1.35,
-		position = Vector2.new(0.20, 0.36),
+		position = Vector2.new(0.23, 0.23),
 	},
 	power_3 = {
 		id = "power_3",
@@ -111,10 +111,10 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.0,
 		bonusGems = 0,
 		bossMultiplier = 2.00,
-		position = Vector2.new(0.20, 0.12),
+		position = Vector2.new(0.11, 0.12),
 	},
 
-	-- SPEED BRANCH (Center Column)
+	-- SPEED BRANCH (Top-Right Diagonal)
 	speed_1 = {
 		id = "speed_1",
 		name = "Swift Stride",
@@ -130,7 +130,7 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.0,
 		bonusGems = 0,
 		bossMultiplier = 1.0,
-		position = Vector2.new(0.50, 0.60),
+		position = Vector2.new(0.65, 0.35),
 	},
 	speed_2 = {
 		id = "speed_2",
@@ -147,7 +147,7 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.0,
 		bonusGems = 0,
 		bossMultiplier = 1.0,
-		position = Vector2.new(0.50, 0.36),
+		position = Vector2.new(0.77, 0.23),
 	},
 	speed_3 = {
 		id = "speed_3",
@@ -164,10 +164,10 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.0,
 		bonusGems = 0,
 		bossMultiplier = 1.0,
-		position = Vector2.new(0.50, 0.12),
+		position = Vector2.new(0.89, 0.12),
 	},
 
-	-- LUCK & FORTUNE BRANCH (Right Column)
+	-- LUCK & FORTUNE BRANCH (Bottom Vertical)
 	luck_1 = {
 		id = "luck_1",
 		name = "Crystal Scent",
@@ -183,7 +183,7 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.25,
 		bonusGems = 1,
 		bossMultiplier = 1.0,
-		position = Vector2.new(0.80, 0.60),
+		position = Vector2.new(0.50, 0.67),
 	},
 	luck_2 = {
 		id = "luck_2",
@@ -200,7 +200,7 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 1.75,
 		bonusGems = 3,
 		bossMultiplier = 1.0,
-		position = Vector2.new(0.80, 0.36),
+		position = Vector2.new(0.50, 0.81),
 	},
 	luck_3 = {
 		id = "luck_3",
@@ -217,7 +217,7 @@ SkillTreeConfig.NODES = {
 		cashMultiplier = 3.00,
 		bonusGems = 8,
 		bossMultiplier = 1.0,
-		position = Vector2.new(0.80, 0.12),
+		position = Vector2.new(0.50, 0.94),
 	},
 } :: { [string]: SkillNode }
 

@@ -290,7 +290,8 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 	padGui.Name = "DevPadGui"
 	padGui.Size = UDim2.new(0, 240, 0, 60)
 	padGui.StudsOffset = Vector3.new(0, 4.0, 0)
-	padGui.AlwaysOnTop = true
+	padGui.AlwaysOnTop = false
+	padGui.MaxDistance = 45
 
 	local padTitle = Instance.new("TextLabel")
 	padTitle.Size = UDim2.new(1, 0, 0.5, 0)
@@ -817,7 +818,8 @@ function MapService.buildShopStall(folder: Folder)
 	titleGui.Name = "MerchantTitleGui"
 	titleGui.Size = UDim2.new(0, 200, 0, 50)
 	titleGui.StudsOffset = Vector3.new(0, 3.2, 0)
-	titleGui.AlwaysOnTop = true
+	titleGui.AlwaysOnTop = false
+	titleGui.MaxDistance = 60
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
@@ -981,7 +983,8 @@ function MapService.buildEggStand(folder: Folder)
 	eggGui.Name = "EggTitleGui"
 	eggGui.Size = UDim2.new(0, 260, 0, 75)
 	eggGui.StudsOffset = Vector3.new(0, 3.4, 0)
-	eggGui.AlwaysOnTop = true
+	eggGui.AlwaysOnTop = false
+	eggGui.MaxDistance = 60
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
@@ -1216,7 +1219,8 @@ function MapService.buildRobuxEggStand(folder: Folder)
 	eggGui.Name = "RobuxEggTitleGui"
 	eggGui.Size = UDim2.new(0, 280, 0, 80)
 	eggGui.StudsOffset = Vector3.new(0, 3.4, 0)
-	eggGui.AlwaysOnTop = true
+	eggGui.AlwaysOnTop = false
+	eggGui.MaxDistance = 60
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
@@ -1360,7 +1364,8 @@ function MapService.buildVIPThrone(folder: Folder)
 	vipGui.Name = "VIPTitleGui"
 	vipGui.Size = UDim2.new(0, 280, 0, 80)
 	vipGui.StudsOffset = Vector3.new(0, 8.2, -1.3)
-	vipGui.AlwaysOnTop = true
+	vipGui.AlwaysOnTop = false
+	vipGui.MaxDistance = 70
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
@@ -1474,7 +1479,8 @@ function MapService.buildMagmaGate(folder: Folder)
 	plaqueGui.Name = "MagmaGatePlaqueGui"
 	plaqueGui.Size = UDim2.new(0, 360, 0, 70)
 	plaqueGui.StudsOffset = Vector3.new(0, 0.5, 1)
-	plaqueGui.AlwaysOnTop = true
+	plaqueGui.AlwaysOnTop = false
+	plaqueGui.MaxDistance = 85
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
@@ -1815,7 +1821,8 @@ function MapService.buildMagmaEggStand(folder: Folder)
 	eggGui.Name = "MagmaEggTitleGui"
 	eggGui.Size = UDim2.new(0, 280, 0, 78)
 	eggGui.StudsOffset = Vector3.new(0, 3.6, 0)
-	eggGui.AlwaysOnTop = true
+	eggGui.AlwaysOnTop = false
+	eggGui.MaxDistance = 60
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
@@ -2006,7 +2013,8 @@ function MapService.buildBossArena(folder: Folder)
 	signGui.Name = "ArenaSignGui"
 	signGui.Size = UDim2.new(0, 340, 0, 65)
 	signGui.StudsOffset = Vector3.new(0, 0.4, 0.8)
-	signGui.AlwaysOnTop = true
+	signGui.AlwaysOnTop = false
+	signGui.MaxDistance = 85
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
@@ -2178,7 +2186,8 @@ function MapService.buildTrailShopStall(folder: Folder)
 	titleGui.Name = "ZephyrTitleGui"
 	titleGui.Size = UDim2.new(0, 200, 0, 50)
 	titleGui.StudsOffset = Vector3.new(0, 3.2, 0)
-	titleGui.AlwaysOnTop = true
+	titleGui.AlwaysOnTop = false
+	titleGui.MaxDistance = 60
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)

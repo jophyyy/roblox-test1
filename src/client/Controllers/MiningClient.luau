@@ -321,8 +321,8 @@ function MiningClient.showDamageNumber(position: Vector3, damage: number, isCrit
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.new(0, 130, 0, 44)
 	billboard.StudsOffset = Vector3.new(math.random(-15, 15) / 10, 2.5 + (math.random(0, 10) / 10), math.random(-15, 15) / 10)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 80
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 60
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 1, 0)

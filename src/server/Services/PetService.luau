@@ -177,7 +177,8 @@ function PetService.updateFollowers(player: Player)
 		local billboard = Instance.new("BillboardGui")
 		billboard.Size = UDim2.new(0, 100, 0, 30)
 		billboard.StudsOffset = Vector3.new(0, 1.8, 0)
-		billboard.AlwaysOnTop = true
+		billboard.AlwaysOnTop = false
+		billboard.MaxDistance = 45
 
 		local label = Instance.new("TextLabel")
 		label.Size = UDim2.new(1, 0, 1, 0)

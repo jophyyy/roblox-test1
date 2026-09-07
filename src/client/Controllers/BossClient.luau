@@ -247,8 +247,8 @@ function BossClient.showCombatNumber(position: Vector3, damage: number, isCrit: 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Size = UDim2.new(0, 150, 0, 48)
 	billboard.StudsOffset = Vector3.new(math.random(-15, 15) / 10, 8.5 + (math.random(0, 15) / 10), math.random(-15, 15) / 10)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 90
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 80
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 0.65, 0)

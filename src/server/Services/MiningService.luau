@@ -115,8 +115,8 @@ function MiningService.spawnOre(oreDef: OreConfig.OreDef, position: Vector3): Ac
 	billboard.Name = "OreBillboard"
 	billboard.Size = UDim2.new(0, 160, 0, 50)
 	billboard.StudsOffset = Vector3.new(0, (coreSize.Y * 0.6) + 2.2, 0)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 75
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 55
 
 	local title = Instance.new("TextLabel")
 	title.Name = "OreTitle"

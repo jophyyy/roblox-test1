@@ -184,8 +184,8 @@ function BossService.spawnBoss()
 	billboard.Name = "BossBillboard"
 	billboard.Size = UDim2.new(0, 240, 0, 68)
 	billboard.StudsOffset = Vector3.new(0, 9.5, 0)
-	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 120
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 85
 
 	local title = Instance.new("TextLabel")
 	title.Name = "BossTitle"

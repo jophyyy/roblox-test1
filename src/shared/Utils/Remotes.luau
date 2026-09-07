@@ -22,6 +22,7 @@ local REGISTERED_EVENTS = {
 	"BossDefeated",
 	"BossRespawned",
 	"TrainingOreHit",
+	"OpenFusionModal",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -47,6 +48,7 @@ local REGISTERED_FUNCTIONS = {
 	"ClickPower",
 	"TrainOnOre",
 	"ClaimIndexMilestone",
+	"FusePets",
 }
 
 local function getRemotesFolder(): Folder

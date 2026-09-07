@@ -205,6 +205,25 @@ function PetService.updateFollowers(player: Player)
 		particles.Speed = NumberRange.new(1, 2)
 		particles.Parent = attachment
 
+		if petDef.tier == "Golden" then
+			part.Material = Enum.Material.Glass
+			part.Reflectance = 0.4
+			particles.Rate = 18
+			particles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 80))
+			label.TextColor3 = Color3.fromRGB(255, 225, 60)
+		elseif petDef.tier == "Rainbow" then
+			part.Material = Enum.Material.Neon
+			particles.Rate = 24
+			particles.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
+				ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 220, 80)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(80, 255, 120)),
+				ColorSequenceKeypoint.new(0.75, Color3.fromRGB(80, 200, 255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 240)),
+			})
+			label.TextColor3 = Color3.fromRGB(255, 120, 240)
+		end
+
 		-- Follow physics via AlignPosition and AlignOrientation
 		local charAttachment = Instance.new("Attachment")
 		local angle = ((index - 1) / math.max(1, #equippedList)) * math.pi * 2
@@ -238,6 +257,82 @@ function PetService.updateFollowers(player: Player)
 	end
 end
 
+-- Fuses 3 Normal pets into 1 Golden pet, or 3 Golden pets into 1 Rainbow pet
+function PetService.fusePets(player: Player, mode: "Golden" | "Rainbow", rawBasePetId: string, fuseAll: boolean?): (boolean, string?, number?, string?)
+	local data = DataService.get(player)
+	if not data then
+		return false, nil, 0, "Player data not loaded"
+	end
+
+	local baseId = PetConfig.getBasePetId(rawBasePetId)
+	local baseDef = PetConfig.PETS[baseId]
+	if not baseDef then
+		return false, nil, 0, "Invalid pet species"
+	end
+
+	local sourcePetId: string
+	local targetPetId: string
+
+	if mode == "Golden" then
+		-- Requires 3 Normal pets of species -> 1 Golden
+		sourcePetId = baseId
+		targetPetId = PetConfig.getGoldenId(baseId)
+	elseif mode == "Rainbow" then
+		-- Requires 3 Golden pets of species -> 1 Rainbow
+		sourcePetId = PetConfig.getGoldenId(baseId)
+		targetPetId = PetConfig.getRainbowId(baseId)
+	else
+		return false, nil, 0, "Invalid fusion mode"
+	end
+
+	local targetDef = PetConfig.PETS[targetPetId]
+	if not targetDef then
+		return false, nil, 0, "Target pet tier not found"
+	end
+
+	local ownedSourceCount = data.OwnedPets[sourcePetId] or 0
+	if ownedSourceCount < 3 then
+		local srcTierName = if mode == "Golden" then "Normal" else "Golden"
+		return false, nil, 0, string.format("Need at least 3 %s %s to fuse (you have %d)!", srcTierName, baseDef.name, ownedSourceCount)
+	end
+
+	local batches = 1
+	if fuseAll then
+		batches = math.max(1, math.floor(ownedSourceCount / 3))
+	end
+
+	local consumeCount = batches * 3
+	local remaining = ownedSourceCount - consumeCount
+
+	if remaining <= 0 then
+		data.OwnedPets[sourcePetId] = nil
+		if data.EquippedPets[sourcePetId] then
+			data.EquippedPets[sourcePetId] = nil
+		end
+	else
+		data.OwnedPets[sourcePetId] = remaining
+	end
+
+	-- Grant fused pets
+	data.OwnedPets[targetPetId] = (data.OwnedPets[targetPetId] or 0) + batches
+
+	-- Register to Pet Index
+	data.PetIndex = data.PetIndex or {}
+	data.PetIndex[targetPetId] = true
+
+	-- Update followers if equipped changed
+	PetService.updateFollowers(player)
+
+	-- Sync updated data to client
+	local syncEvent = Remotes.getEvent("SyncPlayerData")
+	syncEvent:FireClient(player, data)
+
+	local successMsg = string.format("✨ FUSED %dx %s!", batches, targetDef.name)
+	print(string.format("⚗️ [PetService] %s fused %dx %s (%s)", player.Name, batches, targetDef.name, mode))
+
+	return true, targetPetId, batches, successMsg
+end
+
 function PetService.init()
 	local hatchRemote = Remotes.getFunction("HatchEgg")
 	hatchRemote.OnServerInvoke = function(player: Player, eggId: string, count: number?)
@@ -247,6 +342,11 @@ function PetService.init()
 	local equipRemote = Remotes.getFunction("ToggleEquipPet")
 	equipRemote.OnServerInvoke = function(player: Player, petId: string)
 		return PetService.toggleEquip(player, petId)
+	end
+
+	local fuseRemote = Remotes.getFunction("FusePets")
+	fuseRemote.OnServerInvoke = function(player: Player, mode: string, basePetId: string, fuseAll: boolean?)
+		return PetService.fusePets(player, mode :: any, basePetId, fuseAll)
 	end
 
 	Players.PlayerAdded:Connect(function(player)

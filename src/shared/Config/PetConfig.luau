@@ -1,6 +1,9 @@
---!strict
+export type PetTier = "Normal" | "Golden" | "Rainbow"
+
 export type PetDef = {
 	id: string,
+	baseId: string?,
+	tier: PetTier?,
 	name: string,
 	rarity: "Common" | "Rare" | "Epic" | "Legendary" | "Mythic",
 	cashMultiplier: number,
@@ -238,14 +241,105 @@ local PetConfig = {
 			},
 		},
 	} :: { [string]: EggDef },
+
+	BASE_PET_IDS = {
+		"CrystalDoge",
+		"SparkleKitty",
+		"NeonBunny",
+		"InfernoDragon",
+		"VoidPhoenix",
+		"MagmaHound",
+		"VolcanicGolem",
+		"ElderMagmaDrake",
+		"AstralKitsune",
+		"VoidLeviathan",
+		"ChronosDrake",
+	} :: { string },
 }
 
-function PetConfig.getTotalPetsCount(): number
-	local count = 0
-	for _ in PetConfig.PETS do
-		count += 1
+-- Populate Golden (3x multiplier bonus) and Rainbow (9x multiplier bonus) pet variants
+for _, baseId in ipairs(PetConfig.BASE_PET_IDS) do
+	local base = PetConfig.PETS[baseId]
+	if base then
+		base.tier = "Normal"
+		base.baseId = baseId
+
+		-- 🌟 Golden Variant (Crafted from 3 Normal pets)
+		local goldenId = baseId .. "_Golden"
+		local goldCashMult = 1.0 + (base.cashMultiplier - 1.0) * 3.0
+		local goldGemMult = 1.0 + (base.gemMultiplier - 1.0) * 3.0
+		PetConfig.PETS[goldenId] = {
+			id = goldenId,
+			baseId = baseId,
+			tier = "Golden",
+			name = "Golden " .. base.name,
+			rarity = base.rarity,
+			cashMultiplier = math.floor(goldCashMult * 100 + 0.5) / 100,
+			gemMultiplier = math.floor(goldGemMult * 100 + 0.5) / 100,
+			color = Color3.fromRGB(255, 215, 0),
+			meshType = base.meshType,
+			icon = "🌟 " .. base.icon,
+			originEgg = base.originEgg,
+		}
+
+		-- 🌈 Rainbow Variant (Crafted from 3 Golden pets)
+		local rainbowId = baseId .. "_Rainbow"
+		local rbCashMult = 1.0 + (base.cashMultiplier - 1.0) * 9.0
+		local rbGemMult = 1.0 + (base.gemMultiplier - 1.0) * 9.0
+		PetConfig.PETS[rainbowId] = {
+			id = rainbowId,
+			baseId = baseId,
+			tier = "Rainbow",
+			name = "Rainbow " .. base.name,
+			rarity = base.rarity,
+			cashMultiplier = math.floor(rbCashMult * 100 + 0.5) / 100,
+			gemMultiplier = math.floor(rbGemMult * 100 + 0.5) / 100,
+			color = Color3.fromRGB(255, 100, 220),
+			meshType = base.meshType,
+			icon = "🌈 " .. base.icon,
+			originEgg = base.originEgg,
+		}
 	end
-	return count
+end
+
+function PetConfig.getBasePetId(petId: string): string
+	local baseId = string.gsub(petId, "_Golden$", "")
+	baseId = string.gsub(baseId, "_Rainbow$", "")
+	return baseId
+end
+
+function PetConfig.getPetTier(petId: string): PetTier
+	if string.find(petId, "_Rainbow$") then
+		return "Rainbow"
+	elseif string.find(petId, "_Golden$") then
+		return "Golden"
+	end
+	return "Normal"
+end
+
+function PetConfig.getGoldenId(baseId: string): string
+	return PetConfig.getBasePetId(baseId) .. "_Golden"
+end
+
+function PetConfig.getRainbowId(baseId: string): string
+	return PetConfig.getBasePetId(baseId) .. "_Rainbow"
+end
+
+function PetConfig.getTotalBasePetsCount(): number
+	return #PetConfig.BASE_PET_IDS
+end
+
+function PetConfig.getTotalPetsCount(): number
+	return #PetConfig.BASE_PET_IDS
+end
+
+function PetConfig.getTierColor(tier: PetTier): Color3
+	if tier == "Golden" then
+		return Color3.fromRGB(255, 215, 0)
+	elseif tier == "Rainbow" then
+		return Color3.fromRGB(255, 100, 220)
+	end
+	return Color3.fromRGB(200, 210, 225)
 end
 
 function PetConfig.getRarityColor(rarity: string): Color3

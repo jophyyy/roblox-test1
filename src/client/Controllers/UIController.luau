@@ -570,6 +570,7 @@ end
 -- Forward declarations for Pet Modals
 local openPetModal: () -> ()
 local openPetIndexModal: (filter: string?) -> ()
+local openFusionModal: (initialMode: ("Golden" | "Rainbow")?) -> ()
 
 -- Pet Hatching & Inventory Modal
 openPetModal = function()
@@ -603,9 +604,9 @@ openPetModal = function()
 	tabList.Parent = tabRow
 
 	local invTab = Instance.new("TextButton")
-	invTab.Size = UDim2.new(0.485, 0, 1, 0)
+	invTab.Size = UDim2.new(0.315, 0, 1, 0)
 	invTab.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
-	invTab.Text = "🐾 Inventory & Hatching"
+	invTab.Text = "🐾 Inventory"
 	invTab.TextColor3 = Color3.fromRGB(255, 255, 255)
 	invTab.Font = Enum.Font.GothamBlack
 	invTab.TextSize = 12
@@ -617,14 +618,14 @@ openPetModal = function()
 	itCorner.Parent = invTab
 
 	local indexTab = Instance.new("TextButton")
-	indexTab.Size = UDim2.new(0.485, 0, 1, 0)
+	indexTab.Size = UDim2.new(0.315, 0, 1, 0)
 	indexTab.BackgroundColor3 = Color3.fromRGB(36, 42, 58)
 	local petIndex = cachedData.PetIndex or {}
 	local discCount = 0
 	for petId, _ in PetConfig.PETS do
 		if petIndex[petId] then discCount += 1 end
 	end
-	indexTab.Text = string.format("📖 Pet Index (%d/%d)", discCount, PetConfig.getTotalPetsCount())
+	indexTab.Text = string.format("📖 Index (%d/%d)", discCount, PetConfig.getTotalPetsCount())
 	indexTab.TextColor3 = Color3.fromRGB(200, 210, 230)
 	indexTab.Font = Enum.Font.GothamBold
 	indexTab.TextSize = 12
@@ -637,6 +638,24 @@ openPetModal = function()
 
 	indexTab.MouseButton1Click:Connect(function()
 		openPetIndexModal()
+	end)
+
+	local fuseTab = Instance.new("TextButton")
+	fuseTab.Size = UDim2.new(0.315, 0, 1, 0)
+	fuseTab.BackgroundColor3 = Color3.fromRGB(36, 42, 58)
+	fuseTab.Text = "⚗️ Fusion"
+	fuseTab.TextColor3 = Color3.fromRGB(255, 215, 80)
+	fuseTab.Font = Enum.Font.GothamBold
+	fuseTab.TextSize = 12
+	fuseTab.BorderSizePixel = 0
+	fuseTab.Parent = tabRow
+
+	local ftCorner = Instance.new("UICorner")
+	ftCorner.CornerRadius = UDim.new(0, 6)
+	ftCorner.Parent = fuseTab
+
+	fuseTab.MouseButton1Click:Connect(function()
+		openFusionModal()
 	end)
 
 	-- Egg Hatch Section
@@ -860,16 +879,16 @@ openPetIndexModal = function(currentFilter: string?)
 
 	local tabList = Instance.new("UIListLayout")
 	tabList.FillDirection = Enum.FillDirection.Horizontal
-	tabList.Padding = UDim.new(0, 8)
+	tabList.Padding = UDim.new(0, 6)
 	tabList.Parent = tabRow
 
 	local invTabBtn = Instance.new("TextButton")
-	invTabBtn.Size = UDim2.new(0.485, 0, 1, 0)
+	invTabBtn.Size = UDim2.new(0.315, 0, 1, 0)
 	invTabBtn.BackgroundColor3 = Color3.fromRGB(38, 44, 60)
-	invTabBtn.Text = "🐾 Pet Inventory & Hatching"
+	invTabBtn.Text = "🐾 Inventory"
 	invTabBtn.TextColor3 = Color3.fromRGB(190, 200, 220)
 	invTabBtn.Font = Enum.Font.GothamBold
-	invTabBtn.TextSize = 13
+	invTabBtn.TextSize = 12
 	invTabBtn.BorderSizePixel = 0
 	invTabBtn.Parent = tabRow
 
@@ -880,18 +899,36 @@ openPetIndexModal = function(currentFilter: string?)
 	invTabBtn.MouseButton1Click:Connect(openPetModal)
 
 	local indexTabBtn = Instance.new("TextButton")
-	indexTabBtn.Size = UDim2.new(0.485, 0, 1, 0)
+	indexTabBtn.Size = UDim2.new(0.315, 0, 1, 0)
 	indexTabBtn.BackgroundColor3 = Color3.fromRGB(0, 165, 215)
-	indexTabBtn.Text = string.format("📖 Pet Index (%d/%d Discovered)", discoveredCount, totalPets)
+	indexTabBtn.Text = string.format("📖 Index (%d/%d)", discoveredCount, totalPets)
 	indexTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	indexTabBtn.Font = Enum.Font.GothamBlack
-	indexTabBtn.TextSize = 13
+	indexTabBtn.TextSize = 12
 	indexTabBtn.BorderSizePixel = 0
 	indexTabBtn.Parent = tabRow
 
 	local tCorner2 = Instance.new("UICorner")
 	tCorner2.CornerRadius = UDim.new(0, 6)
 	tCorner2.Parent = indexTabBtn
+
+	local fuseTabBtn = Instance.new("TextButton")
+	fuseTabBtn.Size = UDim2.new(0.315, 0, 1, 0)
+	fuseTabBtn.BackgroundColor3 = Color3.fromRGB(38, 44, 60)
+	fuseTabBtn.Text = "⚗️ Fusion"
+	fuseTabBtn.TextColor3 = Color3.fromRGB(255, 215, 80)
+	fuseTabBtn.Font = Enum.Font.GothamBold
+	fuseTabBtn.TextSize = 12
+	fuseTabBtn.BorderSizePixel = 0
+	fuseTabBtn.Parent = tabRow
+
+	local tCorner3 = Instance.new("UICorner")
+	tCorner3.CornerRadius = UDim.new(0, 6)
+	tCorner3.Parent = fuseTabBtn
+
+	fuseTabBtn.MouseButton1Click:Connect(function()
+		openFusionModal()
+	end)
 
 	-- Progress and Total Boost Banner
 	local progressCard = Instance.new("Frame")
@@ -1222,6 +1259,419 @@ openPetIndexModal = function(currentFilter: string?)
 					statusPill.TextColor3 = Color3.fromRGB(140, 145, 160)
 				end
 				statusPill.Parent = card
+			end
+		end
+	end
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -42, 0, 8)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	-- Animate In
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
+-- ==========================================
+-- ⚗️ PET FUSION CHAMBER MODAL (GOLDEN & RAINBOW)
+-- ==========================================
+openFusionModal = function(initialMode: ("Golden" | "Rainbow")?)
+	closeModal()
+	if not cachedData then return end
+
+	local activeMode = initialMode or "Golden"
+	local ownedPets = cachedData.OwnedPets or {}
+
+	local modal = createStyledFrame(screenGui, "PetFusionModal", UDim2.new(0, 660, 0, 540), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 20, 28))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local stroke = modal:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 100, 220)
+		stroke.Thickness = 2.0
+	end
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.Position = UDim2.new(0, 0, 0, 6)
+	title.BackgroundTransparency = 1
+	title.Text = "⚗️ PET FUSION CHAMBER ⚗️"
+	title.TextColor3 = if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 120, 240)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 21
+	title.Parent = modal
+
+	-- Top Hub Navigation Tabs
+	local topTabs = Instance.new("Frame")
+	topTabs.Size = UDim2.new(0.92, 0, 0, 30)
+	topTabs.Position = UDim2.new(0.04, 0, 0, 46)
+	topTabs.BackgroundTransparency = 1
+	topTabs.Parent = modal
+
+	local tLayout = Instance.new("UIListLayout")
+	tLayout.FillDirection = Enum.FillDirection.Horizontal
+	tLayout.Padding = UDim.new(0, 6)
+	tLayout.Parent = topTabs
+
+	local function addHubTab(text: string, isActive: boolean, onClick: () -> ())
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0.315, 0, 1, 0)
+		btn.BackgroundColor3 = if isActive then Color3.fromRGB(0, 165, 215) else Color3.fromRGB(34, 38, 52)
+		btn.Text = text
+		btn.TextColor3 = if isActive then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(190, 195, 215)
+		btn.Font = if isActive then Enum.Font.GothamBlack else Enum.Font.GothamBold
+		btn.TextSize = 12
+		btn.BorderSizePixel = 0
+		btn.Parent = topTabs
+
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, 6)
+		c.Parent = btn
+
+		btn.MouseButton1Click:Connect(onClick)
+	end
+
+	addHubTab("🐾 Inventory", false, openPetModal)
+	addHubTab("📖 Pet Index", false, function() openPetIndexModal() end)
+	addHubTab("⚗️ Pet Fusion", true, function() openFusionModal(activeMode) end)
+
+	-- Mode Switcher Banner (Big Golden vs Rainbow toggle buttons)
+	local modeRow = Instance.new("Frame")
+	modeRow.Size = UDim2.new(0.92, 0, 0, 46)
+	modeRow.Position = UDim2.new(0.04, 0, 0, 84)
+	modeRow.BackgroundTransparency = 1
+	modeRow.Parent = modal
+
+	local mLayout = Instance.new("UIListLayout")
+	mLayout.FillDirection = Enum.FillDirection.Horizontal
+	mLayout.Padding = UDim.new(0, 8)
+	mLayout.Parent = modeRow
+
+	-- Golden Mode Button
+	local isGold = (activeMode == "Golden")
+	local goldBtn = Instance.new("TextButton")
+	goldBtn.Size = UDim2.new(0.488, 0, 1, 0)
+	goldBtn.BackgroundColor3 = if isGold then Color3.fromRGB(55, 45, 18) else Color3.fromRGB(26, 28, 38)
+	goldBtn.Text = "🌟 GOLDEN FUSION\n3 Normal Pets ➔ 1 Golden (3x Stats)"
+	goldBtn.TextColor3 = if isGold then Color3.fromRGB(255, 225, 80) else Color3.fromRGB(170, 175, 190)
+	goldBtn.Font = Enum.Font.GothamBold
+	goldBtn.TextSize = 11
+	goldBtn.BorderSizePixel = 0
+	goldBtn.Parent = modeRow
+
+	local gCorner = Instance.new("UICorner")
+	gCorner.CornerRadius = UDim.new(0, 8)
+	gCorner.Parent = goldBtn
+
+	local gStroke = Instance.new("UIStroke")
+	gStroke.Color = if isGold then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(45, 48, 60)
+	gStroke.Thickness = if isGold then 2 else 1
+	gStroke.Parent = goldBtn
+
+	goldBtn.MouseButton1Click:Connect(function()
+		openFusionModal("Golden")
+	end)
+
+	-- Rainbow Mode Button
+	local isRainbow = (activeMode == "Rainbow")
+	local rbBtn = Instance.new("TextButton")
+	rbBtn.Size = UDim2.new(0.488, 0, 1, 0)
+	rbBtn.BackgroundColor3 = if isRainbow then Color3.fromRGB(50, 22, 55) else Color3.fromRGB(26, 28, 38)
+	rbBtn.Text = "🌈 RAINBOW FUSION\n3 Golden Pets ➔ 1 Rainbow (9x Stats)"
+	rbBtn.TextColor3 = if isRainbow then Color3.fromRGB(255, 130, 240) else Color3.fromRGB(170, 175, 190)
+	rbBtn.Font = Enum.Font.GothamBold
+	rbBtn.TextSize = 11
+	rbBtn.BorderSizePixel = 0
+	rbBtn.Parent = modeRow
+
+	local rbCorner = Instance.new("UICorner")
+	rbCorner.CornerRadius = UDim.new(0, 8)
+	rbCorner.Parent = rbBtn
+
+	local rbStroke = Instance.new("UIStroke")
+	rbStroke.Color = if isRainbow then Color3.fromRGB(255, 100, 220) else Color3.fromRGB(45, 48, 60)
+	rbStroke.Thickness = if isRainbow then 2 else 1
+	rbStroke.Parent = rbBtn
+
+	rbBtn.MouseButton1Click:Connect(function()
+		openFusionModal("Rainbow")
+	end)
+
+	-- Info tip banner
+	local infoCard = Instance.new("Frame")
+	infoCard.Size = UDim2.new(0.92, 0, 0, 24)
+	infoCard.Position = UDim2.new(0.04, 0, 0, 136)
+	infoCard.BackgroundColor3 = Color3.fromRGB(22, 24, 34)
+	infoCard.BorderSizePixel = 0
+	infoCard.Parent = modal
+
+	local icCorner = Instance.new("UICorner")
+	icCorner.CornerRadius = UDim.new(0, 6)
+	icCorner.Parent = infoCard
+
+	local infoLabel = Instance.new("TextLabel")
+	infoLabel.Size = UDim2.new(1, -16, 1, 0)
+	infoLabel.Position = UDim2.new(0, 8, 0, 0)
+	infoLabel.BackgroundTransparency = 1
+	if activeMode == "Golden" then
+		infoLabel.Text = "💡 Tip: 3 Normal pets of the same species fuse with 100% success into 1 Golden Pet!"
+	else
+		infoLabel.Text = "💡 Tip: 3 Golden pets of the same species fuse with 100% success into 1 Rainbow Pet!"
+	end
+	infoLabel.TextColor3 = Color3.fromRGB(200, 210, 230)
+	infoLabel.Font = Enum.Font.GothamMedium
+	infoLabel.TextSize = 11
+	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+	infoLabel.Parent = infoCard
+
+	-- Fusion Candidates Scrolling Frame
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(0.92, 0, 0, 360)
+	scroll.Position = UDim2.new(0.04, 0, 0, 166)
+	scroll.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 6
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.Parent = modal
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 8)
+	sCorner.Parent = scroll
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.Padding = UDim.new(0, 8)
+	listLayout.Parent = scroll
+
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 8)
+	pad.PaddingBottom = UDim.new(0, 8)
+	pad.PaddingLeft = UDim.new(0, 8)
+	pad.PaddingRight = UDim.new(0, 8)
+	pad.Parent = scroll
+
+	-- Build species list sorted by (canFuse desc, ownedCount desc)
+	type FusionCandidate = {
+		baseId: string,
+		sourceId: string,
+		targetId: string,
+		ownedCount: number,
+		canFuse: boolean,
+	}
+
+	local candidates: { FusionCandidate } = {}
+	for _, baseId in ipairs(PetConfig.BASE_PET_IDS) do
+		local sourceId = if activeMode == "Golden" then baseId else PetConfig.getGoldenId(baseId)
+		local targetId = if activeMode == "Golden" then PetConfig.getGoldenId(baseId) else PetConfig.getRainbowId(baseId)
+		local count = ownedPets[sourceId] or 0
+		table.insert(candidates, {
+			baseId = baseId,
+			sourceId = sourceId,
+			targetId = targetId,
+			ownedCount = count,
+			canFuse = count >= 3,
+		})
+	end
+
+	table.sort(candidates, function(a, b)
+		if a.canFuse ~= b.canFuse then
+			return a.canFuse == true
+		end
+		return a.ownedCount > b.ownedCount
+	end)
+
+	for _, cand in ipairs(candidates) do
+		local srcPet = PetConfig.PETS[cand.sourceId]
+		local tgtPet = PetConfig.PETS[cand.targetId]
+		if srcPet and tgtPet then
+			local card = Instance.new("Frame")
+			card.Size = UDim2.new(1, 0, 0, 78)
+			card.BackgroundColor3 = if cand.canFuse then Color3.fromRGB(24, 28, 40) else Color3.fromRGB(20, 22, 30)
+			card.BorderSizePixel = 0
+			card.Parent = scroll
+
+			local cCorner = Instance.new("UICorner")
+			cCorner.CornerRadius = UDim.new(0, 8)
+			cCorner.Parent = card
+
+			local cStroke = Instance.new("UIStroke")
+			cStroke.Color = if cand.canFuse then (if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 100, 220)) else Color3.fromRGB(38, 42, 54)
+			cStroke.Thickness = if cand.canFuse then 1.5 else 1
+			cStroke.Parent = card
+
+			-- Left: Source Pet Column
+			local srcIcon = Instance.new("TextLabel")
+			srcIcon.Size = UDim2.new(0, 46, 0, 46)
+			srcIcon.Position = UDim2.new(0, 10, 0, 16)
+			srcIcon.BackgroundTransparency = 1
+			srcIcon.Text = srcPet.icon
+			srcIcon.TextSize = 30
+			srcIcon.Parent = card
+
+			local srcName = Instance.new("TextLabel")
+			srcName.Size = UDim2.new(0, 140, 0, 20)
+			srcName.Position = UDim2.new(0, 58, 0, 14)
+			srcName.BackgroundTransparency = 1
+			srcName.Text = srcPet.name
+			srcName.TextColor3 = Color3.fromRGB(240, 245, 255)
+			srcName.Font = Enum.Font.GothamBold
+			srcName.TextSize = 13
+			srcName.TextXAlignment = Enum.TextXAlignment.Left
+			srcName.TextTruncate = Enum.TextTruncate.AtEnd
+			srcName.Parent = card
+
+			local countPill = Instance.new("TextLabel")
+			countPill.Size = UDim2.new(0, 120, 0, 20)
+			countPill.Position = UDim2.new(0, 58, 0, 36)
+			countPill.BackgroundColor3 = if cand.canFuse then Color3.fromRGB(25, 55, 35) else Color3.fromRGB(32, 34, 44)
+			countPill.Text = if cand.canFuse then string.format("✓ %d / 3 Ready!", cand.ownedCount) else string.format("🔒 %d / 3 Needed", cand.ownedCount)
+			countPill.TextColor3 = if cand.canFuse then Color3.fromRGB(80, 255, 160) else Color3.fromRGB(150, 155, 170)
+			countPill.Font = Enum.Font.GothamBold
+			countPill.TextSize = 11
+			countPill.BorderSizePixel = 0
+			countPill.Parent = card
+
+			local cpCorner = Instance.new("UICorner")
+			cpCorner.CornerRadius = UDim.new(0, 4)
+			cpCorner.Parent = countPill
+
+			-- Center Arrow
+			local arrow = Instance.new("TextLabel")
+			arrow.Size = UDim2.new(0, 36, 0, 36)
+			arrow.Position = UDim2.new(0, 206, 0, 21)
+			arrow.BackgroundTransparency = 1
+			arrow.Text = "➔"
+			arrow.TextColor3 = if cand.canFuse then (if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 100, 220)) else Color3.fromRGB(100, 105, 120)
+			arrow.Font = Enum.Font.GothamBlack
+			arrow.TextSize = 22
+			arrow.Parent = card
+
+			-- Right Column: Target Pet Result Preview
+			local tgtIcon = Instance.new("TextLabel")
+			tgtIcon.Size = UDim2.new(0, 46, 0, 46)
+			tgtIcon.Position = UDim2.new(0, 248, 0, 16)
+			tgtIcon.BackgroundTransparency = 1
+			tgtIcon.Text = tgtPet.icon
+			tgtIcon.TextSize = 30
+			tgtIcon.Parent = card
+
+			local tgtName = Instance.new("TextLabel")
+			tgtName.Size = UDim2.new(0, 150, 0, 20)
+			tgtName.Position = UDim2.new(0, 298, 0, 14)
+			tgtName.BackgroundTransparency = 1
+			tgtName.Text = tgtPet.name
+			tgtName.TextColor3 = if activeMode == "Golden" then Color3.fromRGB(255, 220, 80) else Color3.fromRGB(255, 130, 240)
+			tgtName.Font = Enum.Font.GothamBlack
+			tgtName.TextSize = 13
+			tgtName.TextXAlignment = Enum.TextXAlignment.Left
+			tgtName.TextTruncate = Enum.TextTruncate.AtEnd
+			tgtName.Parent = card
+
+			local multLabel = Instance.new("TextLabel")
+			multLabel.Size = UDim2.new(0, 150, 0, 18)
+			multLabel.Position = UDim2.new(0, 298, 0, 36)
+			multLabel.BackgroundTransparency = 1
+			multLabel.Text = string.format("+%.0f%% Cash • +%.0f%% Gems", (tgtPet.cashMultiplier - 1) * 100, (tgtPet.gemMultiplier - 1) * 100)
+			multLabel.TextColor3 = Color3.fromRGB(0, 230, 160)
+			multLabel.Font = Enum.Font.GothamBold
+			multLabel.TextSize = 10
+			multLabel.TextXAlignment = Enum.TextXAlignment.Left
+			multLabel.Parent = card
+
+			-- Action Buttons (Fuse 1x, Fuse All)
+			if cand.canFuse then
+				local batches = math.floor(cand.ownedCount / 3)
+				local canFuseAll = (batches >= 2)
+
+				local fuse1Btn = Instance.new("TextButton")
+				fuse1Btn.Size = if canFuseAll then UDim2.new(0, 78, 0, 38) else UDim2.new(0, 110, 0, 42)
+				fuse1Btn.Position = if canFuseAll then UDim2.new(1, -170, 0, 19) else UDim2.new(1, -122, 0, 18)
+				fuse1Btn.BackgroundColor3 = if activeMode == "Golden" then Color3.fromRGB(210, 160, 20) else Color3.fromRGB(180, 50, 160)
+				fuse1Btn.Text = "FUSE 1x"
+				fuse1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				fuse1Btn.Font = Enum.Font.GothamBlack
+				fuse1Btn.TextSize = 12
+				fuse1Btn.BorderSizePixel = 0
+				fuse1Btn.Parent = card
+
+				local f1Corner = Instance.new("UICorner")
+				f1Corner.CornerRadius = UDim.new(0, 6)
+				f1Corner.Parent = fuse1Btn
+
+				fuse1Btn.MouseButton1Click:Connect(function()
+					fuse1Btn.Text = "..."
+					local fuseFn = Remotes.getFunction("FusePets")
+					local ok, targetId, batchCount, msg = fuseFn:InvokeServer(activeMode, cand.baseId, false)
+					if ok then
+						showFloatingPopup(msg or "✨ Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
+						openFusionModal(activeMode)
+					else
+						showFloatingPopup("⚠️ " .. tostring(msg), Color3.fromRGB(255, 80, 80), 0)
+						openFusionModal(activeMode)
+					end
+				end)
+
+				if canFuseAll then
+					local fuseAllBtn = Instance.new("TextButton")
+					fuseAllBtn.Size = UDim2.new(0, 84, 0, 38)
+					fuseAllBtn.Position = UDim2.new(1, -88, 0, 19)
+					fuseAllBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 140)
+					fuseAllBtn.Text = string.format("ALL (%dx)", batches)
+					fuseAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+					fuseAllBtn.Font = Enum.Font.GothamBlack
+					fuseAllBtn.TextSize = 11
+					fuseAllBtn.BorderSizePixel = 0
+					fuseAllBtn.Parent = card
+
+					local faCorner = Instance.new("UICorner")
+					faCorner.CornerRadius = UDim.new(0, 6)
+					faCorner.Parent = fuseAllBtn
+
+					fuseAllBtn.MouseButton1Click:Connect(function()
+						fuseAllBtn.Text = "..."
+						local fuseFn = Remotes.getFunction("FusePets")
+						local ok, targetId, batchCount, msg = fuseFn:InvokeServer(activeMode, cand.baseId, true)
+						if ok then
+							showFloatingPopup(msg or "✨ Batch Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
+							openFusionModal(activeMode)
+						else
+							showFloatingPopup("⚠️ " .. tostring(msg), Color3.fromRGB(255, 80, 80), 0)
+							openFusionModal(activeMode)
+						end
+					end)
+				end
+			else
+				local lockedBtn = Instance.new("TextLabel")
+				lockedBtn.Size = UDim2.new(0, 110, 0, 38)
+				lockedBtn.Position = UDim2.new(1, -122, 0, 20)
+				lockedBtn.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
+				lockedBtn.Text = string.format("🔒 Need %d More", 3 - cand.ownedCount)
+				lockedBtn.TextColor3 = Color3.fromRGB(130, 135, 150)
+				lockedBtn.Font = Enum.Font.GothamBold
+				lockedBtn.TextSize = 11
+				lockedBtn.BorderSizePixel = 0
+				lockedBtn.Parent = card
+
+				local lCorner = Instance.new("UICorner")
+				lCorner.CornerRadius = UDim.new(0, 6)
+				lCorner.Parent = lockedBtn
 			end
 		end
 	end
@@ -3734,8 +4184,8 @@ function UIController.buildHUD()
 	-- SIDE MENU BUTTONS
 	local sideMenu = Instance.new("Frame")
 	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 148, 0, 450)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, -225)
+	sideMenu.Size = UDim2.new(0, 148, 0, 490)
+	sideMenu.Position = UDim2.new(0, 16, 0.5, -245)
 	sideMenu.BackgroundTransparency = 1
 	sideMenu.Parent = screenGui
 
@@ -3773,6 +4223,9 @@ function UIController.buildHUD()
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
 	createMenuButton("IndexBtn", "📖 Pet Index", Color3.fromRGB(0, 165, 215), function()
 		openPetIndexModal()
+	end)
+	createMenuButton("FusionBtn", "⚗️ Fusion", Color3.fromRGB(245, 150, 0), function()
+		openFusionModal()
 	end)
 	createMenuButton("TrailsBtn", "✨ Trails", Color3.fromRGB(160, 40, 220), openTrailsShopModal)
 	createMenuButton("TreeBtn", "🌳 Upgrades", Color3.fromRGB(0, 175, 120), openUpgradeTreeModal)
@@ -4008,6 +4461,12 @@ function UIController.buildHUD()
 	local openVipEvent = Remotes.getEvent("OpenVIPModal")
 	openVipEvent.OnClientEvent:Connect(function()
 		openVIPModal()
+	end)
+
+	-- Open Pet Fusion Modal (Event from Fusion ProximityPrompt)
+	local openFusionEvent = Remotes.getEvent("OpenFusionModal")
+	openFusionEvent.OnClientEvent:Connect(function()
+		openFusionModal()
 	end)
 
 	-- Sync VIP Status in Real-Time

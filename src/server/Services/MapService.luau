@@ -1444,6 +1444,220 @@ function MapService.buildVIPThrone(folder: Folder)
 	vipModel.Parent = folder
 end
 
+-- 12b. Ancient Alchemical Pet Fusion Machine (3 Pets -> Golden, 3 Golden -> Rainbow)
+function MapService.buildPetFusionMachine(folder: Folder)
+	local machineModel = Instance.new("Model")
+	machineModel.Name = "PetFusionMachine"
+
+	-- Positioned at East plaza (X = 13.5, Z = 13.5)
+	local machineCF = CFrame.new(13.5, 0.4, 13.5) * CFrame.Angles(0, math.rad(-90), 0)
+
+	local obsidian = Color3.fromRGB(24, 26, 34)
+	local darkSlate = Color3.fromRGB(38, 42, 54)
+	local goldMetal = Color3.fromRGB(255, 215, 60)
+	local runeCyan = Color3.fromRGB(0, 220, 255)
+	local rainbowMagenta = Color3.fromRGB(255, 90, 210)
+
+	-- 1. Tiered Stepped Alchemical Dais
+	createStudPart(machineModel, "FusionBase", Vector3.new(8.5, 0.6, 8.5), machineCF * CFrame.new(0, 0.3, 0), obsidian)
+	createStudPart(machineModel, "FusionStep", Vector3.new(7.0, 0.5, 7.0), machineCF * CFrame.new(0, 0.85, 0), darkSlate)
+
+	-- 2. Dual Concentric Rune Inlays
+	local goldRuneRing = createStudPart(machineModel, "GoldRuneRing", Vector3.new(5.8, 0.15, 5.8), machineCF * CFrame.new(0, 1.15, 0), goldMetal)
+	goldRuneRing.Material = Enum.Material.Neon
+	goldRuneRing.CanCollide = false
+
+	local innerCyanCore = createStudPart(machineModel, "CyanRuneCore", Vector3.new(3.8, 0.18, 3.8), machineCF * CFrame.new(0, 1.2, 0), runeCyan)
+	innerCyanCore.Material = Enum.Material.Neon
+	innerCyanCore.CanCollide = false
+
+	-- 3. Left Energy Pylon: Golden Alchemical Spire
+	createStudPart(machineModel, "GoldPylonBase", Vector3.new(1.8, 4.2, 1.8), machineCF * CFrame.new(-3.0, 3.2, 0), obsidian)
+	local leftGoldTrim = createStudPart(machineModel, "GoldPylonTrim", Vector3.new(2.2, 0.5, 2.2), machineCF * CFrame.new(-3.0, 5.2, 0), goldMetal)
+	leftGoldTrim.Material = Enum.Material.SmoothPlastic
+
+	-- Floating Golden Core Orb
+	local goldOrb = Instance.new("Part")
+	goldOrb.Name = "GoldCoreOrb"
+	goldOrb.Size = Vector3.new(1.6, 1.6, 1.6)
+	goldOrb.Shape = Enum.PartType.Ball
+	goldOrb.CFrame = machineCF * CFrame.new(-3.0, 6.4, 0)
+	goldOrb.Color = Color3.fromRGB(255, 220, 60)
+	goldOrb.Material = Enum.Material.Neon
+	goldOrb.Anchored = true
+	goldOrb.CanCollide = false
+	goldOrb.Parent = machineModel
+
+	local goldLight = Instance.new("PointLight")
+	goldLight.Color = Color3.fromRGB(255, 215, 80)
+	goldLight.Brightness = 2.4
+	goldLight.Range = 18
+	goldLight.Parent = goldOrb
+
+	local goldAttach = Instance.new("Attachment")
+	goldAttach.Parent = goldOrb
+	local goldSparks = Instance.new("ParticleEmitter")
+	goldSparks.Size = NumberSequence.new(0.3, 0.05)
+	goldSparks.Rate = 12
+	goldSparks.Speed = NumberRange.new(1, 2)
+	goldSparks.Color = ColorSequence.new(Color3.fromRGB(255, 230, 90))
+	goldSparks.Parent = goldAttach
+
+	-- 4. Right Energy Pylon: Rainbow Prismatic Spire
+	createStudPart(machineModel, "RainbowPylonBase", Vector3.new(1.8, 4.2, 1.8), machineCF * CFrame.new(3.0, 3.2, 0), obsidian)
+	local rightRainbowTrim = createStudPart(machineModel, "RainbowPylonTrim", Vector3.new(2.2, 0.5, 2.2), machineCF * CFrame.new(3.0, 5.2, 0), rainbowMagenta)
+	rightRainbowTrim.Material = Enum.Material.SmoothPlastic
+
+	-- Floating Rainbow Core Orb
+	local rainbowOrb = Instance.new("Part")
+	rainbowOrb.Name = "RainbowCoreOrb"
+	rainbowOrb.Size = Vector3.new(1.6, 1.6, 1.6)
+	rainbowOrb.Shape = Enum.PartType.Ball
+	rainbowOrb.CFrame = machineCF * CFrame.new(3.0, 6.4, 0)
+	rainbowOrb.Color = rainbowMagenta
+	rainbowOrb.Material = Enum.Material.Neon
+	rainbowOrb.Anchored = true
+	rainbowOrb.CanCollide = false
+	rainbowOrb.Parent = machineModel
+
+	local rainbowLight = Instance.new("PointLight")
+	rainbowLight.Color = Color3.fromRGB(255, 110, 230)
+	rainbowLight.Brightness = 2.4
+	rainbowLight.Range = 18
+	rainbowLight.Parent = rainbowOrb
+
+	local rainbowAttach = Instance.new("Attachment")
+	rainbowAttach.Parent = rainbowOrb
+	local rainbowSparks = Instance.new("ParticleEmitter")
+	rainbowSparks.Size = NumberSequence.new(0.35, 0.05)
+	rainbowSparks.Rate = 16
+	rainbowSparks.Speed = NumberRange.new(1, 2.5)
+	rainbowSparks.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 220, 80)),
+		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(80, 240, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 240)),
+	})
+	rainbowSparks.Parent = rainbowAttach
+
+	-- 5. Center Quantum Fusion Chamber & Floating Reactor
+	createStudPart(machineModel, "ChamberAnvil", Vector3.new(2.6, 2.0, 2.6), machineCF * CFrame.new(0, 2.1, 0), obsidian)
+	local anvilRing = createStudPart(machineModel, "AnvilRing", Vector3.new(3.2, 0.4, 3.2), machineCF * CFrame.new(0, 3.0, 0), goldMetal)
+	anvilRing.Material = Enum.Material.SmoothPlastic
+
+	-- Central Floating Levitation Core
+	local reactorCore = Instance.new("Part")
+	reactorCore.Name = "ReactorCore"
+	reactorCore.Size = Vector3.new(2.0, 2.0, 2.0)
+	reactorCore.Shape = Enum.PartType.Ball
+	reactorCore.CFrame = machineCF * CFrame.new(0, 4.4, 0)
+	reactorCore.Color = Color3.fromRGB(0, 240, 255)
+	reactorCore.Material = Enum.Material.Neon
+	reactorCore.Anchored = true
+	reactorCore.CanCollide = false
+	reactorCore.Parent = machineModel
+
+	local coreLight = Instance.new("PointLight")
+	coreLight.Color = Color3.fromRGB(0, 240, 255)
+	coreLight.Brightness = 3.0
+	coreLight.Range = 22
+	coreLight.Parent = reactorCore
+
+	local coreAttach = Instance.new("Attachment")
+	coreAttach.Parent = reactorCore
+	local corePlasma = Instance.new("ParticleEmitter")
+	corePlasma.Size = NumberSequence.new(0.4, 0.1)
+	corePlasma.Rate = 20
+	corePlasma.Lifetime = NumberRange.new(0.6, 1.2)
+	corePlasma.Speed = NumberRange.new(1.5, 3.0)
+	corePlasma.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 230)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 240)),
+	})
+	corePlasma.Parent = coreAttach
+
+	-- 6. Overhead Holographic Billboard
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "FusionTitleGui"
+	billboard.Size = UDim2.new(0, 280, 0, 80)
+	billboard.StudsOffset = Vector3.new(0, 4.0, 0)
+	billboard.AlwaysOnTop = false
+	billboard.MaxDistance = 65
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "⚗️ PET FUSION MACHINE ⚗️"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 60)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = billboard
+
+	local actionLabel = Instance.new("TextLabel")
+	actionLabel.Size = UDim2.new(1, 0, 0.32, 0)
+	actionLabel.Position = UDim2.new(0, 0, 0.36, 0)
+	actionLabel.BackgroundTransparency = 1
+	actionLabel.Text = "[E] Open Fusion Station"
+	actionLabel.TextColor3 = Color3.fromRGB(0, 240, 180)
+	actionLabel.Font = Enum.Font.GothamBold
+	actionLabel.TextSize = 13
+	actionLabel.TextStrokeTransparency = 0.2
+	actionLabel.Parent = billboard
+
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Size = UDim2.new(1, 0, 0.28, 0)
+	subLabel.Position = UDim2.new(0, 0, 0.68, 0)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Text = "🌟 3 Pets ➔ Golden (3x)  •  🌈 3 Gold ➔ Rainbow (9x)"
+	subLabel.TextColor3 = Color3.fromRGB(230, 235, 250)
+	subLabel.Font = Enum.Font.GothamMedium
+	subLabel.TextSize = 11
+	subLabel.TextStrokeTransparency = 0.25
+	subLabel.Parent = billboard
+
+	billboard.Parent = reactorCore
+
+	-- 7. Interaction Trigger & ProximityPrompt
+	local interactionPart = Instance.new("Part")
+	interactionPart.Name = "FusionInteractionPart"
+	interactionPart.Size = Vector3.new(7.0, 6.0, 7.0)
+	interactionPart.CFrame = machineCF * CFrame.new(0, 3.0, 1.2)
+	interactionPart.Transparency = 1
+	interactionPart.CanCollide = false
+	interactionPart.CanTouch = true
+	interactionPart.CanQuery = true
+	interactionPart.Anchored = true
+	interactionPart.Parent = machineModel
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "FusionPrompt"
+	prompt.ActionText = "Fuse Pets"
+	prompt.ObjectText = "Pet Fusion Machine"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 14
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = interactionPart
+
+	local lastTriggerTime: { [Player]: number } = {}
+	prompt.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastTriggerTime[player] and (now - lastTriggerTime[player]) < 0.4 then
+			return
+		end
+		lastTriggerTime[player] = now
+
+		print("⚗️ [MapService] Fusion ProximityPrompt triggered by " .. player.Name)
+		local openEvt = Remotes.getEvent("OpenFusionModal")
+		openEvt:FireClient(player)
+	end)
+
+	machineModel.Parent = folder
+end
+
 -- 13. Grand Magma Gate to Zone 2 (At Z = -140, requiring 5 Rebirths)
 function MapService.buildMagmaGate(folder: Folder)
 	local gateModel = Instance.new("Model")
@@ -2070,6 +2284,7 @@ function MapService.init()
 	MapService.buildEggStand(mapFolder)
 	MapService.buildRobuxEggStand(mapFolder)
 	MapService.buildVIPThrone(mapFolder)
+	MapService.buildPetFusionMachine(mapFolder)
 	MapService.buildDungeonRuins(mapFolder)
 	MapService.buildZone2Terrain(mapFolder)
 	MapService.buildMagmaGate(mapFolder)

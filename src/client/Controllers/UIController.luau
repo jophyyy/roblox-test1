@@ -2152,6 +2152,11 @@ local function openTrailsShopModal()
 end
 
 local function openUpgradeTreeModal()
+	if activeModal and activeModal.Name == "UpgradeTreeModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	closeDialogue()
 
@@ -2169,79 +2174,122 @@ local function openUpgradeTreeModal()
 		end
 	end
 
-	-- Fullscreen Modal Container
+	-- Fullscreen Modal Container (Deep cosmic slate-navy, NOT pitch black)
 	local modal = Instance.new("Frame")
 	modal.Name = "UpgradeTreeModal"
 	modal.Size = UDim2.new(1, 0, 1, 0)
 	modal.AnchorPoint = Vector2.new(0.5, 0.5)
-	modal.Position = UDim2.new(0.5, 0, 1.5, 0)
-	modal.BackgroundColor3 = Color3.fromRGB(11, 13, 19)
+	modal.Position = UDim2.new(0.5, 0, 0.5, 0)
+	modal.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
 	modal.BorderSizePixel = 0
 	modal.ZIndex = 40
 	modal.Parent = screenGui
 	activeModal = modal
 
-	-- Atmospheric background gradient
+	-- Atmospheric background gradient (cosmic deep slate / indigo)
 	local bgGradient = Instance.new("UIGradient")
 	bgGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 24, 36)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(11, 14, 20)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 9, 14)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(26, 30, 48)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 18, 28)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(11, 13, 20)),
 	})
 	bgGradient.Rotation = 45
 	bgGradient.Parent = modal
+
+	-- Cosmic Ambient Stars / Dust particles across modal background
+	local starContainer = Instance.new("Frame")
+	starContainer.Name = "Starfield"
+	starContainer.Size = UDim2.new(1, 0, 1, 0)
+	starContainer.BackgroundTransparency = 1
+	starContainer.ZIndex = 40
+	starContainer.Parent = modal
+
+	local starSeeds = {
+		{ 0.08, 0.15, 3, 0.6, Color3.fromRGB(160, 210, 255) },
+		{ 0.14, 0.42, 2, 0.7, Color3.fromRGB(255, 230, 150) },
+		{ 0.22, 0.78, 4, 0.5, Color3.fromRGB(255, 180, 220) },
+		{ 0.31, 0.18, 2, 0.7, Color3.fromRGB(180, 240, 255) },
+		{ 0.45, 0.22, 3, 0.6, Color3.fromRGB(255, 220, 120) },
+		{ 0.58, 0.14, 2, 0.8, Color3.fromRGB(200, 230, 255) },
+		{ 0.72, 0.30, 3, 0.6, Color3.fromRGB(255, 200, 140) },
+		{ 0.85, 0.20, 2, 0.7, Color3.fromRGB(160, 220, 255) },
+		{ 0.92, 0.55, 4, 0.5, Color3.fromRGB(220, 180, 255) },
+		{ 0.82, 0.80, 3, 0.6, Color3.fromRGB(180, 255, 220) },
+		{ 0.68, 0.88, 2, 0.7, Color3.fromRGB(255, 230, 160) },
+		{ 0.38, 0.85, 3, 0.6, Color3.fromRGB(200, 190, 255) },
+		{ 0.18, 0.88, 2, 0.8, Color3.fromRGB(180, 230, 255) },
+		{ 0.05, 0.62, 3, 0.7, Color3.fromRGB(255, 210, 160) },
+		{ 0.95, 0.35, 2, 0.6, Color3.fromRGB(255, 255, 255) },
+		{ 0.28, 0.52, 2, 0.75, Color3.fromRGB(255, 240, 180) },
+		{ 0.76, 0.58, 3, 0.65, Color3.fromRGB(190, 230, 255) },
+		{ 0.52, 0.80, 2, 0.7, Color3.fromRGB(255, 200, 255) },
+	}
+	for _, s in ipairs(starSeeds) do
+		local star = Instance.new("Frame")
+		star.Size = UDim2.new(0, s[3], 0, s[3])
+		star.Position = UDim2.new(s[1], 0, s[2], 0)
+		star.BackgroundColor3 = s[5]
+		star.BackgroundTransparency = s[4]
+		star.BorderSizePixel = 0
+		star.ZIndex = 40
+		star.Parent = starContainer
+
+		local sCorner = Instance.new("UICorner")
+		sCorner.CornerRadius = UDim.new(1, 0)
+		sCorner.Parent = star
+	end
 
 	-- Top Header Bar
 	local header = Instance.new("Frame")
 	header.Name = "HeaderBar"
 	header.Size = UDim2.new(1, 0, 0, 68)
 	header.Position = UDim2.new(0, 0, 0, 0)
-	header.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+	header.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
 	header.BorderSizePixel = 0
-	header.ZIndex = 45
+	header.ZIndex = 50
 	header.Parent = modal
 
 	local headerStroke = Instance.new("UIStroke")
 	headerStroke.Thickness = 1.5
-	headerStroke.Color = Color3.fromRGB(0, 200, 140)
+	headerStroke.Color = Color3.fromRGB(0, 210, 150)
 	headerStroke.Transparency = 0.5
 	headerStroke.Parent = header
 
 	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(0.45, 0, 0, 32)
+	titleLabel.Size = UDim2.new(0.38, 0, 0, 30)
 	titleLabel.Position = UDim2.new(0, 24, 0, 10)
 	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "🌳 ANCIENT TALENT TREE 🌳"
+	titleLabel.Text = "🌟 ANCIENT TALENT TREE 🌟"
 	titleLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
 	titleLabel.Font = Enum.Font.Antique
 	titleLabel.TextSize = 22
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.ZIndex = 46
+	titleLabel.ZIndex = 51
 	titleLabel.Parent = header
 
 	local subTitle = Instance.new("TextLabel")
-	subTitle.Size = UDim2.new(0.45, 0, 0, 18)
-	subTitle.Position = UDim2.new(0, 24, 0, 42)
+	subTitle.Size = UDim2.new(0.38, 0, 0, 18)
+	subTitle.Position = UDim2.new(0, 24, 0, 40)
 	subTitle.BackgroundTransparency = 1
 	subTitle.Text = "Awaken the central core to expand outward into ancient talent branches"
-	subTitle.TextColor3 = Color3.fromRGB(165, 180, 205)
+	subTitle.TextColor3 = Color3.fromRGB(165, 185, 210)
 	subTitle.Font = Enum.Font.Antique
 	subTitle.TextSize = 13
 	subTitle.TextXAlignment = Enum.TextXAlignment.Left
-	subTitle.ZIndex = 46
+	subTitle.ZIndex = 51
 	subTitle.Parent = header
 
 	-- Live Currency Display (Gems Badge)
 	local gemsBadge = Instance.new("TextLabel")
-	gemsBadge.Size = UDim2.new(0, 140, 0, 38)
-	gemsBadge.Position = UDim2.new(1, -270, 0.5, -19)
-	gemsBadge.BackgroundColor3 = Color3.fromRGB(25, 22, 38)
+	gemsBadge.Size = UDim2.new(0, 135, 0, 38)
+	gemsBadge.Position = UDim2.new(1, -415, 0.5, -19)
+	gemsBadge.BackgroundColor3 = Color3.fromRGB(26, 22, 42)
 	gemsBadge.Text = "💎 " .. FormatNumber.formatCompact(cachedData.Gems or 0)
 	gemsBadge.TextColor3 = Color3.fromRGB(0, 255, 230)
 	gemsBadge.Font = Enum.Font.GothamBold
 	gemsBadge.TextSize = 13
 	gemsBadge.BorderSizePixel = 0
-	gemsBadge.ZIndex = 46
+	gemsBadge.ZIndex = 51
 	gemsBadge.Parent = header
 
 	local gbCorner = Instance.new("UICorner")
@@ -2253,17 +2301,40 @@ local function openUpgradeTreeModal()
 	gbStroke.Color = Color3.fromRGB(160, 60, 230)
 	gbStroke.Parent = gemsBadge
 
+	-- Quick Dev Cheat Button to test talent unlocking seamlessly
+	local devGemsBtn = Instance.new("TextButton")
+	devGemsBtn.Size = UDim2.new(0, 130, 0, 38)
+	devGemsBtn.Position = UDim2.new(1, -265, 0.5, -19)
+	devGemsBtn.BackgroundColor3 = Color3.fromRGB(90, 45, 140)
+	devGemsBtn.Text = "⚡ +50K 💎 (Dev)"
+	devGemsBtn.TextColor3 = Color3.fromRGB(255, 225, 120)
+	devGemsBtn.Font = Enum.Font.GothamBold
+	devGemsBtn.TextSize = 12
+	devGemsBtn.BorderSizePixel = 0
+	devGemsBtn.ZIndex = 51
+	devGemsBtn.Parent = header
+
+	local dgbCorner = Instance.new("UICorner")
+	dgbCorner.CornerRadius = UDim.new(0, 8)
+	dgbCorner.Parent = devGemsBtn
+
+	local dgbStroke = Instance.new("UIStroke")
+	dgbStroke.Thickness = 1
+	dgbStroke.Color = Color3.fromRGB(200, 120, 255)
+	dgbStroke.Transparency = 0.5
+	dgbStroke.Parent = devGemsBtn
+
 	-- Close Button
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Size = UDim2.new(0, 110, 0, 38)
-	closeBtn.Position = UDim2.new(1, -125, 0.5, -19)
+	closeBtn.Position = UDim2.new(1, -120, 0.5, -19)
 	closeBtn.BackgroundColor3 = Color3.fromRGB(190, 45, 60)
 	closeBtn.Text = "✕ CLOSE"
 	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	closeBtn.Font = Enum.Font.GothamBold
 	closeBtn.TextSize = 13
 	closeBtn.BorderSizePixel = 0
-	closeBtn.ZIndex = 46
+	closeBtn.ZIndex = 51
 	closeBtn.Parent = header
 
 	local cbCorner = Instance.new("UICorner")
@@ -2272,23 +2343,14 @@ local function openUpgradeTreeModal()
 
 	closeBtn.MouseButton1Click:Connect(closeModal)
 
-	-- Scrollable Canvas for Tree
-	local scroll = Instance.new("ScrollingFrame")
-	scroll.Name = "TreeScroll"
-	scroll.Size = UDim2.new(1, -20, 1, -85)
-	scroll.Position = UDim2.new(0, 10, 0, 78)
-	scroll.BackgroundTransparency = 1
-	scroll.BorderSizePixel = 0
-	scroll.ScrollBarThickness = 6
-	scroll.ZIndex = 41
-	scroll.Parent = modal
-
+	-- Fullscreen Tree Canvas
 	local treeCanvas = Instance.new("Frame")
 	treeCanvas.Name = "TreeCanvas"
-	treeCanvas.Size = UDim2.new(1, 0, 1, 0)
+	treeCanvas.Size = UDim2.new(1, 0, 1, -70)
+	treeCanvas.Position = UDim2.new(0, 0, 0, 70)
 	treeCanvas.BackgroundTransparency = 1
-	treeCanvas.ZIndex = 42
-	treeCanvas.Parent = scroll
+	treeCanvas.ZIndex = 41
+	treeCanvas.Parent = modal
 
 	-- Forward-declare render function
 	local renderTree: () -> ()
@@ -2300,6 +2362,24 @@ local function openUpgradeTreeModal()
 		local angle = math.deg(math.atan2(delta.Y, delta.X))
 		local mid = (p0 + p1) / 2
 
+		-- Ambient glow under-wire
+		local glowWire = Instance.new("Frame")
+		glowWire.Name = "WireGlow"
+		glowWire.AnchorPoint = Vector2.new(0.5, 0.5)
+		glowWire.Position = UDim2.new(0, mid.X, 0, mid.Y)
+		glowWire.Size = UDim2.new(0, length, 0, thickness + 4)
+		glowWire.Rotation = angle
+		glowWire.BackgroundColor3 = color
+		glowWire.BackgroundTransparency = math.clamp(transparency + 0.5, 0, 1)
+		glowWire.BorderSizePixel = 0
+		glowWire.ZIndex = 41
+		glowWire.Parent = treeCanvas
+
+		local gwCorner = Instance.new("UICorner")
+		gwCorner.CornerRadius = UDim.new(1, 0)
+		gwCorner.Parent = glowWire
+
+		-- Core illuminated conduit wire
 		local wire = Instance.new("Frame")
 		wire.Name = "Wire"
 		wire.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2318,60 +2398,104 @@ local function openUpgradeTreeModal()
 		return wire
 	end
 
-	-- Hexagon construction helper
+	-- Flat-top regular hexagon construction helper
 	local function drawHexagon(
-		centerPos: Vector2,
-		radius: number,
 		node: SkillTreeConfig.SkillNode,
 		isUnlocked: boolean,
 		canUnlock: boolean,
 		isBase: boolean,
 		onUnlock: () -> ()
 	): Frame
+		local radius = if isBase then 72 else 58
+		local hexW = radius * 2
+		local hexH = math.floor(radius * 1.732 + 0.5)
+
 		local hexHolder = Instance.new("Frame")
 		hexHolder.Name = "Hex_" .. node.id
-		hexHolder.Size = UDim2.new(0, radius * 2, 0, radius * 2)
+		hexHolder.Size = UDim2.new(0, hexW, 0, hexH)
 		hexHolder.AnchorPoint = Vector2.new(0.5, 0.5)
-		hexHolder.Position = UDim2.new(0, centerPos.X, 0, centerPos.Y)
+		hexHolder.Position = UDim2.new(node.position.X, 0, node.position.Y, 0)
 		hexHolder.BackgroundTransparency = 1
 		hexHolder.BorderSizePixel = 0
-		hexHolder.ZIndex = 44
+		hexHolder.ZIndex = 43
 		hexHolder.Parent = treeCanvas
 
-		-- 1. Filled Hexagon Background (3 overlapping rotated rectangles at 0°, 60°, 120°)
-		local rectW = radius * 1.732
-		local rectH = radius
-		local fillColor = if isUnlocked
-			then node.color:Lerp(Color3.fromRGB(16, 20, 30), 0.65)
-			else Color3.fromRGB(22, 26, 38)
+		-- 1. Outer Ambient Neon Glow Halo
+		local halo = Instance.new("Frame")
+		halo.Name = "GlowHalo"
+		halo.Size = UDim2.new(0, hexW + 18, 0, hexH + 18)
+		halo.AnchorPoint = Vector2.new(0.5, 0.5)
+		halo.Position = UDim2.new(0.5, 0, 0.5, 0)
+		halo.BackgroundColor3 = node.color
+		halo.BackgroundTransparency = if isUnlocked then 0.70 elseif isBase then 0.74 else 0.84
+		halo.BorderSizePixel = 0
+		halo.ZIndex = 43
+		halo.Parent = hexHolder
 
-		for _, rot in ipairs({ 0, 60, 120 }) do
-			local rFrame = Instance.new("Frame")
-			rFrame.Name = "HexFill_" .. rot
-			rFrame.Size = UDim2.new(0, rectW, 0, rectH)
-			rFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-			rFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-			rFrame.Rotation = rot
-			rFrame.BackgroundColor3 = fillColor
-			rFrame.BorderSizePixel = 0
-			rFrame.ZIndex = 44
-			rFrame.Parent = hexHolder
+		local hCorner = Instance.new("UICorner")
+		hCorner.CornerRadius = UDim.new(1, 0)
+		hCorner.Parent = halo
+
+		-- Subtle breathing animation for Central Base Core
+		if isBase and not isUnlocked then
+			TweenService:Create(halo, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+				BackgroundTransparency = 0.55,
+				Size = UDim2.new(0, hexW + 28, 0, hexH + 28),
+			}):Play()
 		end
 
-		-- 2. Hexagonal Glowing Border (6 perimeter line segments)
-		local rad60 = math.rad(60)
-		local borderColor = if isUnlocked then node.color else node.color:Lerp(Color3.fromRGB(255, 255, 255), 0.25)
+		-- 2. Glassmorphic Card Body
+		local card = Instance.new("Frame")
+		card.Name = "CardBody"
+		card.Size = UDim2.new(0, radius * 1.72, 0, radius * 1.50)
+		card.AnchorPoint = Vector2.new(0.5, 0.5)
+		card.Position = UDim2.new(0.5, 0, 0.5, 0)
+		card.BackgroundColor3 = if isUnlocked
+			then node.color:Lerp(Color3.fromRGB(16, 24, 38), 0.70)
+			elseif isBase
+			then Color3.fromRGB(38, 32, 20)
+			else Color3.fromRGB(22, 28, 42)
+		card.BorderSizePixel = 0
+		card.ZIndex = 44
+		card.Parent = hexHolder
+
+		local cCorner = Instance.new("UICorner")
+		cCorner.CornerRadius = UDim.new(0, 14)
+		cCorner.Parent = card
+
+		local cStroke = Instance.new("UIStroke")
+		cStroke.Color = node.color
+		cStroke.Thickness = if isUnlocked then 2 else 1
+		cStroke.Transparency = if isUnlocked then 0.2 else 0.5
+		cStroke.Parent = card
+
+		-- 3. 6 Perimeter Borders for Flat-Top Regular Hexagon
+		local halfR = radius * 0.5
+		local hVal = radius * 0.8660
+		local vertices = {
+			Vector2.new(halfR, -hVal),
+			Vector2.new(-halfR, -hVal),
+			Vector2.new(-radius, 0),
+			Vector2.new(-halfR, hVal),
+			Vector2.new(halfR, hVal),
+			Vector2.new(radius, 0),
+		}
+
+		local borderColor = if isUnlocked
+			then node.color
+			elseif isBase
+			then Color3.fromRGB(255, 230, 110)
+			else node.color:Lerp(Color3.fromRGB(255, 255, 255), 0.25)
 		local borderThickness = if isUnlocked then 3.5 else 2.5
 
-		for i = 0, 5 do
-			local a1 = i * rad60
-			local a2 = (i + 1) * rad60
-			local v1 = Vector2.new(radius * math.cos(a1), radius * math.sin(a1))
-			local v2 = Vector2.new(radius * math.cos(a2), radius * math.sin(a2))
-			local mid = (v1 + v2) / 2
-			local delta = v2 - v1
+		for i = 1, 6 do
+			local nextIdx = if i == 6 then 1 else i + 1
+			local vA = vertices[i]
+			local vB = vertices[nextIdx]
+			local delta = vB - vA
 			local length = delta.Magnitude
 			local angle = math.deg(math.atan2(delta.Y, delta.X))
+			local mid = (vA + vB) / 2
 
 			local edge = Instance.new("Frame")
 			edge.Name = "Edge_" .. i
@@ -2387,49 +2511,62 @@ local function openUpgradeTreeModal()
 			local eCorner = Instance.new("UICorner")
 			eCorner.CornerRadius = UDim.new(1, 0)
 			eCorner.Parent = edge
+
+			-- Glowing vertex star dot at each hexagon corner
+			local dot = Instance.new("Frame")
+			dot.Name = "VertexDot_" .. i
+			dot.AnchorPoint = Vector2.new(0.5, 0.5)
+			dot.Position = UDim2.new(0.5, vA.X, 0.5, vA.Y)
+			dot.Size = UDim2.new(0, 6, 0, 6)
+			dot.BackgroundColor3 = borderColor
+			dot.BorderSizePixel = 0
+			dot.ZIndex = 46
+			dot.Parent = hexHolder
+
+			local dCorner = Instance.new("UICorner")
+			dCorner.CornerRadius = UDim.new(1, 0)
+			dCorner.Parent = dot
 		end
 
-		-- 3. Center Content inside Hexagon
+		-- 4. Content inside Hexagon
 		local content = Instance.new("Frame")
 		content.Name = "Content"
-		content.Size = UDim2.new(0, radius * 1.5, 0, radius * 1.5)
-		content.AnchorPoint = Vector2.new(0.5, 0.5)
-		content.Position = UDim2.new(0.5, 0, 0.5, 0)
+		content.Size = UDim2.new(1, 0, 1, 0)
 		content.BackgroundTransparency = 1
-		content.ZIndex = 46
+		content.ZIndex = 47
 		content.Parent = hexHolder
 
 		-- Icon
 		local iconLbl = Instance.new("TextLabel")
 		iconLbl.Size = UDim2.new(1, 0, 0, if isBase then 30 else 24)
-		iconLbl.Position = UDim2.new(0, 0, 0, if isBase then 4 else 6)
+		iconLbl.Position = UDim2.new(0, 0, 0, if isBase then 8 else 6)
 		iconLbl.BackgroundTransparency = 1
 		iconLbl.Text = node.icon
-		iconLbl.TextSize = if isBase then 26 else 22
-		iconLbl.ZIndex = 46
+		iconLbl.TextSize = if isBase then 26 else 20
+		iconLbl.ZIndex = 47
 		iconLbl.Parent = content
 
 		-- Name
 		local nameLbl = Instance.new("TextLabel")
-		nameLbl.Size = UDim2.new(1, 0, 0, 16)
-		nameLbl.Position = UDim2.new(0, 0, 0, if isBase then 34 else 30)
+		nameLbl.Size = UDim2.new(1, -14, 0, 16)
+		nameLbl.Position = UDim2.new(0, 7, 0, if isBase then 38 else 30)
 		nameLbl.BackgroundTransparency = 1
 		nameLbl.Text = node.name
-		nameLbl.TextColor3 = if isUnlocked then Color3.fromRGB(255, 255, 255) else node.color
+		nameLbl.TextColor3 = if isUnlocked then Color3.fromRGB(255, 255, 255) elseif isBase then Color3.fromRGB(255, 225, 100) else node.color
 		nameLbl.Font = Enum.Font.Antique
 		nameLbl.TextSize = if isBase then 13 else 11
-		nameLbl.ZIndex = 46
+		nameLbl.ZIndex = 47
 		nameLbl.Parent = content
 
 		-- Perk summary
 		local perkLbl = Instance.new("TextLabel")
-		perkLbl.Size = UDim2.new(1, 0, 0, 14)
-		perkLbl.Position = UDim2.new(0, 0, 0, if isBase then 50 else 46)
+		perkLbl.Size = UDim2.new(1, -10, 0, 14)
+		perkLbl.Position = UDim2.new(0, 5, 0, if isBase then 54 else 46)
 		perkLbl.BackgroundTransparency = 1
-		perkLbl.TextColor3 = Color3.fromRGB(190, 215, 240)
+		perkLbl.TextColor3 = Color3.fromRGB(190, 220, 245)
 		perkLbl.Font = Enum.Font.Antique
-		perkLbl.TextSize = 10
-		perkLbl.ZIndex = 46
+		perkLbl.TextSize = if isBase then 11 else 10
+		perkLbl.ZIndex = 47
 
 		if node.branch == "Power" then
 			local mineBonus = math.floor((node.miningPowerMult - 1.0) * 100 + 0.5)
@@ -2448,15 +2585,15 @@ local function openUpgradeTreeModal()
 		-- Status Button / Tag
 		if isUnlocked then
 			local masteredTag = Instance.new("TextLabel")
-			masteredTag.Size = UDim2.new(0.85, 0, 0, 20)
-			masteredTag.Position = UDim2.new(0.075, 0, 1, -24)
-			masteredTag.BackgroundColor3 = Color3.fromRGB(24, 60, 40)
+			masteredTag.Size = UDim2.new(0.80, 0, 0, if isBase then 24 else 20)
+			masteredTag.Position = UDim2.new(0.10, 0, 1, if isBase then -36 else -28)
+			masteredTag.BackgroundColor3 = Color3.fromRGB(24, 70, 45)
 			masteredTag.Text = "✓ MASTERED"
-			masteredTag.TextColor3 = Color3.fromRGB(80, 255, 160)
+			masteredTag.TextColor3 = Color3.fromRGB(80, 255, 170)
 			masteredTag.Font = Enum.Font.GothamBold
-			masteredTag.TextSize = 9
+			masteredTag.TextSize = 10
 			masteredTag.BorderSizePixel = 0
-			masteredTag.ZIndex = 46
+			masteredTag.ZIndex = 48
 			masteredTag.Parent = content
 
 			local mtCorner = Instance.new("UICorner")
@@ -2465,15 +2602,17 @@ local function openUpgradeTreeModal()
 		elseif canUnlock then
 			local canAfford = (cachedData.Gems or 0) >= node.cost
 			local buyBtn = Instance.new("TextButton")
-			buyBtn.Size = UDim2.new(0.88, 0, 0, 22)
-			buyBtn.Position = UDim2.new(0.06, 0, 1, -25)
-			buyBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 165, 110) else Color3.fromRGB(75, 42, 55)
-			buyBtn.Text = "💎 " .. FormatNumber.formatCompact(node.cost) .. " BUY"
-			buyBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(220, 160, 175)
+			buyBtn.Size = UDim2.new(0.82, 0, 0, if isBase then 26 else 22)
+			buyBtn.Position = UDim2.new(0.09, 0, 1, if isBase then -38 else -30)
+			buyBtn.BackgroundColor3 = if canAfford
+				then (if isBase then Color3.fromRGB(220, 165, 30) else Color3.fromRGB(0, 175, 115))
+				else Color3.fromRGB(85, 45, 60)
+			buyBtn.Text = (if isBase then "🌟 " else "💎 ") .. FormatNumber.formatCompact(node.cost) .. (if isBase then " AWAKEN" else " BUY")
+			buyBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(230, 170, 185)
 			buyBtn.Font = Enum.Font.GothamBold
 			buyBtn.TextSize = 10
 			buyBtn.BorderSizePixel = 0
-			buyBtn.ZIndex = 47
+			buyBtn.ZIndex = 49
 			buyBtn.Parent = content
 
 			local bbCorner = Instance.new("UICorner")
@@ -2483,7 +2622,7 @@ local function openUpgradeTreeModal()
 			buyBtn.MouseButton1Click:Connect(onUnlock)
 		end
 
-		-- 4. Full Hexagon Click Trigger
+		-- 5. Full Hexagon Click Trigger
 		local hitArea = Instance.new("TextButton")
 		hitArea.Name = "HitArea"
 		hitArea.Size = UDim2.new(1, 0, 1, 0)
@@ -2504,14 +2643,20 @@ local function openUpgradeTreeModal()
 		-- Hover effect
 		hitArea.MouseEnter:Connect(function()
 			if canUnlock or isUnlocked then
-				TweenService:Create(hexHolder, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(0, (radius * 2) + 8, 0, (radius * 2) + 8),
+				TweenService:Create(card, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.new(0, radius * 1.82, 0, radius * 1.58),
+				}):Play()
+				TweenService:Create(halo, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					BackgroundTransparency = 0.58,
 				}):Play()
 			end
 		end)
 		hitArea.MouseLeave:Connect(function()
-			TweenService:Create(hexHolder, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, radius * 2, 0, radius * 2),
+			TweenService:Create(card, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, radius * 1.72, 0, radius * 1.50),
+			}):Play()
+			TweenService:Create(halo, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				BackgroundTransparency = if isUnlocked then 0.70 elseif isBase then 0.74 else 0.84,
 			}):Play()
 		end)
 
@@ -2521,18 +2666,19 @@ local function openUpgradeTreeModal()
 	renderTree = function()
 		treeCanvas:ClearAllChildren()
 
-		local cw = math.max(880, treeCanvas.AbsoluteSize.X)
-		local ch = math.max(680, treeCanvas.AbsoluteSize.Y)
-
-		if treeCanvas.AbsoluteSize.X < 880 or treeCanvas.AbsoluteSize.Y < 680 then
-			scroll.CanvasSize = UDim2.new(0, 880, 0, 680)
-			treeCanvas.Size = UDim2.new(0, 880, 0, 680)
-		else
-			scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-			treeCanvas.Size = UDim2.new(1, 0, 1, 0)
+		local cw = treeCanvas.AbsoluteSize.X
+		local ch = treeCanvas.AbsoluteSize.Y
+		if cw < 200 or ch < 200 then
+			if screenGui and screenGui.AbsoluteSize.X > 200 then
+				cw = screenGui.AbsoluteSize.X
+				ch = screenGui.AbsoluteSize.Y - 70
+			else
+				cw = 1200
+				ch = 800
+			end
 		end
 
-		-- Background Branch Orientation Labels (faint cosmic guides)
+		-- Ambient Branch Orientation Guides
 		local branchLabels = {
 			{ x = 0.18, y = 0.08, name = "⚔️ MIGHT & BOSS SLAYER", color = Color3.fromRGB(255, 80, 60) },
 			{ x = 0.82, y = 0.08, name = "⚡ VELOCITY & MOBILITY", color = Color3.fromRGB(40, 210, 255) },
@@ -2541,7 +2687,7 @@ local function openUpgradeTreeModal()
 
 		for _, bl in ipairs(branchLabels) do
 			local bLbl = Instance.new("TextLabel")
-			bLbl.Size = UDim2.new(0, 220, 0, 22)
+			bLbl.Size = UDim2.new(0, 240, 0, 22)
 			bLbl.AnchorPoint = Vector2.new(0.5, 0.5)
 			bLbl.Position = UDim2.new(bl.x, 0, bl.y, 0)
 			bLbl.BackgroundTransparency = 1
@@ -2553,6 +2699,25 @@ local function openUpgradeTreeModal()
 			bLbl.ZIndex = 41
 			bLbl.Parent = treeCanvas
 		end
+
+		-- Centered Guidance Banner
+		local isBaseUnlocked = SkillTreeConfig.isUnlocked("node_base", cachedData.UnlockedSkills)
+		local bannerText = if isBaseUnlocked
+			then "✦ ANCIENT DISCIPLINES UNLOCKED • INVEST GEMS TO ADVANCE ✦"
+			else "✦ AWAKEN THE CENTRAL CORE TO REVEAL THE TALENT TREE ✦"
+
+		local guideBanner = Instance.new("TextLabel")
+		guideBanner.Size = UDim2.new(0, 520, 0, 20)
+		guideBanner.AnchorPoint = Vector2.new(0.5, 0.5)
+		guideBanner.Position = UDim2.new(0.5, 0, 0.5, 95)
+		guideBanner.BackgroundTransparency = 1
+		guideBanner.Text = bannerText
+		guideBanner.TextColor3 = if isBaseUnlocked then Color3.fromRGB(0, 220, 180) else Color3.fromRGB(255, 215, 90)
+		guideBanner.Font = Enum.Font.GothamBold
+		guideBanner.TextSize = 11
+		guideBanner.TextTransparency = 0.25
+		guideBanner.ZIndex = 41
+		guideBanner.Parent = treeCanvas
 
 		-- 1. Draw Connecting Branch Lines ONLY if both parent and child are visible!
 		for _, nodeId in ipairs(SkillTreeConfig.NODE_ORDER) do
@@ -2593,8 +2758,6 @@ local function openUpgradeTreeModal()
 			local isUnlocked = SkillTreeConfig.isUnlocked(node.id, cachedData.UnlockedSkills)
 			local canUnlock = SkillTreeConfig.canUnlock(node.id, cachedData.UnlockedSkills)
 			local isBase = (node.parent == nil)
-			local radius = if isBase then 66 else 56
-			local centerPos = Vector2.new(node.position.X * cw, node.position.Y * ch)
 
 			local function onUnlock()
 				local unlockFn = Remotes.getFunction("UnlockSkillNode")
@@ -2605,7 +2768,7 @@ local function openUpgradeTreeModal()
 				if ok and success then
 					local s = Instance.new("Sound")
 					s.SoundId = "rbxassetid://6895079853"
-					s.Volume = 0.22
+					s.Volume = 0.25
 					s.PlaybackSpeed = 1.25
 					s.Parent = SoundService
 					s:Play()
@@ -2631,21 +2794,49 @@ local function openUpgradeTreeModal()
 				end
 			end
 
-			local hex = drawHexagon(centerPos, radius, node, isUnlocked, canUnlock, isBase, onUnlock)
-
-			-- Smooth pop-in scale for newly revealed hexagons
-			hex.Size = UDim2.new(0, 0, 0, 0)
-			TweenService:Create(hex, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, radius * 2, 0, radius * 2),
-			}):Play()
+			drawHexagon(node, isUnlocked, canUnlock, isBase, onUnlock)
 		end
 	end
 
+	-- Dev cheat button to add gems and test the tree immediately
+	devGemsBtn.MouseButton1Click:Connect(function()
+		local devFn = Remotes.getFunction("DevAddCash")
+		local ok, success, addedCash, addedGems = pcall(function()
+			return devFn:InvokeServer()
+		end)
+		if ok and success then
+			local getFn = Remotes.getFunction("GetPlayerData")
+			local okData, freshData = pcall(function()
+				return getFn:InvokeServer()
+			end)
+			if okData and freshData then
+				cachedData = freshData
+			end
+			gemsBadge.Text = "💎 " .. FormatNumber.formatCompact(cachedData.Gems or 0)
+			UIController.updateHUD()
+			showFloatingPopup("+50,000 💎!", Color3.fromRGB(0, 255, 220), 0)
+			renderTree()
+		end
+	end)
+
+	-- Listen for canvas size changes to keep wires and nodes perfectly centered
+	local resizeConn = treeCanvas:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		if activeModal == modal then
+			renderTree()
+		end
+	end)
+	modal.Destroying:Connect(function()
+		resizeConn:Disconnect()
+	end)
+
 	renderTree()
 
-	-- Smooth slide-up entrance animation
-	TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+	-- Smooth subtle pop-in entrance animation
+	modal.Position = UDim2.new(0.5, 0, 0.52, 0)
+	modal.BackgroundTransparency = 0.3
+	TweenService:Create(modal, TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
+		BackgroundTransparency = 0,
 	}):Play()
 end
 
@@ -3169,7 +3360,9 @@ function UIController.buildHUD()
 				closeDialogue()
 			end
 		elseif input.KeyCode == Enum.KeyCode.U then
-			if not activeModal and not activeDialogue then
+			if activeModal and activeModal.Name == "UpgradeTreeModal" then
+				closeModal()
+			elseif not activeModal and not activeDialogue then
 				openUpgradeTreeModal()
 			end
 		end

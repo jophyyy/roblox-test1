@@ -32,6 +32,7 @@ local REGISTERED_FUNCTIONS = {
 	"HatchEgg",
 	"ToggleEquipPet",
 	"DevAddCash",
+	"DevAddRebirth",
 	"BuyShopItem",
 	"EquipShopItem",
 	"SpinWheel",

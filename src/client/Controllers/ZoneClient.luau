@@ -372,9 +372,11 @@ function ZoneClient.init()
 
 	-- Listen for PlayerRebirthed event
 	local rebirthedEvent = Remotes.getEvent("PlayerRebirthed")
-	rebirthedEvent.OnClientEvent:Connect(function(newRebirths)
-		if typeof(newRebirths) == "number" then
-			ZoneClient.updateRebirths(newRebirths)
+	rebirthedEvent.OnClientEvent:Connect(function(arg1, arg2)
+		if typeof(arg1) == "number" then
+			ZoneClient.updateRebirths(arg1)
+		elseif typeof(arg2) == "number" and (arg1 == nil or arg1 == player.Name) then
+			ZoneClient.updateRebirths(arg2)
 		end
 	end)
 

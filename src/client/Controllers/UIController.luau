@@ -382,7 +382,7 @@ local function openRebirthModal()
 	local currentCash = cachedData.Cash or 0
 	local progressPct = math.clamp(currentCash / math.max(1, cost), 0, 1)
 
-	local modal = createStyledFrame(screenGui, "RebirthModal", UDim2.new(0, 440, 0, 390), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 30))
+	local modal = createStyledFrame(screenGui, "RebirthModal", UDim2.new(0, 440, 0, 430), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 30))
 	modal.AnchorPoint = Vector2.new(0.5, 0.5)
 	activeModal = modal
 
@@ -479,6 +479,50 @@ local function openRebirthModal()
 	feedbackLabel.Font = Enum.Font.GothamBold
 	feedbackLabel.TextSize = 13
 	feedbackLabel.Parent = modal
+
+	-- Dev testing cheat buttons inside modal
+	local devRow = Instance.new("Frame")
+	devRow.Name = "DevRebirthRow"
+	devRow.Size = UDim2.new(0.9, 0, 0, 36)
+	devRow.Position = UDim2.new(0.05, 0, 0, 330)
+	devRow.BackgroundTransparency = 1
+	devRow.Parent = modal
+
+	local devList = Instance.new("UIListLayout")
+	devList.FillDirection = Enum.FillDirection.Horizontal
+	devList.Padding = UDim.new(0, 8)
+	devList.Parent = devRow
+
+	local function createDevRebirthOption(label: string, count: number)
+		local devBtn = Instance.new("TextButton")
+		devBtn.Size = UDim2.new(0.31, 0, 1, 0)
+		devBtn.BackgroundColor3 = Color3.fromRGB(170, 40, 110)
+		devBtn.Text = label
+		devBtn.TextColor3 = Color3.fromRGB(255, 225, 245)
+		devBtn.Font = Enum.Font.GothamBold
+		devBtn.TextSize = 12
+		devBtn.BorderSizePixel = 0
+		devBtn.Parent = devRow
+
+		local dCorner = Instance.new("UICorner")
+		dCorner.CornerRadius = UDim.new(0, 8)
+		dCorner.Parent = devBtn
+
+		devBtn.MouseButton1Click:Connect(function()
+			local devRebirthFn = Remotes.getFunction("DevAddRebirth")
+			local ok, success, newRebirths = pcall(function()
+				return devRebirthFn:InvokeServer(count)
+			end)
+			if ok and success then
+				showFloatingPopup(string.format("⚡ +%d REBIRTH(S)! (Total: %d)", count, newRebirths or (cachedData.Rebirths or 0) + count), Color3.fromRGB(255, 120, 220), 0)
+				openRebirthModal() -- refresh modal
+			end
+		end)
+	end
+
+	createDevRebirthOption("⚡ +1 (Dev)", 1)
+	createDevRebirthOption("⚡ +5 (Dev)", 5)
+	createDevRebirthOption("⚡ +10 (Dev)", 10)
 
 	rebirthBtn.MouseButton1Click:Connect(function()
 		if canAfford then
@@ -3191,19 +3235,19 @@ function UIController.buildHUD()
 	-- SIDE MENU BUTTONS
 	local sideMenu = Instance.new("Frame")
 	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 148, 0, 465)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, -232)
+	sideMenu.Size = UDim2.new(0, 148, 0, 450)
+	sideMenu.Position = UDim2.new(0, 16, 0.5, -225)
 	sideMenu.BackgroundTransparency = 1
 	sideMenu.Parent = screenGui
 
 	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 8)
+	list.Padding = UDim.new(0, 6)
 	list.Parent = sideMenu
 
 	local function createMenuButton(name: string, text: string, color: Color3, onClick: () -> ()): TextButton
 		local btn = Instance.new("TextButton")
 		btn.Name = name
-		btn.Size = UDim2.new(1, 0, 0, 44)
+		btn.Size = UDim2.new(1, 0, 0, 39)
 		btn.BackgroundColor3 = color
 		btn.Text = text
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -3246,6 +3290,26 @@ function UIController.buildHUD()
 		if ok and success then
 			showFloatingPopup("+$10,000,000!", Color3.fromRGB(255, 215, 0), -35)
 			showFloatingPopup("+50,000 💎!", Color3.fromRGB(0, 255, 220), 35)
+		end
+	end)
+
+	-- DEV TESTING REBIRTH CHEAT BUTTON (+1 on Left Click, +5 on Right Click)
+	local devRebirthBtn = createMenuButton("DevRebirthBtn", "🔄 +Rebirth (Dev)", Color3.fromRGB(190, 40, 115), function()
+		local devRebirthFn = Remotes.getFunction("DevAddRebirth")
+		local ok, success, newRebirths = pcall(function()
+			return devRebirthFn:InvokeServer(1)
+		end)
+		if ok and success then
+			showFloatingPopup(string.format("⚡ +1 REBIRTH! (Total: %d)", newRebirths or (cachedData.Rebirths or 0) + 1), Color3.fromRGB(255, 120, 220), 0)
+		end
+	end)
+	devRebirthBtn.MouseButton2Click:Connect(function()
+		local devRebirthFn = Remotes.getFunction("DevAddRebirth")
+		local ok, success, newRebirths = pcall(function()
+			return devRebirthFn:InvokeServer(5)
+		end)
+		if ok and success then
+			showFloatingPopup(string.format("⚡ +5 REBIRTHS! (Total: %d)", newRebirths or (cachedData.Rebirths or 0) + 5), Color3.fromRGB(255, 120, 220), 0)
 		end
 	end)
 

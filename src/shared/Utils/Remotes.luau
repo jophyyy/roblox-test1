@@ -17,6 +17,10 @@ local REGISTERED_EVENTS = {
 	"VIPStatusChanged",
 	"OreDamaged",
 	"OreDestroyed",
+	"BossDamaged",
+	"BossAttacking",
+	"BossDefeated",
+	"BossRespawned",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -33,6 +37,7 @@ local REGISTERED_FUNCTIONS = {
 	"RequestRobuxEggAction",
 	"RequestGamepassAction",
 	"MineOre",
+	"AttackBoss",
 }
 
 local function getRemotesFolder(): Folder

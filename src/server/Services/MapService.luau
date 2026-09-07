@@ -1952,6 +1952,90 @@ function MapService.buildMagmaEggStand(folder: Folder)
 	eggShrine.Parent = folder
 end
 
+-- 16. Zone 2: The Infernal Crucible Boss Arena (At Z = -260)
+function MapService.buildBossArena(folder: Folder)
+	local arenaFolder = Instance.new("Folder")
+	arenaFolder.Name = "BossArena"
+	arenaFolder.Parent = folder
+
+	local center = Vector3.new(0, 0.4, -260)
+	local darkObsidian = Color3.fromRGB(24, 18, 20)
+	local basaltTrim = Color3.fromRGB(45, 34, 38)
+	local magmaRed = Color3.fromRGB(255, 60, 10)
+	local goldAccent = Color3.fromRGB(255, 190, 30)
+
+	-- 1. Main Octagonal/Stepped Battle Dais
+	createStudPart(arenaFolder, "ArenaBasePlinth", Vector3.new(62, 0.8, 62), CFrame.new(center + Vector3.new(0, 0.4, 0)), darkObsidian)
+	createStudPart(arenaFolder, "ArenaTierMid", Vector3.new(54, 0.5, 54), CFrame.new(center + Vector3.new(0, 0.85, 0)), basaltTrim)
+
+	-- Molten Rune Ring Inset
+	local runeRing = createStudPart(arenaFolder, "RuneRing", Vector3.new(46, 0.2, 46), CFrame.new(center + Vector3.new(0, 1.1, 0)), magmaRed)
+	runeRing.Material = Enum.Material.Neon
+
+	-- Raised Center Boss Pentagram Pad
+	createStudPart(arenaFolder, "ArenaBossPad", Vector3.new(38, 0.35, 38), CFrame.new(center + Vector3.new(0, 1.25, 0)), darkObsidian)
+
+	-- Glowing Center Boss Spawn Sigil
+	local sigil = createStudPart(arenaFolder, "BossSigil", Vector3.new(16, 0.1, 16), CFrame.new(center + Vector3.new(0, 1.45, 0)), goldAccent)
+	sigil.Material = Enum.Material.Neon
+	sigil.CanCollide = false
+
+	-- 2. 4 Grand Flaming Crucible Towers at Arena Perimeter
+	local towerOffsets = {
+		Vector3.new(-24, 0, -24),
+		Vector3.new(24, 0, -24),
+		Vector3.new(-24, 0, 24),
+		Vector3.new(24, 0, 24),
+	}
+	for tIdx, tOff in ipairs(towerOffsets) do
+		local towerPos = center + tOff
+		createStudPart(arenaFolder, "CruciblePillar_" .. tIdx, Vector3.new(6, 18, 6), CFrame.new(towerPos + Vector3.new(0, 9, 0)), darkObsidian)
+		createStudPart(arenaFolder, "CrucibleCap_" .. tIdx, Vector3.new(8, 2, 8), CFrame.new(towerPos + Vector3.new(0, 18.5, 0)), basaltTrim)
+		createDungeonBrazier(arenaFolder, "CrucibleBrazier_" .. tIdx, CFrame.new(towerPos + Vector3.new(0, 19.5, 0)))
+	end
+
+	-- 3. Entrance Portal Archway (Facing South at Z = -232)
+	local archZ = -232
+	createStudPart(arenaFolder, "ArenaGatePillarL", Vector3.new(6, 22, 6), CFrame.new(-12, 11, archZ), darkObsidian)
+	createStudPart(arenaFolder, "ArenaGatePillarR", Vector3.new(6, 22, 6), CFrame.new(12, 11, archZ), darkObsidian)
+	createStudPart(arenaFolder, "ArenaGateArch", Vector3.new(30, 4, 6), CFrame.new(0, 21, archZ), basaltTrim)
+
+	-- Arch Glowing Sign
+	local archSign = createStudPart(arenaFolder, "ArenaGateSign", Vector3.new(26, 4, 1.2), CFrame.new(0, 21, archZ + 3.1), darkObsidian)
+	local signGui = Instance.new("BillboardGui")
+	signGui.Name = "ArenaSignGui"
+	signGui.Size = UDim2.new(0, 340, 0, 65)
+	signGui.StudsOffset = Vector3.new(0, 0.4, 0.8)
+	signGui.AlwaysOnTop = true
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "⚔️ THE INFERNAL CRUCIBLE ⚔️"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 80, 20)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = signGui
+
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	subLabel.Position = UDim2.new(0, 0, 0.55, 0)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Text = "[WORLD BOSS: 50,000 HP • 25 DMG]"
+	subLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	subLabel.Font = Enum.Font.GothamBold
+	subLabel.TextSize = 13
+	subLabel.TextStrokeTransparency = 0.2
+	subLabel.Parent = signGui
+	signGui.Parent = archSign
+
+	-- Road connecting Magma Egg (Z = -210) to Arena Gate (Z = -232)
+	createStudPart(arenaFolder, "ArenaAccessRoad", Vector3.new(10, 0.35, 22), CFrame.new(0, 0.25, -221), Color3.fromRGB(45, 38, 42))
+	createDungeonBrazier(arenaFolder, "RoadBrazierL", CFrame.new(-7, 0.3, -221))
+	createDungeonBrazier(arenaFolder, "RoadBrazierR", CFrame.new(7, 0.3, -221))
+end
+
 -- Service Initialization
 function MapService.init()
 	-- Clean up existing map container if it exists
@@ -1978,6 +2062,7 @@ function MapService.init()
 	MapService.buildZone2Terrain(mapFolder)
 	MapService.buildMagmaGate(mapFolder)
 	MapService.buildMagmaEggStand(mapFolder)
+	MapService.buildBossArena(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)
 	print("✅ [MapService] Retro Roguelike Map Generation Complete! (Zone 1 Meadow & Zone 2 Magma Caverns Active)")

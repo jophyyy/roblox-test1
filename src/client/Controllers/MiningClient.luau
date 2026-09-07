@@ -114,7 +114,7 @@ function MiningClient.refreshTool()
 		if toolDef then
 			toolName = toolDef.name
 			headColor = toolDef.color
-			if toolDef.id == "shovel_diamond" or toolDef.id == "shovel_void" then
+			if toolDef.id == "shovel_diamond" or toolDef.id == "shovel_void" or toolDef.id == "shovel_magma" or toolDef.id == "shovel_infernal" then
 				isNeon = true
 			end
 		end
@@ -249,7 +249,30 @@ function MiningClient.performSwing()
 	-- Sound (Crisp Pickaxe Swoosh / Impact)
 	AudioController.playSound("rbxassetid://9114223170", 0.5, 1.0 + (math.random() * 0.2 - 0.1))
 
-	-- Target Detection (Mouse Target or Closest Ore within reach)
+	-- Target Detection: Priority 1 - Boss (if clicking on Boss or within melee reach of Boss)
+	local isHittingBoss = false
+	local bossFolder = Workspace:FindFirstChild("BossFolder")
+	local bossModel = bossFolder and bossFolder:FindFirstChild("InfernalMagmaGolem")
+	if bossModel and bossModel.PrimaryPart and rootPart then
+		local distToBoss = (bossModel.PrimaryPart.Position - rootPart.Position).Magnitude
+		if mouse.Target and mouse.Target:IsDescendantOf(bossModel) and distToBoss <= 22 then
+			isHittingBoss = true
+		elseif distToBoss <= 16 then
+			isHittingBoss = true
+		end
+	end
+
+	if isHittingBoss then
+		task.spawn(function()
+			local attackBossFn = Remotes.getFunction("AttackBoss")
+			pcall(function()
+				return attackBossFn:InvokeServer()
+			end)
+		end)
+		return
+	end
+
+	-- Target Detection: Priority 2 - Ores (Mouse Target or Closest Ore within reach)
 	local targetOreId: string? = nil
 	local targetOrePart: BasePart? = nil
 

@@ -87,6 +87,30 @@ ShopConfig.SHOVELS = {
 		color = Color3.fromRGB(200, 50, 255),
 		icon = "🌌",
 	},
+	{
+		id = "shovel_magma",
+		name = "Molten Magma Pickaxe",
+		category = "Shovel",
+		cost = 5000000,
+		miningPower = 1500,
+		clickCash = 18000,
+		clickGems = 25,
+		description = "Forged in the heart of Magma Caverns. Burns through volcanic ores.",
+		color = Color3.fromRGB(255, 80, 20),
+		icon = "🔥",
+	},
+	{
+		id = "shovel_infernal",
+		name = "Infernal Dragon Cleaver",
+		category = "Shovel",
+		cost = 25000000,
+		miningPower = 4000,
+		clickCash = 85000,
+		clickGems = 60,
+		description = "Infused with the fiery wrath of ancient drakes. Obliterates boss armor.",
+		color = Color3.fromRGB(255, 215, 0),
+		icon = "👑",
+	},
 } :: { ShovelDef }
 
 ShopConfig.BACKPACKS = {

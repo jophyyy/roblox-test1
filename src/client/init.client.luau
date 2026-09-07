@@ -6,6 +6,7 @@ local SprintClient = require(script.Controllers.SprintClient)
 local PetHatchAnimation = require(script.Controllers.PetHatchAnimation)
 local MiningClient = require(script.Controllers.MiningClient)
 local ZoneClient = require(script.Controllers.ZoneClient)
+local BossClient = require(script.Controllers.BossClient)
 
 print("⛏️ [Mining Simulator] Initializing Client Controllers...")
 
@@ -16,5 +17,6 @@ SprintClient.init()
 PetHatchAnimation.init()
 MiningClient.init()
 ZoneClient.init()
+BossClient.init()
 
 print("✅ [Mining Simulator] Client Ready!")

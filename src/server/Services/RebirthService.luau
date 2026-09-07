@@ -29,6 +29,7 @@ function RebirthService.rebirth(player: Player): boolean
 	-- Execute rebirth
 	data.Rebirths += 1
 	data.Cash = GameConfig.STARTER_CASH
+	data.Power = GameConfig.STARTER_POWER
 	
 	local bonusGems = RebirthConfig.getRewardGems(data.Rebirths)
 	data.Gems += bonusGems
@@ -41,6 +42,9 @@ function RebirthService.rebirth(player: Player): boolean
 
 		local cashVal = leaderstats:FindFirstChild("Cash") :: NumberValue?
 		if cashVal then cashVal.Value = data.Cash end
+
+		local powerVal = leaderstats:FindFirstChild("Power") :: NumberValue?
+		if powerVal then powerVal.Value = data.Power end
 
 		local gemsVal = leaderstats:FindFirstChild("Gems") :: NumberValue?
 		if gemsVal then gemsVal.Value = data.Gems end

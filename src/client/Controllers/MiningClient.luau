@@ -265,9 +265,12 @@ function MiningClient.performSwing()
 	if isHittingBoss then
 		task.spawn(function()
 			local attackBossFn = Remotes.getFunction("AttackBoss")
-			pcall(function()
+			local ok, success, res = pcall(function()
 				return attackBossFn:InvokeServer()
 			end)
+			if ok and success and res and res.powerGained then
+				MiningClient.showPowerGainPopup(res.powerGained)
+			end
 		end)
 		return
 	end
@@ -309,11 +312,26 @@ function MiningClient.performSwing()
 	if targetOreId then
 		task.spawn(function()
 			local mineRemote = Remotes.getFunction("MineOre")
-			local ok, res = pcall(function()
+			local ok, success, res = pcall(function()
 				return mineRemote:InvokeServer(targetOreId)
 			end)
+			if ok and success and res and res.powerGained then
+				MiningClient.showPowerGainPopup(res.powerGained)
+			end
 		end)
+		return
 	end
+
+	-- Priority 3: Open Air Click - Train Click Power
+	task.spawn(function()
+		local clickPowerFn = Remotes.getFunction("ClickPower")
+		local ok, success, powerGain = pcall(function()
+			return clickPowerFn:InvokeServer()
+		end)
+		if ok and success and powerGain and powerGain > 0 then
+			MiningClient.showPowerGainPopup(powerGain)
+		end
+	end)
 end
 
 -- Floating 3D Damage Number
@@ -352,6 +370,56 @@ function MiningClient.showDamageNumber(position: Vector3, damage: number, isCrit
 	tween:Play()
 
 	local textTween = TweenService:Create(label, TweenInfo.new(0.85, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		TextTransparency = 1,
+		TextStrokeTransparency = 1,
+	})
+	textTween:Play()
+
+	textTween.Completed:Connect(function()
+		anchor:Destroy()
+	end)
+end
+
+-- Floating Power Gain Indicator above player
+function MiningClient.showPowerGainPopup(powerGained: number)
+	local char = player.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+	local rootPart = char.HumanoidRootPart :: BasePart
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.new(0, 140, 0, 36)
+	billboard.StudsOffset = Vector3.new(math.random(-12, 12) / 10, 3.2 + (math.random(0, 8) / 10), math.random(-12, 12) / 10)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 50
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = string.format("+%s ⚡", FormatNumber.formatCompact(powerGained))
+	label.TextColor3 = Color3.fromRGB(255, 225, 40)
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 19
+	label.TextStrokeTransparency = 0.2
+	label.TextStrokeColor3 = Color3.fromRGB(180, 80, 0)
+	label.Parent = billboard
+
+	local anchor = Instance.new("Part")
+	anchor.Transparency = 1
+	anchor.CanCollide = false
+	anchor.Anchored = true
+	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchor.Position = rootPart.Position
+	anchor.Parent = Workspace
+
+	billboard.Parent = anchor
+
+	local targetPos = anchor.Position + Vector3.new(0, 3.2, 0)
+	local tween = TweenService:Create(anchor, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = targetPos,
+	})
+	tween:Play()
+
+	local textTween = TweenService:Create(label, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		TextTransparency = 1,
 		TextStrokeTransparency = 1,
 	})

@@ -1,7 +1,7 @@
 --!strict
 export type BossPickaxeTrait = {
 	pickaxeId: string,
-	baseDamage: number,
+	bossDamageMultiplier: number,
 	critChance: number,
 	critMultiplier: number,
 	specialEffect: "None" | "Stun" | "GoldRush" | "ArmorPierce" | "VoidSiphon" | "MoltenBurn" | "DragonWrath",
@@ -46,7 +46,7 @@ BossConfig.BOSS = {
 BossConfig.PICKAXE_TRAITS = {
 	shovel_rusty = {
 		pickaxeId = "shovel_rusty",
-		baseDamage = 25,
+		bossDamageMultiplier = 1.0,
 		critChance = 0.05,
 		critMultiplier = 1.5,
 		specialEffect = "None",
@@ -55,7 +55,7 @@ BossConfig.PICKAXE_TRAITS = {
 	},
 	shovel_iron = {
 		pickaxeId = "shovel_iron",
-		baseDamage = 75,
+		bossDamageMultiplier = 1.5,
 		critChance = 0.12,
 		critMultiplier = 1.75,
 		specialEffect = "Stun",
@@ -64,7 +64,7 @@ BossConfig.PICKAXE_TRAITS = {
 	},
 	shovel_gold = {
 		pickaxeId = "shovel_gold",
-		baseDamage = 220,
+		bossDamageMultiplier = 2.2,
 		critChance = 0.15,
 		critMultiplier = 2.0,
 		specialEffect = "GoldRush",
@@ -73,7 +73,7 @@ BossConfig.PICKAXE_TRAITS = {
 	},
 	shovel_diamond = {
 		pickaxeId = "shovel_diamond",
-		baseDamage = 750,
+		bossDamageMultiplier = 3.5,
 		critChance = 0.30,
 		critMultiplier = 2.5,
 		specialEffect = "ArmorPierce",
@@ -82,7 +82,7 @@ BossConfig.PICKAXE_TRAITS = {
 	},
 	shovel_void = {
 		pickaxeId = "shovel_void",
-		baseDamage = 2400,
+		bossDamageMultiplier = 5.5,
 		critChance = 0.25,
 		critMultiplier = 3.0,
 		specialEffect = "VoidSiphon",
@@ -91,7 +91,7 @@ BossConfig.PICKAXE_TRAITS = {
 	},
 	shovel_magma = {
 		pickaxeId = "shovel_magma",
-		baseDamage = 6500,
+		bossDamageMultiplier = 9.0,
 		critChance = 0.35,
 		critMultiplier = 3.2,
 		specialEffect = "MoltenBurn",
@@ -100,7 +100,7 @@ BossConfig.PICKAXE_TRAITS = {
 	},
 	shovel_infernal = {
 		pickaxeId = "shovel_infernal",
-		baseDamage = 18000,
+		bossDamageMultiplier = 15.0,
 		critChance = 0.40,
 		critMultiplier = 4.0,
 		specialEffect = "DragonWrath",
@@ -117,6 +117,7 @@ function BossConfig.getTrait(shovelId: string?): BossPickaxeTrait
 end
 
 function BossConfig.calculateDamage(
+	playerPower: number,
 	shovelId: string?,
 	rebirthMultiplier: number,
 	petMultiplier: number
@@ -125,7 +126,7 @@ function BossConfig.calculateDamage(
 	local isCrit = math.random() <= trait.critChance
 	local critMult = if isCrit then trait.critMultiplier else 1.0
 
-	local totalDamage = math.max(1, math.floor(trait.baseDamage * rebirthMultiplier * petMultiplier * critMult))
+	local totalDamage = math.max(1, math.floor(playerPower * trait.bossDamageMultiplier * rebirthMultiplier * petMultiplier * critMult))
 	return totalDamage, isCrit, trait
 end
 

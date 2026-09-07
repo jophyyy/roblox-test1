@@ -225,15 +225,18 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 	local oreDef = OreConfig.ORES[ore.oreType]
 	if not oreDef then return false, "Invalid ore type" end
 
-	-- 1. Calculate Player Mining Power & Multipliers
-	local baseDamage = 10
-	if data.EquippedShovel then
-		local toolDef = ShopConfig.getShovel(data.EquippedShovel)
-		if toolDef and toolDef.miningPower then
-			baseDamage = toolDef.miningPower
-		end
+	-- 0. Award Click Power from pickaxe strike
+	local powerGain, clickCash, clickGems = DataService.calculateClickPowerGain(player)
+	DataService.addPower(player, powerGain)
+	if clickCash > 0 then
+		DataService.addCash(player, clickCash)
+	end
+	if clickGems > 0 then
+		DataService.addGems(player, clickGems)
 	end
 
+	-- 1. Calculate Player Mining Damage based on Accumulated Power
+	local playerPower = math.max(1, data.Power or 10)
 	local rebirthMult = RebirthConfig.getMultiplier(data.Rebirths or 0)
 	local petDamageMult = PetService.getCashMultiplier(player)
 	local skillMiningMult = SkillTreeConfig.getTotalMiningPowerMult(data.UnlockedSkills)
@@ -242,7 +245,7 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 	local isCrit = math.random() <= 0.15
 	local critBonus = if isCrit then 2.0 else 1.0
 
-	local totalDamage = math.max(1, math.floor(baseDamage * rebirthMult * petDamageMult * skillMiningMult * critBonus))
+	local totalDamage = math.max(1, math.floor(playerPower * rebirthMult * petDamageMult * skillMiningMult * critBonus))
 
 	-- 2. Apply Damage
 	ore.health = math.max(0, ore.health - totalDamage)
@@ -325,6 +328,7 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 		isBroken = isBroken,
 		cashEarned = cashEarned,
 		gemsEarned = gemsEarned,
+		powerGained = powerGain,
 	}
 end
 
@@ -387,12 +391,18 @@ function MiningService.init()
 			end
 		end
 
-		-- Fallback free click if no ore in range
+		-- Fallback free click if no ore in range: trains power and earns cash
 		local data = DataService.get(player)
 		if not data then return 0, 0 end
-		local cash = 10
-		DataService.addCash(player, cash)
-		return cash, 0
+		local pGain, cEarned, gEarned = DataService.calculateClickPowerGain(player)
+		DataService.addPower(player, pGain)
+		if cEarned > 0 then
+			DataService.addCash(player, cEarned)
+		end
+		if gEarned > 0 then
+			DataService.addGems(player, gEarned)
+		end
+		return cEarned, gEarned
 	end
 
 	print("✅ [MiningService] Initialized with dynamic random respawn system active!")

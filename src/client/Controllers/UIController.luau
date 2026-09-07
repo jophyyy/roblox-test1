@@ -30,6 +30,7 @@ local isLocalPlayerVIP = false
 
 -- UI References
 local screenGui: ScreenGui
+local powerLabel: TextLabel
 local cashLabel: TextLabel
 local gemsLabel: TextLabel
 local multiplierBadge: TextLabel
@@ -106,6 +107,9 @@ end
 
 function UIController.updateHUD()
 	if not cachedData then return end
+	if powerLabel then
+		powerLabel.Text = FormatNumber.formatCompact(cachedData.Power or 10) .. " Power"
+	end
 	if cashLabel then
 		cashLabel.Text = "$" .. FormatNumber.formatCompact(cachedData.Cash or 0)
 	end
@@ -1273,7 +1277,7 @@ local function openEquipmentShopModal()
 			if item.category == "Shovel" then
 				local sh = item :: ShopConfig.ShovelDef
 				local gemBonusText = if sh.clickGems > 0 then string.format(" • +%d 💎/Click", sh.clickGems) else ""
-				perkLabel.Text = string.format("+%s Cash/Click%s", FormatNumber.formatCompact(sh.clickCash), gemBonusText)
+				perkLabel.Text = string.format("⚡ x%.1fx Power/Click • +$%s Cash%s", sh.powerMultiplier, FormatNumber.formatCompact(sh.clickCash), gemBonusText)
 			else
 				local bp = item :: ShopConfig.BackpackDef
 				local gemBonusText = if bp.bonusGems > 0 then string.format(" • +%d 💎/Ore", bp.bonusGems) else ""
@@ -3074,61 +3078,103 @@ function UIController.buildHUD()
 	screenGui.Parent = playerGui
 
 	-- TOP BAR CONTAINER
-	local topBar = createStyledFrame(screenGui, "TopBar", UDim2.new(0, 640, 0, 56), UDim2.new(0.5, -320, 0, 16), Color3.fromRGB(18, 20, 26))
+	local topBar = createStyledFrame(screenGui, "TopBar", UDim2.new(0, 780, 0, 56), UDim2.new(0.5, -390, 0, 16), Color3.fromRGB(18, 20, 26))
+
+	-- Power Container
+	local powerBox = Instance.new("Frame")
+	powerBox.Size = UDim2.new(0, 155, 1, 0)
+	powerBox.Position = UDim2.new(0, 12, 0, 0)
+	powerBox.BackgroundTransparency = 1
+	powerBox.Parent = topBar
+
+	local powerIcon = Instance.new("TextLabel")
+	powerIcon.Size = UDim2.new(0, 32, 1, 0)
+	powerIcon.BackgroundTransparency = 1
+	powerIcon.Text = "⚡"
+	powerIcon.TextSize = 22
+	powerIcon.Parent = powerBox
+
+	powerLabel = Instance.new("TextLabel")
+	powerLabel.Size = UDim2.new(1, -34, 1, 0)
+	powerLabel.Position = UDim2.new(0, 34, 0, 0)
+	powerLabel.BackgroundTransparency = 1
+	powerLabel.Text = "10 Power"
+	powerLabel.TextColor3 = Color3.fromRGB(255, 215, 35)
+	powerLabel.Font = Enum.Font.GothamBlack
+	powerLabel.TextSize = 18
+	powerLabel.TextXAlignment = Enum.TextXAlignment.Left
+	powerLabel.Parent = powerBox
 
 	-- Cash Container
 	local cashBox = Instance.new("Frame")
-	cashBox.Size = UDim2.new(0.32, 0, 1, 0)
+	cashBox.Size = UDim2.new(0, 155, 1, 0)
+	cashBox.Position = UDim2.new(0, 175, 0, 0)
 	cashBox.BackgroundTransparency = 1
 	cashBox.Parent = topBar
 
 	local cashIcon = Instance.new("TextLabel")
-	cashIcon.Size = UDim2.new(0, 36, 1, 0)
+	cashIcon.Size = UDim2.new(0, 32, 1, 0)
 	cashIcon.BackgroundTransparency = 1
 	cashIcon.Text = "💰"
 	cashIcon.TextSize = 22
 	cashIcon.Parent = cashBox
 
 	cashLabel = Instance.new("TextLabel")
-	cashLabel.Size = UDim2.new(1, -40, 1, 0)
-	cashLabel.Position = UDim2.new(0, 38, 0, 0)
+	cashLabel.Size = UDim2.new(1, -34, 1, 0)
+	cashLabel.Position = UDim2.new(0, 34, 0, 0)
 	cashLabel.BackgroundTransparency = 1
 	cashLabel.Text = "$0"
 	cashLabel.TextColor3 = Color3.fromRGB(0, 255, 170)
 	cashLabel.Font = Enum.Font.GothamBlack
-	cashLabel.TextSize = 20
+	cashLabel.TextSize = 18
 	cashLabel.TextXAlignment = Enum.TextXAlignment.Left
 	cashLabel.Parent = cashBox
 
 	-- Gems Container
 	local gemsBox = Instance.new("Frame")
-	gemsBox.Size = UDim2.new(0.28, 0, 1, 0)
-	gemsBox.Position = UDim2.new(0.33, 0, 0, 0)
+	gemsBox.Size = UDim2.new(0, 130, 1, 0)
+	gemsBox.Position = UDim2.new(0, 338, 0, 0)
 	gemsBox.BackgroundTransparency = 1
 	gemsBox.Parent = topBar
 
 	local gemsIcon = Instance.new("TextLabel")
-	gemsIcon.Size = UDim2.new(0, 36, 1, 0)
+	gemsIcon.Size = UDim2.new(0, 32, 1, 0)
 	gemsIcon.BackgroundTransparency = 1
 	gemsIcon.Text = "💎"
 	gemsIcon.TextSize = 22
 	gemsIcon.Parent = gemsBox
 
 	gemsLabel = Instance.new("TextLabel")
-	gemsLabel.Size = UDim2.new(1, -40, 1, 0)
-	gemsLabel.Position = UDim2.new(0, 38, 0, 0)
+	gemsLabel.Size = UDim2.new(1, -34, 1, 0)
+	gemsLabel.Position = UDim2.new(0, 34, 0, 0)
 	gemsLabel.BackgroundTransparency = 1
 	gemsLabel.Text = "0"
 	gemsLabel.TextColor3 = Color3.fromRGB(0, 210, 255)
 	gemsLabel.Font = Enum.Font.GothamBlack
-	gemsLabel.TextSize = 20
+	gemsLabel.TextSize = 18
 	gemsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	gemsLabel.Parent = gemsBox
 
+	-- Multiplier Badge
+	multiplierBadge = Instance.new("TextLabel")
+	multiplierBadge.Size = UDim2.new(0, 135, 0.7, 0)
+	multiplierBadge.Position = UDim2.new(0, 480, 0.15, 0)
+	multiplierBadge.BackgroundColor3 = Color3.fromRGB(35, 42, 60)
+	multiplierBadge.Text = "⚡ 1.0x Boost"
+	multiplierBadge.TextColor3 = Color3.fromRGB(255, 215, 0)
+	multiplierBadge.Font = Enum.Font.GothamBold
+	multiplierBadge.TextSize = 13
+	multiplierBadge.BorderSizePixel = 0
+	multiplierBadge.Parent = topBar
+
+	local badgeCorner = Instance.new("UICorner")
+	badgeCorner.CornerRadius = UDim.new(0, 8)
+	badgeCorner.Parent = multiplierBadge
+
 	-- VIP Badge
 	vipBadge = Instance.new("TextLabel")
-	vipBadge.Size = UDim2.new(0.18, 0, 0.7, 0)
-	vipBadge.Position = UDim2.new(0.62, 0, 0.15, 0)
+	vipBadge.Size = UDim2.new(0, 135, 0.7, 0)
+	vipBadge.Position = UDim2.new(0, 628, 0.15, 0)
 	vipBadge.BackgroundColor3 = Color3.fromRGB(85, 60, 15)
 	vipBadge.Text = "👑 VIP 2X"
 	vipBadge.TextColor3 = Color3.fromRGB(255, 215, 60)
@@ -3141,22 +3187,6 @@ function UIController.buildHUD()
 	local vipBadgeCorner = Instance.new("UICorner")
 	vipBadgeCorner.CornerRadius = UDim.new(0, 8)
 	vipBadgeCorner.Parent = vipBadge
-
-	-- Multiplier Badge
-	multiplierBadge = Instance.new("TextLabel")
-	multiplierBadge.Size = UDim2.new(0.18, 0, 0.7, 0)
-	multiplierBadge.Position = UDim2.new(0.81, 0, 0.15, 0)
-	multiplierBadge.BackgroundColor3 = Color3.fromRGB(35, 42, 60)
-	multiplierBadge.Text = "⚡ 1.0x Boost"
-	multiplierBadge.TextColor3 = Color3.fromRGB(255, 215, 0)
-	multiplierBadge.Font = Enum.Font.GothamBold
-	multiplierBadge.TextSize = 13
-	multiplierBadge.BorderSizePixel = 0
-	multiplierBadge.Parent = topBar
-
-	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(0, 8)
-	badgeCorner.Parent = multiplierBadge
 
 	-- SIDE MENU BUTTONS
 	local sideMenu = Instance.new("Frame")

@@ -6,6 +6,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
+local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
+local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 
@@ -14,6 +17,7 @@ local AUTOSAVE_INTERVAL = 60
 
 export type PlayerData = {
 	Cash: number,
+	Power: number,
 	Gems: number,
 	Rebirths: number,
 	UnlockedItems: { [string]: boolean },
@@ -50,6 +54,7 @@ end
 local function getDefaultData(): PlayerData
 	return {
 		Cash = GameConfig.STARTER_CASH,
+		Power = GameConfig.STARTER_POWER,
 		Gems = GameConfig.STARTER_GEMS,
 		Rebirths = 0,
 		UnlockedItems = {},
@@ -80,6 +85,11 @@ local function setupLeaderstats(player: Player, data: PlayerData)
 	cashVal.Name = "Cash"
 	cashVal.Value = data.Cash
 	cashVal.Parent = leaderstats
+
+	local powerVal = leaderstats:FindFirstChild("Power") or Instance.new("NumberValue")
+	powerVal.Name = "Power"
+	powerVal.Value = data.Power or GameConfig.STARTER_POWER
+	powerVal.Parent = leaderstats
 
 	local rebirthsVal = leaderstats:FindFirstChild("Rebirths") or Instance.new("IntValue")
 	rebirthsVal.Name = "Rebirths"
@@ -135,6 +145,53 @@ function DataService.addGems(player: Player, amount: number)
 		if gemsVal then gemsVal.Value = data.Gems end
 	end
 	syncToClient(player, data)
+end
+
+function DataService.addPower(player: Player, amount: number)
+	local data = playerDataCache[player]
+	if not data then return end
+
+	data.Power = math.max(0, (data.Power or GameConfig.STARTER_POWER) + amount)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local powerVal = leaderstats:FindFirstChild("Power") :: NumberValue?
+		if powerVal then powerVal.Value = data.Power end
+	end
+	syncToClient(player, data)
+end
+
+function DataService.calculateClickPowerGain(player: Player): (number, number, number)
+	local data = playerDataCache[player]
+	if not data then return 1, 0, 0 end
+
+	local toolMultiplier = 1.0
+	local clickCash = 0
+	local clickGems = 0
+
+	if data.EquippedShovel then
+		local toolDef = ShopConfig.getShovel(data.EquippedShovel)
+		if toolDef then
+			toolMultiplier = toolDef.powerMultiplier or 1.0
+			clickCash = toolDef.clickCash or 0
+			clickGems = toolDef.clickGems or 0
+		end
+	end
+
+	local rebirthMult = RebirthConfig.getMultiplier(data.Rebirths or 0)
+	local trailMult = TrailConfig.getCashMultiplier(data.EquippedTrail)
+	local skillPowerMult = SkillTreeConfig.getTotalMiningPowerMult(data.UnlockedSkills)
+
+	-- Pet Multiplier (lazy require PetService to prevent circular dependency)
+	local petMult = 1.0
+	local ok, PetService = pcall(function()
+		return require(script.Parent.PetService)
+	end)
+	if ok and PetService and PetService.getCashMultiplier then
+		petMult = PetService.getCashMultiplier(player)
+	end
+
+	local powerGain = math.max(1, math.floor(1 * toolMultiplier * rebirthMult * trailMult * skillPowerMult * petMult))
+	return powerGain, clickCash, clickGems
 end
 
 function DataService.unlockItem(player: Player, itemId: string)
@@ -198,6 +255,7 @@ function DataService.load(player: Player)
 	data.UnlockedSkills = data.UnlockedSkills or {}
 	data.LastWheelSpin = data.LastWheelSpin or 0
 	data.FreeSpins = data.FreeSpins or 1
+	data.Power = data.Power or GameConfig.STARTER_POWER
 
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
@@ -507,14 +565,34 @@ function DataService.init()
 		return DataService.unlockSkillNode(player, nodeId)
 	end
 
-	-- Dev testing cheat remote (+$10,000,000 Cash & +50,000 Gems)
+	-- Click / Train Power remote
+	local clickPowerFn = Remotes.getFunction("ClickPower")
+	clickPowerFn.OnServerInvoke = function(player: Player)
+		local data = playerDataCache[player]
+		if not data then return false, 0, 0, 0 end
+
+		local powerGain, clickCash, clickGems = DataService.calculateClickPowerGain(player)
+		DataService.addPower(player, powerGain)
+		if clickCash > 0 then
+			DataService.addCash(player, clickCash)
+		end
+		if clickGems > 0 then
+			DataService.addGems(player, clickGems)
+		end
+
+		return true, powerGain, clickCash, clickGems
+	end
+
+	-- Dev testing cheat remote (+$10,000,000 Cash, +50,000 Gems, +25,000 Power)
 	local devRemote = Remotes.getFunction("DevAddCash")
 	devRemote.OnServerInvoke = function(player: Player)
 		local addCash = 10_000_000
 		local addGems = 50_000
+		local addPower = 25_000
 		DataService.addCash(player, addCash)
 		DataService.addGems(player, addGems)
-		print(string.format("⚡ [Dev] Granted $%d and %d Gems to %s for testing!", addCash, addGems, player.Name))
+		DataService.addPower(player, addPower)
+		print(string.format("⚡ [Dev] Granted $%d, %d Gems, and %d Power to %s for testing!", addCash, addGems, addPower, player.Name))
 		return true, addCash, addGems
 	end
 

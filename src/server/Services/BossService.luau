@@ -330,12 +330,23 @@ function BossService.attackBoss(player: Player): (boolean, any)
 	local rebirthMult = RebirthConfig.getMultiplier(data.Rebirths or 0)
 	local petMult = PetService.getCashMultiplier(player)
 
-	-- Compute Damage using Pickaxe Trait, Trail Boss Multiplier, and Skill Tree Multiplier
+	-- 0. Award Click Power from boss strike
+	local powerGain, clickCash, clickGems = DataService.calculateClickPowerGain(player)
+	DataService.addPower(player, powerGain)
+	if clickCash > 0 then
+		DataService.addCash(player, clickCash)
+	end
+	if clickGems > 0 then
+		DataService.addGems(player, clickGems)
+	end
+
+	-- Compute Damage using Player's Power, Pickaxe Trait, Trail Boss Multiplier, and Skill Tree Multiplier
 	local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 	local trailBossMult = TrailConfig.getBossMultiplier(data.EquippedTrail)
 	local skillBossMult = SkillTreeConfig.getTotalBossMult(data.UnlockedSkills)
 
-	local damage, isCrit, trait = BossConfig.calculateDamage(data.EquippedShovel, rebirthMult, petMult)
+	local playerPower = math.max(1, data.Power or 10)
+	local damage, isCrit, trait = BossConfig.calculateDamage(playerPower, data.EquippedShovel, rebirthMult, petMult)
 	damage = math.max(1, math.floor(damage * trailBossMult * skillBossMult))
 
 	-- Apply damage
@@ -396,6 +407,7 @@ function BossService.attackBoss(player: Player): (boolean, any)
 		remainingHealth = currentHealth,
 		isDead = isDead,
 		trait = trait,
+		powerGained = powerGain,
 	}
 end
 

@@ -21,6 +21,7 @@ local REGISTERED_EVENTS = {
 	"BossAttacking",
 	"BossDefeated",
 	"BossRespawned",
+	"TrainingOreHit",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -43,6 +44,7 @@ local REGISTERED_FUNCTIONS = {
 	"UnequipTrail",
 	"UnlockSkillNode",
 	"ClickPower",
+	"TrainOnOre",
 }
 
 local function getRemotesFolder(): Folder

@@ -10,6 +10,7 @@ local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
 local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
+local TrainingConfig = require(ReplicatedStorage.Shared.Config.TrainingConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 
 local DATA_STORE_NAME = "MiningSave_v1"
@@ -192,6 +193,77 @@ function DataService.calculateClickPowerGain(player: Player): (number, number, n
 
 	local powerGain = math.max(1, math.floor(1 * toolMultiplier * rebirthMult * trailMult * skillPowerMult * petMult))
 	return powerGain, clickCash, clickGems
+end
+
+function DataService.trainOnOre(player: Player, oreId: string): (boolean, any)
+	local data = playerDataCache[player]
+	if not data then return false, "No player data" end
+
+	local oreDef = TrainingConfig.getOre(oreId)
+	if not oreDef then return false, "Invalid training ore" end
+
+	local char = player.Character
+	if not char or not char:FindFirstChild("HumanoidRootPart") then
+		return false, "No character"
+	end
+
+	local rootPart = char.HumanoidRootPart :: BasePart
+	local dist = (rootPart.Position - oreDef.position).Magnitude
+	if dist > (TrainingConfig.TRAINING_DISTANCE + 4) then
+		return false, "Too far from training ore"
+	end
+
+	local lookDir = rootPart.CFrame.LookVector
+	local toOre = (oreDef.position - rootPart.Position).Unit
+	local dot = lookDir:Dot(toOre)
+	if dot < 0.20 then
+		return false, "Must face the training ore"
+	end
+
+	if (data.Rebirths or 0) < oreDef.rebirthRequired then
+		return false, string.format("Requires %d Rebirths to train here!", oreDef.rebirthRequired)
+	end
+
+	-- Tool multiplier
+	local toolMultiplier = 1.0
+	if data.EquippedShovel then
+		local toolDef = ShopConfig.getShovel(data.EquippedShovel)
+		if toolDef and toolDef.powerMultiplier then
+			toolMultiplier = toolDef.powerMultiplier
+		end
+	end
+
+	local rebirthMult = RebirthConfig.getMultiplier(data.Rebirths or 0)
+	local trailMult = TrailConfig.getCashMultiplier(data.EquippedTrail)
+	local skillMiningMult = SkillTreeConfig.getTotalMiningPowerMult(data.UnlockedSkills)
+
+	local petMult = 1.0
+	local okPet, PetService = pcall(function()
+		return require(script.Parent.PetService)
+	end)
+	if okPet and PetService and PetService.getCashMultiplier then
+		petMult = PetService.getCashMultiplier(player)
+	end
+
+	local powerGain = TrainingConfig.calculatePower(
+		oreDef,
+		data.Rebirths or 0,
+		toolMultiplier,
+		petMult,
+		trailMult,
+		skillMiningMult
+	)
+
+	DataService.addPower(player, powerGain)
+
+	-- Fire hit event to clients for impact animations & sounds
+	local hitEvent = Remotes.getEvent("TrainingOreHit")
+	hitEvent:FireAllClients(oreId, player.Name, powerGain, oreDef.position)
+
+	return true, {
+		powerGained = powerGain,
+		oreId = oreId,
+	}
 end
 
 function DataService.unlockItem(player: Player, itemId: string)
@@ -581,6 +653,12 @@ function DataService.init()
 		end
 
 		return true, powerGain, clickCash, clickGems
+	end
+
+	-- Train on Quarry Training Ore remote
+	local trainRemote = Remotes.getFunction("TrainOnOre")
+	trainRemote.OnServerInvoke = function(player: Player, oreId: string)
+		return DataService.trainOnOre(player, oreId)
 	end
 
 	-- Dev testing cheat remote (+$10,000,000 Cash, +50,000 Gems, +25,000 Power)

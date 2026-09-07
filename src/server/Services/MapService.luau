@@ -8,6 +8,8 @@ local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local DataService = require(script.Parent.DataService)
 local PetService = require(script.Parent.PetService)
 local MarketplaceServiceHandler = require(script.Parent.MarketplaceServiceHandler)
+local TrainingConfig = require(ReplicatedStorage.Shared.Config.TrainingConfig)
+local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 
 local MapService = {}
 local brazierLights: { PointLight } = {}
@@ -2072,6 +2074,7 @@ function MapService.init()
 	MapService.buildMagmaGate(mapFolder)
 	MapService.buildMagmaEggStand(mapFolder)
 	MapService.buildBossArena(mapFolder)
+	MapService.buildTrainingQuarry(mapFolder)
 	MapService.buildTrees(mapFolder)
 	MapService.buildFlora(mapFolder)
 	print("✅ [MapService] Retro Roguelike Map Generation Complete! (Zone 1 Meadow & Zone 2 Magma Caverns Active)")
@@ -2242,6 +2245,232 @@ function MapService.buildTrailShopStall(folder: Folder)
 
 	npcModel.Parent = stallModel
 	stallModel.Parent = folder
+end
+
+-- 17. The Power Quarry: Rebirth Training Arena with Multiple Scaling Ores
+function MapService.buildTrainingQuarry(folder: Folder)
+	local quarryFolder = Instance.new("Folder")
+	quarryFolder.Name = "TrainingQuarry"
+	quarryFolder.Parent = folder
+
+	-- Clean up existing and create TrainingOres folder in Workspace
+	local existingOres = Workspace:FindFirstChild("TrainingOres")
+	if existingOres then existingOres:Destroy() end
+
+	local trainingOresFolder = Instance.new("Folder")
+	trainingOresFolder.Name = "TrainingOres"
+	trainingOresFolder.Parent = Workspace
+
+	local center = TrainingConfig.ARENA_CENTER -- Vector3.new(105, 0.4, 0)
+	local stoneDark = Color3.fromRGB(36, 40, 48)
+	local stoneMid = Color3.fromRGB(54, 60, 72)
+	local goldTrim = Color3.fromRGB(255, 215, 60)
+	local runeGold = Color3.fromRGB(255, 185, 30)
+
+	-- 1. Connecting Pathway from Path_East (X = 60) to Quarry Arch (X = 72)
+	createStudPart(quarryFolder, "QuarryAccessPath", Vector3.new(14, 0.35, 10), CFrame.new(66, 0.2, 0), Color3.fromRGB(80, 85, 95))
+
+	-- 2. Grand Entrance Archway (At X = 72, Z = 0)
+	local archX = 72
+	createStudPart(quarryFolder, "QuarryPillarL", Vector3.new(5, 20, 5), CFrame.new(archX, 10, -9), stoneDark)
+	createStudPart(quarryFolder, "QuarryPillarR", Vector3.new(5, 20, 5), CFrame.new(archX, 10, 9), stoneDark)
+	createStudPart(quarryFolder, "QuarryPillarCapL", Vector3.new(6.5, 1.8, 6.5), CFrame.new(archX, 20.5, -9), goldTrim)
+	createStudPart(quarryFolder, "QuarryPillarCapR", Vector3.new(6.5, 1.8, 6.5), CFrame.new(archX, 20.5, 9), goldTrim)
+	createDungeonBrazier(quarryFolder, "ArchBrazierL", CFrame.new(archX, 21.5, -9))
+	createDungeonBrazier(quarryFolder, "ArchBrazierR", CFrame.new(archX, 21.5, 9))
+
+	-- Arch Lintel Beam
+	createStudPart(quarryFolder, "QuarryArchBeam", Vector3.new(6, 4, 23), CFrame.new(archX, 19, 0), stoneMid)
+
+	-- Arch Sign
+	local archSign = createStudPart(quarryFolder, "QuarryArchSign", Vector3.new(1.2, 4, 20), CFrame.new(archX - 3.1, 19, 0), stoneDark)
+	local signGui = Instance.new("BillboardGui")
+	signGui.Name = "QuarrySignGui"
+	signGui.Size = UDim2.new(0, 360, 0, 70)
+	signGui.StudsOffset = Vector3.new(-0.8, 0.2, 0)
+	signGui.AlwaysOnTop = false
+	signGui.MaxDistance = 80
+
+	local signTitle = Instance.new("TextLabel")
+	signTitle.Size = UDim2.new(1, 0, 0.55, 0)
+	signTitle.BackgroundTransparency = 1
+	signTitle.Text = "⚡ THE POWER QUARRY ⚡"
+	signTitle.TextColor3 = Color3.fromRGB(255, 215, 30)
+	signTitle.Font = Enum.Font.GothamBlack
+	signTitle.TextSize = 20
+	signTitle.TextStrokeTransparency = 0.2
+	signTitle.Parent = signGui
+
+	local signSub = Instance.new("TextLabel")
+	signSub.Size = UDim2.new(1, 0, 0.45, 0)
+	signSub.Position = UDim2.new(0, 0, 0.55, 0)
+	signSub.BackgroundTransparency = 1
+	signSub.Text = "[REBIRTH TRAINING GROUNDS • FACE ORE TO TRAIN]"
+	signSub.TextColor3 = Color3.fromRGB(140, 230, 255)
+	signSub.Font = Enum.Font.GothamBold
+	signSub.TextSize = 12
+	signSub.TextStrokeTransparency = 0.2
+	signSub.Parent = signGui
+	signGui.Parent = archSign
+
+	-- 3. Circular Training Arena Floor
+	createStudPart(quarryFolder, "ArenaFloorPlinth", Vector3.new(58, 0.8, 58), CFrame.new(center + Vector3.new(0, 0.4, 0)), stoneDark)
+	createStudPart(quarryFolder, "ArenaFloorTierMid", Vector3.new(50, 0.4, 50), CFrame.new(center + Vector3.new(0, 0.8, 0)), stoneMid)
+
+	-- Glowing Center Training Circle
+	local runeDisc = createStudPart(quarryFolder, "RuneDisc", Vector3.new(34, 0.2, 34), CFrame.new(center + Vector3.new(0, 1.0, 0)), runeGold)
+	runeDisc.Material = Enum.Material.Neon
+
+	local centerCore = createStudPart(quarryFolder, "CenterCorePad", Vector3.new(22, 0.25, 22), CFrame.new(center + Vector3.new(0, 1.15, 0)), stoneDark)
+
+	-- Center Radiant Beacon Light
+	local beacon = Instance.new("PointLight")
+	beacon.Color = Color3.fromRGB(255, 200, 50)
+	beacon.Brightness = 2.4
+	beacon.Range = 40
+	beacon.Parent = centerCore
+
+	-- 4 Braziers Surrounding the Center Training Circle
+	createDungeonBrazier(quarryFolder, "QuarryBrazier_1", CFrame.new(center + Vector3.new(-18, 0.6, -18)))
+	createDungeonBrazier(quarryFolder, "QuarryBrazier_2", CFrame.new(center + Vector3.new(-18, 0.6, 18)))
+	createDungeonBrazier(quarryFolder, "QuarryBrazier_3", CFrame.new(center + Vector3.new(18, 0.6, -18)))
+	createDungeonBrazier(quarryFolder, "QuarryBrazier_4", CFrame.new(center + Vector3.new(18, 0.6, 18)))
+
+	-- 4. Construct the 6 Training Ore Monoliths
+	for oreId, oreDef in pairs(TrainingConfig.ORES) do
+		local model = Instance.new("Model")
+		model.Name = oreId
+		model:SetAttribute("IsTrainingOre", true)
+		model:SetAttribute("TrainingOreId", oreId)
+		model:SetAttribute("RebirthRequired", oreDef.rebirthRequired)
+
+		local scale = oreDef.scale
+		local pos = oreDef.position
+
+		-- Tiered Stone Pedestal Base
+		local pedBaseSize = Vector3.new(8.0, 1.0, 8.0) * math.clamp(scale, 1.0, 1.4)
+		local pedBase = createStudPart(model, "PedestalBase", pedBaseSize, CFrame.new(pos + Vector3.new(0, pedBaseSize.Y / 2, 0)), stoneDark)
+
+		local pedCapSize = Vector3.new(6.5, 0.6, 6.5) * math.clamp(scale, 1.0, 1.4)
+		local pedCap = createStudPart(model, "PedestalCap", pedCapSize, CFrame.new(pos + Vector3.new(0, pedBaseSize.Y + pedCapSize.Y / 2, 0)), oreDef.color)
+		pedCap.Material = Enum.Material.Neon
+
+		-- Main Boulder Monolith Core
+		local coreHeight = 3.6 * scale
+		local coreSize = Vector3.new(3.8, coreHeight, 3.8) * scale
+		local coreY = pedBaseSize.Y + pedCapSize.Y + (coreSize.Y / 2)
+		local corePart = createStudPart(model, "OreCore", coreSize, CFrame.new(pos + Vector3.new(0, coreY, 0)), oreDef.color)
+		corePart.Material = Enum.Material.Plastic
+		corePart.TopSurface = Enum.SurfaceType.Studs
+		corePart.Name = "OreCore"
+		corePart:SetAttribute("TrainingOreId", oreId)
+		model.PrimaryPart = corePart
+
+		-- 4 Protruding Angled Neon Shards
+		local shardColors = { oreDef.accentColor, oreDef.color }
+		local shardOffsets = {
+			{ offset = Vector3.new(0.8, 1.1, 0.7) * scale, angles = Vector3.new(25, 30, -20), size = Vector3.new(1.1, 2.2, 1.1) * scale },
+			{ offset = Vector3.new(-0.9, 0.9, -0.6) * scale, angles = Vector3.new(-30, 45, 15), size = Vector3.new(1.0, 1.9, 1.0) * scale },
+			{ offset = Vector3.new(0.5, 1.4, -0.8) * scale, angles = Vector3.new(15, -40, 35), size = Vector3.new(0.9, 2.4, 0.9) * scale },
+			{ offset = Vector3.new(-0.6, 1.2, 0.9) * scale, angles = Vector3.new(-20, 15, -30), size = Vector3.new(1.0, 2.0, 1.0) * scale },
+		}
+
+		for sIdx, sInfo in ipairs(shardOffsets) do
+			local shard = Instance.new("Part")
+			shard.Name = "CrystalShard_" .. sIdx
+			shard.Size = sInfo.size
+			shard.CFrame = corePart.CFrame * CFrame.new(sInfo.offset) * CFrame.Angles(math.rad(sInfo.angles.X), math.rad(sInfo.angles.Y), math.rad(sInfo.angles.Z))
+			shard.Color = shardColors[(sIdx % #shardColors) + 1]
+			shard.Material = Enum.Material.Neon
+			shard.Anchored = true
+			shard.CanCollide = false
+			shard.Parent = model
+		end
+
+		-- Radiant Light
+		local light = Instance.new("PointLight")
+		light.Color = oreDef.accentColor
+		light.Brightness = 2.0
+		light.Range = 14 * scale
+		light.Parent = corePart
+
+		-- Particle Sparkles
+		local attach = Instance.new("Attachment")
+		attach.Position = Vector3.new(0, coreSize.Y * 0.3, 0)
+		attach.Parent = corePart
+
+		local sparkles = Instance.new("ParticleEmitter")
+		sparkles.Name = "OreSparkles"
+		sparkles.Color = ColorSequence.new(oreDef.accentColor)
+		sparkles.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.3 * scale),
+			NumberSequenceKeypoint.new(1, 0.05),
+		})
+		sparkles.Lifetime = NumberRange.new(0.8, 1.4)
+		sparkles.Rate = 12
+		sparkles.Speed = NumberRange.new(2, 4)
+		sparkles.SpreadAngle = Vector2.new(35, 35)
+		sparkles.LightEmission = 0.9
+		sparkles.Parent = attach
+
+		-- Overhead Holographic Billboard
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "OreBillboard"
+		billboard.Size = UDim2.new(0, 220, 0, 64)
+		billboard.StudsOffset = Vector3.new(0, (coreSize.Y / 2) + 2.4, 0)
+		billboard.AlwaysOnTop = false
+		billboard.MaxDistance = 55
+
+		local titleLabel = Instance.new("TextLabel")
+		titleLabel.Name = "OreTitle"
+		titleLabel.Size = UDim2.new(1, 0, 0.45, 0)
+		titleLabel.BackgroundTransparency = 1
+		titleLabel.Text = string.format("%s %s", oreDef.icon, oreDef.name:upper())
+		titleLabel.TextColor3 = oreDef.accentColor
+		titleLabel.Font = Enum.Font.GothamBlack
+		titleLabel.TextSize = 15
+		titleLabel.TextStrokeTransparency = 0.2
+		titleLabel.Parent = billboard
+
+		local yieldLabel = Instance.new("TextLabel")
+		yieldLabel.Name = "YieldText"
+		yieldLabel.Size = UDim2.new(1, 0, 0.30, 0)
+		yieldLabel.Position = UDim2.new(0, 0, 0.42, 0)
+		yieldLabel.BackgroundTransparency = 1
+		yieldLabel.Text = string.format("+%s ⚡ / Click (+%s/Rebirth)", FormatNumber.formatCompact(oreDef.basePower), FormatNumber.formatCompact(oreDef.powerPerRebirth))
+		yieldLabel.TextColor3 = Color3.fromRGB(255, 225, 40)
+		yieldLabel.Font = Enum.Font.GothamBold
+		yieldLabel.TextSize = 12
+		yieldLabel.TextStrokeTransparency = 0.2
+		yieldLabel.Parent = billboard
+
+		local reqLabel = Instance.new("TextLabel")
+		reqLabel.Name = "ReqText"
+		reqLabel.Size = UDim2.new(1, 0, 0.28, 0)
+		reqLabel.Position = UDim2.new(0, 0, 0.72, 0)
+		reqLabel.BackgroundTransparency = 1
+		if oreDef.rebirthRequired == 0 then
+			reqLabel.Text = "✓ Ready to Train"
+			reqLabel.TextColor3 = Color3.fromRGB(0, 230, 118)
+		else
+			reqLabel.Text = string.format("🔒 Requires %d Rebirths", oreDef.rebirthRequired)
+			reqLabel.TextColor3 = Color3.fromRGB(255, 120, 100)
+		end
+		reqLabel.Font = Enum.Font.GothamBold
+		reqLabel.TextSize = 11
+		reqLabel.TextStrokeTransparency = 0.2
+		reqLabel.Parent = billboard
+		billboard.Parent = corePart
+
+		-- ClickDetector for direct mouse clicking
+		local clickDetector = Instance.new("ClickDetector")
+		clickDetector.MaxActivationDistance = 16
+		clickDetector.Parent = corePart
+
+		model.Parent = trainingOresFolder
+	end
+
+	print("⚡ [MapService] The Power Quarry built successfully with 6 Training Ores!")
 end
 
 return MapService

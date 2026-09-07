@@ -275,7 +275,88 @@ function MiningClient.performSwing()
 		return
 	end
 
-	-- Target Detection: Priority 2 - Ores (Mouse Target or Closest Ore within reach)
+	-- Target Detection: Priority 2 - Training Ores (The Power Quarry Rebirth Training)
+	local targetTrainingOreId: string? = nil
+	local targetTrainingOrePart: BasePart? = nil
+
+	local trainingFolder = Workspace:FindFirstChild("TrainingOres")
+	if trainingFolder and rootPart then
+		-- Check direct mouse target first
+		if mouse.Target then
+			local model = mouse.Target:FindFirstAncestorOfClass("Model")
+			if model and model.Parent == trainingFolder then
+				local core = model.PrimaryPart or model:FindFirstChild("OreCore") :: BasePart?
+				if core and (core.Position - rootPart.Position).Magnitude <= 18 then
+					targetTrainingOreId = model.Name
+					targetTrainingOrePart = core
+				end
+			end
+		end
+
+		-- If not direct mouse target, check entity range & facing direction
+		if not targetTrainingOreId then
+			local lookDir = rootPart.CFrame.LookVector
+			local closestDist = 16
+			for _, model in trainingFolder:GetChildren() do
+				if model:IsA("Model") then
+					local core = model.PrimaryPart or model:FindFirstChild("OreCore") :: BasePart?
+					if core then
+						local toOre = core.Position - rootPart.Position
+						local dist = toOre.Magnitude
+						if dist <= closestDist then
+							local dot = lookDir:Dot(toOre.Unit)
+							-- Facing check: within frontal cone (dot >= 0.28)
+							if dot >= 0.28 then
+								closestDist = dist
+								targetTrainingOreId = model.Name
+								targetTrainingOrePart = core
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if targetTrainingOreId and targetTrainingOrePart then
+		task.spawn(function()
+			local trainFn = Remotes.getFunction("TrainOnOre")
+			local ok, success, res = pcall(function()
+				return trainFn:InvokeServer(targetTrainingOreId)
+			end)
+			if ok and success and res and res.powerGained then
+				MiningClient.showPowerGainPopup(res.powerGained)
+				AudioController.playSound("rbxassetid://9114223170", 0.7, 1.1 + (math.random() * 0.2 - 0.1))
+			elseif ok and not success and type(res) == "string" then
+				local pGui = player:FindFirstChild("PlayerGui")
+				local hudGui = pGui and pGui:FindFirstChild("MiningHUD")
+				if hudGui then
+					local warnLabel = Instance.new("TextLabel")
+					warnLabel.Size = UDim2.new(0, 380, 0, 36)
+					warnLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+					warnLabel.Position = UDim2.new(0.5, 0, 0.65, 0)
+					warnLabel.BackgroundTransparency = 1
+					warnLabel.Text = "🔒 " .. res
+					warnLabel.TextColor3 = Color3.fromRGB(255, 90, 80)
+					warnLabel.Font = Enum.Font.GothamBlack
+					warnLabel.TextSize = 18
+					warnLabel.TextStrokeTransparency = 0.2
+					warnLabel.Parent = hudGui
+
+					local tw = TweenService:Create(warnLabel, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Position = warnLabel.Position - UDim2.new(0, 0, 0.08, 0),
+						TextTransparency = 1,
+						TextStrokeTransparency = 1,
+					})
+					tw:Play()
+					tw.Completed:Connect(function() warnLabel:Destroy() end)
+				end
+			end
+		end)
+		return
+	end
+
+	-- Target Detection: Priority 3 - Ores (Mouse Target or Closest Ore within reach)
 	local targetOreId: string? = nil
 	local targetOrePart: BasePart? = nil
 
@@ -555,6 +636,28 @@ function MiningClient.init()
 	local destroyedEvent = Remotes.getEvent("OreDestroyed")
 	destroyedEvent.OnClientEvent:Connect(function(oreId: string, position: Vector3, oreType: string)
 		MiningClient.playShatterEffect(position, oreType)
+	end)
+
+	-- 7. Listen for Training Ore Hit Event (Squash & stretch wobble)
+	local trainHitEvent = Remotes.getEvent("TrainingOreHit")
+	trainHitEvent.OnClientEvent:Connect(function(oreId: string, playerName: string, powerGained: number, position: Vector3)
+		local trainingFolder = Workspace:FindFirstChild("TrainingOres")
+		if trainingFolder then
+			local model = trainingFolder:FindFirstChild(oreId) :: Model?
+			if model and model.PrimaryPart then
+				local core = model.PrimaryPart
+				local origSize = core.Size
+				local squash = TweenService:Create(core, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = origSize * Vector3.new(1.16, 0.84, 1.16),
+				})
+				squash:Play()
+				squash.Completed:Connect(function()
+					TweenService:Create(core, TweenInfo.new(0.20, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+						Size = origSize,
+					}):Play()
+				end)
+			end
+		end
 	end)
 
 	print("✅ [MiningClient] Initialized with Stepped arm override, dynamic Grip chop, and hold-to-mine!")

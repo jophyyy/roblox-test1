@@ -27,6 +27,14 @@ ZoneConfig.ZONES = {
 		icon = "🌋",
 		bounds = { minX = -110, maxX = 110, minZ = -285, maxZ = -155 },
 	},
+	TrainingQuarry = {
+		id = "TrainingQuarry",
+		name = "The Power Quarry",
+		rebirthRequired = 0,
+		color = Color3.fromRGB(255, 205, 30),
+		icon = "⚡",
+		bounds = { minX = 68, maxX = 148, minZ = -45, maxZ = 45 },
+	},
 } :: { [string]: ZoneDef }
 
 return ZoneConfig

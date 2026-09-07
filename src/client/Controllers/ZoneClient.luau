@@ -187,6 +187,8 @@ function ZoneClient.showZoneTransition(zoneId: string)
 	zoneTitleText.TextColor3 = zone.color
 	if zoneId == "Zone2" then
 		zoneSubText.Text = "Zone 2 • Magma & Molten Ores (5+ Rebirths)"
+	elseif zoneId == "TrainingQuarry" then
+		zoneSubText.Text = "Rebirth Training Grounds • Multi-Tier Power Ores"
 	else
 		zoneSubText.Text = "Zone 1 • Peaceful Haven & Starter Ores"
 	end
@@ -333,13 +335,16 @@ function ZoneClient.init()
 			task.wait(0.35)
 			local char = player.Character
 			if char and char:FindFirstChild("HumanoidRootPart") then
-				local rootPart = char.HumanoidRootPart :: BasePart
+				local xPos = rootPart.Position.X
 				local zPos = rootPart.Position.Z
 
 				if zPos <= -145 and currentZoneId ~= "Zone2" then
 					currentZoneId = "Zone2"
 					ZoneClient.showZoneTransition("Zone2")
-				elseif zPos >= -133 and currentZoneId ~= "Zone1" then
+				elseif xPos >= 70 and math.abs(zPos) <= 45 and currentZoneId ~= "TrainingQuarry" then
+					currentZoneId = "TrainingQuarry"
+					ZoneClient.showZoneTransition("TrainingQuarry")
+				elseif zPos >= -133 and xPos < 65 and currentZoneId ~= "Zone1" then
 					currentZoneId = "Zone1"
 					ZoneClient.showZoneTransition("Zone1")
 				end

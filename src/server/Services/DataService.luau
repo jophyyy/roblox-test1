@@ -347,6 +347,15 @@ function DataService.load(player: Player)
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
 	syncToClient(player, data)
+
+	local okPickaxe, PickaxeService = pcall(function()
+		return require(script.Parent.PickaxeService)
+	end)
+	if okPickaxe and PickaxeService then
+		task.spawn(function()
+			PickaxeService.updatePlayerPickaxe(player)
+		end)
+	end
 end
 
 function DataService.buyShopItem(player: Player, category: string, itemId: string): (boolean, string)
@@ -363,6 +372,14 @@ function DataService.buyShopItem(player: Player, category: string, itemId: strin
 		data.OwnedShovels[itemId] = true
 		data.EquippedShovel = itemId
 		syncToClient(player, data)
+
+		local okPickaxe, PickaxeService = pcall(function()
+			return require(script.Parent.PickaxeService)
+		end)
+		if okPickaxe and PickaxeService then
+			PickaxeService.updatePlayerPickaxe(player)
+		end
+
 		print(string.format("🛒 [Shop] %s purchased Shovel: %s", player.Name, shovelDef.name))
 		return true, "Successfully purchased " .. shovelDef.name .. "!"
 	elseif category == "Backpack" then
@@ -390,6 +407,14 @@ function DataService.equipShopItem(player: Player, category: string, itemId: str
 		if not data.OwnedShovels[itemId] then return false, "Item not owned!" end
 		data.EquippedShovel = itemId
 		syncToClient(player, data)
+
+		local okPickaxe, PickaxeService = pcall(function()
+			return require(script.Parent.PickaxeService)
+		end)
+		if okPickaxe and PickaxeService then
+			PickaxeService.updatePlayerPickaxe(player)
+		end
+
 		return true, "Equipped Shovel!"
 	elseif category == "Backpack" then
 		if not data.OwnedBackpacks[itemId] then return false, "Item not owned!" end

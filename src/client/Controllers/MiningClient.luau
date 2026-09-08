@@ -18,123 +18,59 @@ local mouse = player:GetMouse()
 local camera = Workspace.CurrentCamera
 
 local MiningClient = {}
-local activeTool: Tool? = nil
 local isSwinging = false
 local isMouseDown = false
 local lastSwingTime = 0
 local SWING_COOLDOWN = 0.28
+local activeHoldTrack: AnimationTrack? = nil
 
 -- Current procedural swing angle applied during RunService.Stepped (overrides Roblox Animate script)
 local currentArmSwingAngle = 0
 local BASE_TOOL_GRIP = CFrame.new(0, -0.9, 0) * CFrame.Angles(math.rad(10), 0, 0)
 
--- Creates an authentic retro 3D Pickaxe Model
-local function createPickaxeTool(toolName: string, headColor: Color3, isNeon: boolean?): Tool
-	local tool = Instance.new("Tool")
-	tool.Name = toolName
-	tool.RequiresHandle = true
-	tool.CanBeDropped = false
-	tool.Grip = BASE_TOOL_GRIP
-
-	-- Handle (Wooden shaft)
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.35, 2.5, 0.35)
-	handle.Color = Color3.fromRGB(130, 85, 55)
-	handle.Material = Enum.Material.Wood
-	handle.TopSurface = Enum.SurfaceType.Smooth
-	handle.BottomSurface = Enum.SurfaceType.Smooth
-	handle.CanCollide = false
-	handle.Massless = true
-	handle.Parent = tool
-
-	-- Pickaxe Dual Curved Head with Studs
-	local head = Instance.new("Part")
-	head.Name = "PickHead"
-	head.Size = Vector3.new(1.9, 0.5, 0.55)
-	head.Color = headColor
-	head.Material = if isNeon then Enum.Material.Neon else Enum.Material.Metal
-	head.TopSurface = Enum.SurfaceType.Studs
-	head.BottomSurface = Enum.SurfaceType.Smooth
-	head.CanCollide = false
-	head.Massless = true
-	head.CFrame = handle.CFrame * CFrame.new(0, 1.15, 0)
-	head.Parent = tool
-
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = handle
-	weld.Part1 = head
-	weld.Parent = handle
-
-	-- PointLight if rare/neon
-	if isNeon then
-		local light = Instance.new("PointLight")
-		light.Color = headColor
-		light.Brightness = 2.4
-		light.Range = 9
-		light.Parent = head
-	end
-
-	return tool
-end
-
--- Refresh and auto-equip pickaxe
-function MiningClient.refreshTool()
-	local backpack = player:FindFirstChild("Backpack")
-	if not backpack then return end
-
-	-- Remove old pickaxes
-	for _, item in backpack:GetChildren() do
-		if item:IsA("Tool") and item.Name:find("Pickaxe") then
-			item:Destroy()
-		end
-	end
-
+-- Ensures the character is permanently in the active pickaxe-ready holding pose
+function MiningClient.updateHoldingPose()
 	local char = player.Character
-	if char then
-		for _, item in char:GetChildren() do
-			if item:IsA("Tool") and item.Name:find("Pickaxe") then
+	if not char then return end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	-- Clean any legacy Tools from backpack
+	local backpack = player:FindFirstChild("Backpack")
+	if backpack then
+		for _, item in backpack:GetChildren() do
+			if item:IsA("Tool") and (item.Name:find("Pickaxe") or item.Name:find("Shovel")) then
 				item:Destroy()
 			end
 		end
 	end
 
-	-- Fetch equipped tool config
-	local toolName = "Rusty Miner's Pickaxe"
-	local headColor = Color3.fromRGB(150, 110, 80)
-	local isNeon = false
-
-	local getFn = Remotes.getFunction("GetPlayerData")
-	local ok, data = pcall(function()
-		return getFn:InvokeServer()
-	end)
-
-	if ok and data and data.EquippedShovel then
-		local toolDef = ShopConfig.getShovel(data.EquippedShovel)
-		if toolDef then
-			toolName = toolDef.name
-			headColor = toolDef.color
-			if toolDef.id == "shovel_diamond" or toolDef.id == "shovel_void" or toolDef.id == "shovel_magma" or toolDef.id == "shovel_infernal" then
-				isNeon = true
-			end
-		end
+	if activeHoldTrack and activeHoldTrack.IsPlaying then
+		return
 	end
 
-	local tool = createPickaxeTool(toolName, headColor, isNeon)
-	tool.Parent = backpack
-	activeTool = tool
+	local animator = humanoid:FindFirstChildOfClass("Animator") or humanoid
+	local isR15 = (humanoid.RigType == Enum.HumanoidRigType.R15)
+	local holdAnimId = if isR15 then "rbxassetid://507768223" else "rbxassetid://182393478"
 
-	-- Auto equip into player's hands so it is immediately active!
-	if char then
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid:EquipTool(tool)
-		end
-	end
+	local animObj = Instance.new("Animation")
+	animObj.AnimationId = holdAnimId
 
-	tool.Activated:Connect(function()
-		MiningClient.performSwing()
+	local ok, track = pcall(function()
+		return (animator :: any):LoadAnimation(animObj)
 	end)
+	if ok and track then
+		track.Priority = Enum.AnimationPriority.Action
+		track.Looped = true
+		track:Play(0.2, 1, 1)
+		activeHoldTrack = track
+	end
+end
+
+-- Refresh holding pose and clean legacy inventory items
+function MiningClient.refreshTool()
+	MiningClient.updateHoldingPose()
 end
 
 -- Finds the right shoulder joint across both R6 and R15 rigs
@@ -172,10 +108,8 @@ function MiningClient.performSwing()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
 	local rootPart = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 
-	-- If tool got unequipped into backpack, re-equip it
-	if activeTool and activeTool.Parent ~= char and humanoid then
-		humanoid:EquipTool(activeTool)
-	end
+	-- Maintain holding pose
+	MiningClient.updateHoldingPose()
 
 	-- 1. Play Humanoid AnimationTrack (Body & Arm slash motion)
 	if humanoid then
@@ -201,6 +135,9 @@ function MiningClient.performSwing()
 		local startTime = os.clock()
 		local duration = SWING_COOLDOWN
 
+		local rHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm") :: BasePart?
+		local gripMotor = if rHand then rHand:FindFirstChild("PickaxeGrip") :: Motor6D? else nil
+
 		while true do
 			local elapsed = os.clock() - startTime
 			local progress = math.clamp(elapsed / duration, 0, 1)
@@ -209,33 +146,33 @@ function MiningClient.performSwing()
 				-- Phase 1: Windup (Lift pickaxe back over shoulder)
 				local p = progress / 0.30
 				currentArmSwingAngle = p * 45
-				if activeTool then
-					activeTool.Grip = BASE_TOOL_GRIP * CFrame.new(0, 0.2 * p, -0.3 * p) * CFrame.Angles(math.rad(-40 * p), 0, math.rad(-10 * p))
+				if gripMotor then
+					gripMotor.C1 = BASE_TOOL_GRIP * CFrame.new(0, 0.2 * p, -0.3 * p) * CFrame.Angles(math.rad(-40 * p), 0, math.rad(-10 * p))
 				end
 			elseif progress <= 0.65 then
 				-- Phase 2: Heavy Downward Strike (Chop hard down into the ore!)
 				local p = (progress - 0.30) / 0.35
 				currentArmSwingAngle = 45 - (p * 135) -- Slams from +45 down to -90 degrees
-				if activeTool then
+				if gripMotor then
 					local windupGrip = BASE_TOOL_GRIP * CFrame.new(0, 0.2, -0.3) * CFrame.Angles(math.rad(-40), 0, math.rad(-10))
 					local strikeGrip = BASE_TOOL_GRIP * CFrame.new(0, -0.3, 0.4) * CFrame.Angles(math.rad(75), 0, math.rad(15))
-					activeTool.Grip = windupGrip:Lerp(strikeGrip, p)
+					gripMotor.C1 = windupGrip:Lerp(strikeGrip, p)
 				end
 			else
 				-- Phase 3: Recoil & Recovery (Snap back to neutral ready for next swing)
 				local p = (progress - 0.65) / 0.35
 				local easedP = TweenService:GetValue(p, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				currentArmSwingAngle = -90 * (1 - easedP)
-				if activeTool then
+				if gripMotor then
 					local strikeGrip = BASE_TOOL_GRIP * CFrame.new(0, -0.3, 0.4) * CFrame.Angles(math.rad(75), 0, math.rad(15))
-					activeTool.Grip = strikeGrip:Lerp(BASE_TOOL_GRIP, easedP)
+					gripMotor.C1 = strikeGrip:Lerp(BASE_TOOL_GRIP, easedP)
 				end
 			end
 
 			if progress >= 1 then
 				currentArmSwingAngle = 0
-				if activeTool then
-					activeTool.Grip = BASE_TOOL_GRIP
+				if gripMotor then
+					gripMotor.C1 = BASE_TOOL_GRIP
 				end
 				break
 			end
@@ -551,6 +488,18 @@ function MiningClient.playShatterEffect(position: Vector3, oreType: string)
 end
 
 function MiningClient.init()
+	-- 0. Disable Roblox Backpack Hotbar CoreGui (pickaxe is always held in hand, never an inventory slot)
+	task.spawn(function()
+		local StarterGui = game:GetService("StarterGui")
+		for _ = 1, 10 do
+			local ok = pcall(function()
+				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+			end)
+			if ok then break end
+			task.wait(0.25)
+		end
+	end)
+
 	-- 1. Stepped Connection: Overrides character right shoulder joint AFTER Roblox Animate script evaluates
 	RunService.Stepped:Connect(function()
 		if currentArmSwingAngle ~= 0 then
@@ -564,15 +513,15 @@ function MiningClient.init()
 		end
 	end)
 
-	-- 2. Equip Pickaxe Tool on Character Spawn & Respawn
+	-- 2. Maintain Pickaxe Holding Pose on Character Spawn & Respawn
 	player.CharacterAdded:Connect(function(char)
-		task.wait(0.5)
+		task.wait(0.4)
 		MiningClient.refreshTool()
 	end)
 
 	if player.Character then
 		task.spawn(function()
-			task.wait(0.5)
+			task.wait(0.4)
 			MiningClient.refreshTool()
 		end)
 	end

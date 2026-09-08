@@ -2159,7 +2159,7 @@ local function openEquipmentShopModal()
 	local tabShovelBtn = Instance.new("TextButton")
 	tabShovelBtn.Size = UDim2.new(0.5, -4, 1, -6)
 	tabShovelBtn.Position = UDim2.new(0, 3, 0, 3)
-	tabShovelBtn.Text = "⛏️ Shovels (Tools)"
+	tabShovelBtn.Text = "⛏️ Pickaxes"
 	tabShovelBtn.Font = Enum.Font.Antique
 	tabShovelBtn.TextSize = 15
 	tabShovelBtn.BorderSizePixel = 0

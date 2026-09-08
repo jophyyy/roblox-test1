@@ -7,6 +7,7 @@ local MarketplaceServiceHandler = require(script.Services.MarketplaceServiceHand
 local MiningService = require(script.Services.MiningService)
 local BossService = require(script.Services.BossService)
 local TrailService = require(script.Services.TrailService)
+local PickaxeService = require(script.Services.PickaxeService)
 
 print("⛏️ [Mining Simulator] Initializing Server Services...")
 
@@ -18,6 +19,7 @@ RebirthService.init()
 MiningService.init()
 BossService.init()
 TrailService.init()
+PickaxeService.init()
 
 print("✅ [Mining Simulator] Server Services Successfully Initialized!")
 

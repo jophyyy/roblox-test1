@@ -272,13 +272,13 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 	bossLight.Range = 35
 	bossLight.Parent = core
 
-	-- 8. Overhead Health Billboard (AlwaysOnTop = false)
+	-- 8. Overhead Health Billboard
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "BossBillboard"
-	billboard.Size = UDim2.new(0, 240, 0, 68)
-	billboard.StudsOffset = Vector3.new(0, 9.5, 0)
-	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 85
+	billboard.Size = UDim2.new(0, 260, 0, 72)
+	billboard.StudsOffset = Vector3.new(0, 11.5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 140
 
 	local title = Instance.new("TextLabel")
 	title.Name = "BossTitle"
@@ -302,6 +302,12 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 	local barBgCorner = Instance.new("UICorner")
 	barBgCorner.CornerRadius = UDim.new(0, 8)
 	barBgCorner.Parent = barBg
+
+	local barBgStroke = Instance.new("UIStroke")
+	barBgStroke.Color = Color3.fromRGB(255, 80, 20)
+	barBgStroke.Thickness = 1.8
+	barBgStroke.Transparency = 0.2
+	barBgStroke.Parent = barBg
 
 	local barFill = Instance.new("Frame")
 	barFill.Name = "HealthBarFill"
@@ -477,13 +483,13 @@ local function buildVoidHarbinger(state: ActiveBossState)
 	bossLight.Range = 40
 	bossLight.Parent = core
 
-	-- 9. Overhead Health Billboard (AlwaysOnTop = false)
+	-- 9. Overhead Health Billboard
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "BossBillboard"
-	billboard.Size = UDim2.new(0, 270, 0, 72)
-	billboard.StudsOffset = Vector3.new(0, 11.0, 0)
-	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 85
+	billboard.Size = UDim2.new(0, 280, 0, 76)
+	billboard.StudsOffset = Vector3.new(0, 13.0, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 140
 
 	local title = Instance.new("TextLabel")
 	title.Name = "BossTitle"
@@ -507,6 +513,12 @@ local function buildVoidHarbinger(state: ActiveBossState)
 	local barBgCorner = Instance.new("UICorner")
 	barBgCorner.CornerRadius = UDim.new(0, 8)
 	barBgCorner.Parent = barBg
+
+	local barBgStroke = Instance.new("UIStroke")
+	barBgStroke.Color = Color3.fromRGB(160, 60, 255)
+	barBgStroke.Thickness = 1.8
+	barBgStroke.Transparency = 0.2
+	barBgStroke.Parent = barBg
 
 	local barFill = Instance.new("Frame")
 	barFill.Name = "HealthBarFill"

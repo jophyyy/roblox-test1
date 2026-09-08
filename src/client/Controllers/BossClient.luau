@@ -18,21 +18,20 @@ local camera = Workspace.CurrentCamera
 
 -- UI Components
 local bossGui: ScreenGui
-local healthCard: Frame
-local cardStroke: UIStroke
-local bossTitleLabel: TextLabel
-local healthBarFill: Frame
-local healthBarCatchup: Frame
-local healthText: TextLabel
-local statusLabel: TextLabel
 local victoryBanner: Frame
 local victoryText: TextLabel
 local victorySub: TextLabel
 
-local isBossBarVisible = false
-local currentBossHP = BossConfig.BOSS.maxHealth
 local maxBossHP = BossConfig.BOSS.maxHealth
 local currentThemedBossId = "InfernalMagmaGolem"
+
+-- Physical World-Space Respawn Indicators
+type RespawnWidget = {
+	anchor: Part,
+	groundRune: Part?,
+	cancelFn: () -> (),
+}
+local activeRespawnWidgets: { [string]: RespawnWidget } = {}
 
 local function playImpactBoom()
 	local sound = Instance.new("Sound")
@@ -58,29 +57,12 @@ local function playVictoryFanfare()
 	end)
 end
 
--- Sets HUD theme based on the active boss
+-- Tracks active boss theme
 local function setBossTheme(bossId: string)
 	currentThemedBossId = bossId
-	if not bossTitleLabel or not cardStroke or not healthBarFill or not statusLabel then return end
-
-	if bossId == "VoidHarbinger" then
-		bossTitleLabel.Text = "🌌 VOID HARBINGER CHRONOS [WORLD BOSS] 🌌"
-		bossTitleLabel.TextColor3 = Color3.fromRGB(180, 130, 255)
-		cardStroke.Color = Color3.fromRGB(140, 40, 255)
-		healthBarFill.BackgroundColor3 = Color3.fromRGB(130, 40, 240)
-		statusLabel.Text = "Zone 3 Arena • Watch for Void Ground Slams!"
-		statusLabel.TextColor3 = Color3.fromRGB(210, 200, 240)
-	else
-		bossTitleLabel.Text = "👹 INFERNAL MAGMA GOLEM [WORLD BOSS] 👹"
-		bossTitleLabel.TextColor3 = Color3.fromRGB(255, 160, 40)
-		cardStroke.Color = Color3.fromRGB(255, 65, 15)
-		healthBarFill.BackgroundColor3 = Color3.fromRGB(255, 60, 20)
-		statusLabel.Text = "Zone 2 Arena • Watch for Ground Slams!"
-		statusLabel.TextColor3 = Color3.fromRGB(220, 200, 210)
-	end
 end
 
--- Builds the cinematic top-of-screen Boss Health Bar and Victory announcement
+-- Builds the Victory announcement screen banner (overhead screen health GUI removed)
 local function buildBossUI()
 	local pGui = player:WaitForChild("PlayerGui")
 	local existing = pGui:FindFirstChild("BossHUDGui")
@@ -92,101 +74,7 @@ local function buildBossUI()
 	bossGui.DisplayOrder = 18
 	bossGui.Parent = pGui
 
-	-- 1. Main Boss Health Card (Top Center)
-	healthCard = Instance.new("Frame")
-	healthCard.Name = "BossHealthCard"
-	healthCard.Size = UDim2.new(0, 520, 0, 72)
-	healthCard.Position = UDim2.new(0.5, 0, -0.15, 0) -- Hidden above viewport
-	healthCard.AnchorPoint = Vector2.new(0.5, 0.5)
-	healthCard.BackgroundColor3 = Color3.fromRGB(20, 15, 18)
-	healthCard.BorderSizePixel = 0
-	healthCard.Parent = bossGui
-
-	local cardCorner = Instance.new("UICorner")
-	cardCorner.CornerRadius = UDim.new(0, 14)
-	cardCorner.Parent = healthCard
-
-	cardStroke = Instance.new("UIStroke")
-	cardStroke.Color = Color3.fromRGB(255, 65, 15)
-	cardStroke.Thickness = 2.5
-	cardStroke.Parent = healthCard
-
-	-- Boss Title
-	bossTitleLabel = Instance.new("TextLabel")
-	bossTitleLabel.Name = "BossTitle"
-	bossTitleLabel.Size = UDim2.new(1, -20, 0, 24)
-	bossTitleLabel.Position = UDim2.new(0, 10, 0, 6)
-	bossTitleLabel.BackgroundTransparency = 1
-	bossTitleLabel.Text = "👹 INFERNAL MAGMA GOLEM [WORLD BOSS] 👹"
-	bossTitleLabel.TextColor3 = Color3.fromRGB(255, 160, 40)
-	bossTitleLabel.Font = Enum.Font.GothamBlack
-	bossTitleLabel.TextSize = 15
-	bossTitleLabel.TextStrokeTransparency = 0.2
-	bossTitleLabel.Parent = healthCard
-
-	-- Health Bar Background Track
-	local barBg = Instance.new("Frame")
-	barBg.Name = "HealthTrack"
-	barBg.Size = UDim2.new(1, -24, 0, 18)
-	barBg.Position = UDim2.new(0, 12, 0, 32)
-	barBg.BackgroundColor3 = Color3.fromRGB(38, 22, 25)
-	barBg.BorderSizePixel = 0
-	barBg.Parent = healthCard
-
-	local trackCorner = Instance.new("UICorner")
-	trackCorner.CornerRadius = UDim.new(0, 9)
-	trackCorner.Parent = barBg
-
-	-- Catchup yellow bar
-	healthBarCatchup = Instance.new("Frame")
-	healthBarCatchup.Name = "CatchupFill"
-	healthBarCatchup.Size = UDim2.new(1, 0, 1, 0)
-	healthBarCatchup.BackgroundColor3 = Color3.fromRGB(255, 200, 60)
-	healthBarCatchup.BorderSizePixel = 0
-	healthBarCatchup.Parent = barBg
-
-	local catchupCorner = Instance.new("UICorner")
-	catchupCorner.CornerRadius = UDim.new(0, 9)
-	catchupCorner.Parent = healthBarCatchup
-
-	-- Main Health Bar
-	healthBarFill = Instance.new("Frame")
-	healthBarFill.Name = "MainFill"
-	healthBarFill.Size = UDim2.new(1, 0, 1, 0)
-	healthBarFill.BackgroundColor3 = Color3.fromRGB(255, 60, 20)
-	healthBarFill.BorderSizePixel = 0
-	healthBarFill.Parent = barBg
-
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 9)
-	fillCorner.Parent = healthBarFill
-
-	-- Health Text
-	healthText = Instance.new("TextLabel")
-	healthText.Name = "HealthNumbers"
-	healthText.Size = UDim2.new(1, 0, 1, 0)
-	healthText.BackgroundTransparency = 1
-	healthText.Text = string.format("%s / %s HP", FormatNumber.formatCompact(maxBossHP), FormatNumber.formatCompact(maxBossHP))
-	healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	healthText.Font = Enum.Font.GothamBlack
-	healthText.TextSize = 11
-	healthText.TextStrokeTransparency = 0.25
-	healthText.Parent = barBg
-
-	-- Subtitle Status text under bar
-	statusLabel = Instance.new("TextLabel")
-	statusLabel.Name = "StatusSubtitle"
-	statusLabel.Size = UDim2.new(1, -20, 0, 16)
-	statusLabel.Position = UDim2.new(0, 10, 0, 52)
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.Text = "Arena Boss • Watch for Ground Slams!"
-	statusLabel.TextColor3 = Color3.fromRGB(220, 200, 210)
-	statusLabel.Font = Enum.Font.GothamMedium
-	statusLabel.TextSize = 11
-	statusLabel.TextStrokeTransparency = 0.4
-	statusLabel.Parent = healthCard
-
-	-- 2. Massive Victory Banner (Pops on boss kill)
+	-- Victory Banner (Pops briefly on boss kill)
 	victoryBanner = Instance.new("Frame")
 	victoryBanner.Name = "VictoryBanner"
 	victoryBanner.Size = UDim2.new(0, 540, 0, 110)
@@ -234,47 +122,53 @@ local function buildBossUI()
 	victorySub.Parent = victoryBanner
 end
 
--- Shows / Hides the top Health Card
-function BossClient.setBossBarVisible(visible: boolean)
-	if isBossBarVisible == visible then return end
-	isBossBarVisible = visible
-
-	if visible then
-		healthCard.Visible = true
-		local tween = TweenService:Create(healthCard, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, 0, 0.085, 0),
-		})
-		tween:Play()
-	else
-		local tween = TweenService:Create(healthCard, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(0.5, 0, -0.15, 0),
-		})
-		tween:Play()
-		tween.Completed:Connect(function()
-			if not isBossBarVisible then
-				healthCard.Visible = false
-			end
-		end)
-	end
+-- Deprecated: Screen health bar removed in favor of physical head billboard
+function BossClient.setBossBarVisible(_visible: boolean)
+	-- No-op: Screen overhead GUI removed
 end
 
--- Smoothly updates health bars with catchup lag
-function BossClient.updateHealth(currHP: number, maxHP: number)
-	currentBossHP = currHP
+-- Smoothly updates the physical in-world health billboard on the boss's head
+function BossClient.updateHealth(currHP: number, maxHP: number, bossId: string?)
 	maxBossHP = maxHP
 
+	local bossFolder = Workspace:FindFirstChild("BossFolder")
+	if not bossFolder then return end
+
+	local targets = {}
+	if bossId and bossFolder:FindFirstChild(bossId) then
+		table.insert(targets, bossFolder:FindFirstChild(bossId))
+	else
+		for _, child in ipairs(bossFolder:GetChildren()) do
+			if child:IsA("Model") then
+				table.insert(targets, child)
+			end
+		end
+	end
+
 	local ratio = math.clamp(currHP / maxHP, 0, 1)
-	healthText.Text = string.format("%s / %s HP", FormatNumber.formatCompact(currHP), FormatNumber.formatCompact(maxHP))
 
-	-- Instant snappy main bar fill
-	healthBarFill.Size = UDim2.new(ratio, 0, 1, 0)
+	for _, model in ipairs(targets) do
+		local head = model:FindFirstChild("Head")
+		if head then
+			local bb = head:FindFirstChild("BossBillboard")
+			if bb then
+				local barBg = bb:FindFirstChild("HealthBarBg")
+				if barBg then
+					local fill = barBg:FindFirstChild("HealthBarFill")
+					if fill and fill:IsA("Frame") then
+						TweenService:Create(fill, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Size = UDim2.new(ratio, 0, 1, 0),
+						}):Play()
+					end
 
-	-- Delayed catchup yellow bar
-	task.delay(0.2, function()
-		TweenService:Create(healthBarCatchup, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(ratio, 0, 1, 0),
-		}):Play()
-	end)
+					local text = barBg:FindFirstChild("HealthText")
+					if text and text:IsA("TextLabel") then
+						text.Text = string.format("%s / %s HP", FormatNumber.formatCompact(currHP), FormatNumber.formatCompact(maxHP))
+					end
+				end
+			end
+		end
+	end
 end
 
 -- Renders 3D World Space Damage Numbers
@@ -353,6 +247,214 @@ local function getFloorY(pos: Vector3): number
 		return result.Position.Y + 0.12
 	end
 	return 2.85 -- Default Colosseum floor height
+end
+
+-- Cleans up any active physical respawn widget and rune for the given boss
+function BossClient.hidePhysicalRespawnTimer(bossId: string)
+	local widget = activeRespawnWidgets[bossId]
+	if widget then
+		if widget.cancelFn then
+			widget.cancelFn()
+		end
+		if widget.anchor and widget.anchor.Parent then
+			widget.anchor:Destroy()
+		end
+		if widget.groundRune and widget.groundRune.Parent then
+			widget.groundRune:Destroy()
+		end
+		activeRespawnWidgets[bossId] = nil
+	end
+end
+
+-- Renders a physical 3D BillboardGui and glowing altar rune directly on top of where the boss spawns
+function BossClient.showPhysicalRespawnTimer(bossId: string, respawnTime: number, bossName: string?)
+	BossClient.hidePhysicalRespawnTimer(bossId)
+
+	local bDef = BossConfig.BOSSES[bossId]
+	local spawnCenter = if bDef then bDef.arenaCenter else (BossConfig.BOSS.arenaCenter or Vector3.new(0, 2.8, -260))
+	local floorY = getFloorY(spawnCenter)
+
+	local isVoid = (bossId == "VoidHarbinger")
+	local themeColor = if isVoid then Color3.fromRGB(180, 80, 255) else Color3.fromRGB(255, 140, 20)
+	local strokeColor = if isVoid then Color3.fromRGB(140, 40, 255) else Color3.fromRGB(255, 75, 15)
+	local displayName = if bossName then bossName:upper() else (if bDef then bDef.name:upper() else "WORLD BOSS")
+
+	-- 1. Glowing Altar Summoning Rune on the floor
+	local groundRune = Instance.new("Part")
+	groundRune.Name = "RespawnAltarRune_" .. bossId
+	groundRune.Shape = Enum.PartType.Cylinder
+	groundRune.Size = Vector3.new(0.35, 18, 18)
+	groundRune.CFrame = CFrame.new(spawnCenter.X, floorY + 0.08, spawnCenter.Z) * CFrame.Angles(0, 0, math.rad(90))
+	groundRune.Color = themeColor
+	groundRune.Material = Enum.Material.Neon
+	groundRune.Transparency = 0.35
+	groundRune.Anchored = true
+	groundRune.CanCollide = false
+	groundRune.Parent = Workspace
+
+	local pulseRune = TweenService:Create(groundRune, TweenInfo.new(1.0, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+		Transparency = 0.7,
+	})
+	pulseRune:Play()
+
+	-- Upward rising altar aura particles
+	local attach = Instance.new("Attachment")
+	attach.Position = Vector3.new(0, 0, 0)
+	attach.Parent = groundRune
+
+	local altarParticles = Instance.new("ParticleEmitter")
+	altarParticles.Rate = 12
+	altarParticles.Lifetime = NumberRange.new(1.2, 2.0)
+	altarParticles.Speed = NumberRange.new(3, 6)
+	altarParticles.SpreadAngle = Vector2.new(30, 30)
+	altarParticles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.2),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	altarParticles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, themeColor),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 15, 25)),
+	})
+	altarParticles.LightEmission = 0.95
+	altarParticles.Parent = attach
+
+	-- 2. Physical Anchor Floating Part above dais
+	local anchor = Instance.new("Part")
+	anchor.Name = "RespawnAnchor_" .. bossId
+	anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+	anchor.Position = Vector3.new(spawnCenter.X, floorY + 8.5, spawnCenter.Z)
+	anchor.Transparency = 1
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.Parent = Workspace
+
+	-- 3. In-World Physical Billboard
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "RespawnBillboard"
+	bb.Size = UDim2.new(0, 340, 0, 120)
+	bb.StudsOffset = Vector3.new(0, 0, 0)
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = 160
+	bb.LightInfluence = 0
+	bb.Parent = anchor
+
+	-- Card Frame
+	local card = Instance.new("Frame")
+	card.Name = "RespawnCard"
+	card.Size = UDim2.new(1, 0, 1, 0)
+	card.BackgroundColor3 = Color3.fromRGB(18, 14, 22)
+	card.BackgroundTransparency = 0.12
+	card.BorderSizePixel = 0
+	card.Parent = bb
+
+	local cardCorner = Instance.new("UICorner")
+	cardCorner.CornerRadius = UDim.new(0, 16)
+	cardCorner.Parent = card
+
+	local cardStroke = Instance.new("UIStroke")
+	cardStroke.Color = strokeColor
+	cardStroke.Thickness = 2.5
+	cardStroke.Parent = card
+
+	-- Boss Title
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "BossTitle"
+	titleLabel.Size = UDim2.new(1, -20, 0, 22)
+	titleLabel.Position = UDim2.new(0, 10, 0, 8)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = string.format("⏳ %s", displayName)
+	titleLabel.TextColor3 = themeColor
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 14
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = card
+
+	-- Status Subtitle
+	local statusText = Instance.new("TextLabel")
+	statusText.Name = "StatusSubtitle"
+	statusText.Size = UDim2.new(1, -20, 0, 16)
+	statusText.Position = UDim2.new(0, 10, 0, 30)
+	statusText.BackgroundTransparency = 1
+	statusText.Text = "RESPAWNING IN"
+	statusText.TextColor3 = Color3.fromRGB(200, 190, 210)
+	statusText.Font = Enum.Font.GothamBold
+	statusText.TextSize = 11
+	statusText.TextStrokeTransparency = 0.4
+	statusText.Parent = card
+
+	-- Large Countdown Timer
+	local timeLabel = Instance.new("TextLabel")
+	timeLabel.Name = "TimeRemaining"
+	timeLabel.Size = UDim2.new(1, 0, 0, 36)
+	timeLabel.Position = UDim2.new(0, 0, 0, 48)
+	timeLabel.BackgroundTransparency = 1
+	timeLabel.Text = string.format("%ds", respawnTime)
+	timeLabel.TextColor3 = Color3.fromRGB(255, 235, 120)
+	timeLabel.Font = Enum.Font.GothamBlack
+	timeLabel.TextSize = 32
+	timeLabel.TextStrokeTransparency = 0.15
+	timeLabel.Parent = card
+
+	-- Progress Bar Track
+	local barTrack = Instance.new("Frame")
+	barTrack.Name = "ProgressTrack"
+	barTrack.Size = UDim2.new(1, -32, 0, 10)
+	barTrack.Position = UDim2.new(0, 16, 0, 92)
+	barTrack.BackgroundColor3 = Color3.fromRGB(34, 26, 40)
+	barTrack.BorderSizePixel = 0
+	barTrack.Parent = card
+
+	local trackCorner = Instance.new("UICorner")
+	trackCorner.CornerRadius = UDim.new(0, 5)
+	trackCorner.Parent = barTrack
+
+	local barFill = Instance.new("Frame")
+	barFill.Name = "ProgressFill"
+	barFill.Size = UDim2.new(0, 0, 1, 0)
+	barFill.BackgroundColor3 = themeColor
+	barFill.BorderSizePixel = 0
+	barFill.Parent = barTrack
+
+	local fillCorner = Instance.new("UICorner")
+	fillCorner.CornerRadius = UDim.new(0, 5)
+	fillCorner.Parent = barFill
+
+	-- Smoothly tween progress bar fill to full over respawn duration
+	local barTween = TweenService:Create(barFill, TweenInfo.new(respawnTime, Enum.EasingStyle.Linear), {
+		Size = UDim2.new(1, 0, 1, 0),
+	})
+	barTween:Play()
+
+	local isCancelled = false
+	local function cancel()
+		isCancelled = true
+		barTween:Cancel()
+		pulseRune:Cancel()
+	end
+
+	activeRespawnWidgets[bossId] = {
+		anchor = anchor,
+		groundRune = groundRune,
+		cancelFn = cancel,
+	}
+
+	-- Second-by-second countdown update
+	task.spawn(function()
+		for s = respawnTime, 0, -1 do
+			if isCancelled then break end
+			if timeLabel and timeLabel.Parent then
+				timeLabel.Text = string.format("%ds", s)
+				if s <= 3 then
+					timeLabel.TextColor3 = Color3.fromRGB(255, 60, 40)
+				end
+			end
+			task.wait(1.0)
+		end
+
+		if not isCancelled then
+			BossClient.hidePhysicalRespawnTimer(bossId)
+		end
+	end)
 end
 
 -- Renders an expanding danger zone ring on the floor with fill countdown
@@ -698,7 +800,7 @@ function BossClient.init()
 		if bossId then
 			setBossTheme(bossId)
 		end
-		BossClient.updateHealth(currHP, maxHP)
+		BossClient.updateHealth(currHP, maxHP, bossId)
 
 		local bossFolder = Workspace:FindFirstChild("BossFolder")
 		local targetModel = if bossId and bossFolder then bossFolder:FindFirstChild(bossId) else nil
@@ -718,9 +820,6 @@ function BossClient.init()
 		if bossId then
 			setBossTheme(bossId)
 		end
-		statusLabel.Text = "⚠️ CRUSHING SLAM CHARGING! GET OUT OF THE RED ZONE! ⚠️"
-		statusLabel.TextColor3 = Color3.fromRGB(255, 60, 40)
-
 		BossClient.visualizeTelegraphSlam(centerPos, radius, duration, bossId)
 	end)
 
@@ -730,14 +829,7 @@ function BossClient.init()
 		if bossId then
 			setBossTheme(bossId)
 		end
-		statusLabel.Text = "💥 IMPACT! EARTH SHATTERED! 💥"
-		statusLabel.TextColor3 = Color3.fromRGB(255, 60, 40)
-
 		BossClient.visualizeGroundSlam(bossPos, radius)
-
-		task.delay(1.5, function()
-			setBossTheme(currentThemedBossId)
-		end)
 	end)
 
 	-- 4. Listen for BossMeteorEvent RemoteEvent
@@ -746,21 +838,16 @@ function BossClient.init()
 		if bossId then
 			setBossTheme(bossId)
 		end
-		statusLabel.Text = "☄️ METEOR BARRAGE INCOMING! EVADE IMPACT ZONES! ☄️"
-		statusLabel.TextColor3 = Color3.fromRGB(255, 140, 20)
-
 		BossClient.visualizeMeteorBarrage(targets, bossId)
-
-		task.delay(2.2, function()
-			setBossTheme(currentThemedBossId)
-		end)
 	end)
 
 	-- 5. Listen for BossDefeated RemoteEvent
 	local defeatedEvent = Remotes.getEvent("BossDefeated")
 	defeatedEvent.OnClientEvent:Connect(function(killerName, cashReward, gemReward, respawnTime, bossName, bossId)
 		playVictoryFanfare()
-		BossClient.updateHealth(0, maxBossHP)
+
+		local targetBossId = bossId or currentThemedBossId
+		BossClient.updateHealth(0, maxBossHP, targetBossId)
 
 		local bTitle = (bossName or "WORLD BOSS"):upper()
 		victoryText.Text = string.format("🏆 %s DEFEATED %s! 🏆", killerName:upper(), bTitle)
@@ -768,20 +855,14 @@ function BossClient.init()
 
 		local stroke = victoryBanner:FindFirstChildOfClass("UIStroke")
 
-		-- Fade in victory banner
+		-- Fade in victory celebration banner
 		TweenService:Create(victoryBanner, TweenInfo.new(0.4), { BackgroundTransparency = 0.15 }):Play()
 		TweenService:Create(victoryText, TweenInfo.new(0.4), { TextTransparency = 0, TextStrokeTransparency = 0.2 }):Play()
 		TweenService:Create(victorySub, TweenInfo.new(0.4), { TextTransparency = 0, TextStrokeTransparency = 0.2 }):Play()
 		if stroke then TweenService:Create(stroke, TweenInfo.new(0.4), { Transparency = 0.1 }):Play() end
 
-		-- Countdown on Boss bar
-		task.spawn(function()
-			for s = respawnTime, 1, -1 do
-				statusLabel.Text = string.format("⏳ Boss Defeated! Respawning in %ds...", s)
-				statusLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-				task.wait(1.0)
-			end
-		end)
+		-- Show physical 3D respawn timer floating right over where the boss spawns physically
+		BossClient.showPhysicalRespawnTimer(targetBossId, respawnTime, bossName)
 
 		task.delay(4.5, function()
 			TweenService:Create(victoryBanner, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
@@ -797,39 +878,14 @@ function BossClient.init()
 		if bossId then
 			setBossTheme(bossId)
 		end
-		BossClient.updateHealth(newMaxHP, newMaxHP)
+
+		local targetBossId = bossId or currentThemedBossId
+		-- Clean up physical respawn timer and altar rune when boss spawns
+		BossClient.hidePhysicalRespawnTimer(targetBossId)
+		BossClient.updateHealth(newMaxHP, newMaxHP, targetBossId)
 	end)
 
-	-- 7. Proximity Tracking: Auto-Show/Hide Boss Health Bar when near Arena
-	task.spawn(function()
-		while true do
-			task.wait(0.4)
-			local char = player.Character
-			if char and char:FindFirstChild("HumanoidRootPart") then
-				local pPos = char.HumanoidRootPart.Position
-
-				local magmaCenter = BossConfig.BOSSES.InfernalMagmaGolem.arenaCenter
-				local distMagma = (Vector3.new(pPos.X, magmaCenter.Y, pPos.Z) - magmaCenter).Magnitude
-
-				local voidCenter = BossConfig.BOSSES.VoidHarbinger.arenaCenter
-				local distVoid = (Vector3.new(pPos.X, voidCenter.Y, pPos.Z) - voidCenter).Magnitude
-
-				if distMagma <= 90 then
-					setBossTheme("InfernalMagmaGolem")
-					BossClient.setBossBarVisible(true)
-				elseif distVoid <= 90 then
-					setBossTheme("VoidHarbinger")
-					BossClient.setBossBarVisible(true)
-				else
-					BossClient.setBossBarVisible(false)
-				end
-			else
-				BossClient.setBossBarVisible(false)
-			end
-		end
-	end)
-
-	print("✅ [BossClient] Initialized! Multi-Boss HUD and Combat FX Active.")
+	print("✅ [BossClient] Initialized! In-world Boss Health and Physical Respawn HUD active.")
 end
 
 return BossClient

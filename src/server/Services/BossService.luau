@@ -28,6 +28,17 @@ export type ActiveBossState = {
 	isAttacking: boolean,
 	isStunned: boolean,
 	lastAttackTime: number,
+	lastSpecialAttackTime: number?,
+	-- Limb Motor6D references for procedural animation
+	rootJoint: Motor6D?,
+	neck: Motor6D?,
+	leftShoulder: Motor6D?,
+	rightShoulder: Motor6D?,
+	leftHip: Motor6D?,
+	rightHip: Motor6D?,
+	coreLight: PointLight?,
+	corePart: Part?,
+	animThread: thread?,
 }
 
 local BossService = {}
@@ -65,6 +76,94 @@ local function weldParts(part0: BasePart, part1: BasePart)
 	weld.Parent = part0
 end
 
+local function createMotor(part0: BasePart, part1: BasePart, c0: CFrame, c1: CFrame, name: string): Motor6D
+	local motor = Instance.new("Motor6D")
+	motor.Name = name
+	motor.Part0 = part0
+	motor.Part1 = part1
+	motor.C0 = c0
+	motor.C1 = c1
+	motor.Parent = part0
+	return motor
+end
+
+local function tweenMotor(
+	motor: Motor6D?,
+	targetC0: CFrame,
+	duration: number,
+	easingStyle: Enum.EasingStyle?,
+	easingDir: Enum.EasingDirection?
+)
+	if not motor then return end
+	local tween = TweenService:Create(motor, TweenInfo.new(
+		duration,
+		easingStyle or Enum.EasingStyle.Quad,
+		easingDir or Enum.EasingDirection.Out
+	), {
+		C0 = targetC0,
+	})
+	tween:Play()
+end
+
+-- Procedural 3D breathing & walking animation loop
+local function startBossAnimations(state: ActiveBossState)
+	if state.animThread then
+		task.cancel(state.animThread)
+		state.animThread = nil
+	end
+
+	state.animThread = task.spawn(function()
+		local defaultRootC0 = state.rootJoint and state.rootJoint.C0 or CFrame.new()
+		local defaultNeckC0 = state.neck and state.neck.C0 or CFrame.new()
+		local defaultLSC0 = state.leftShoulder and state.leftShoulder.C0 or CFrame.new()
+		local defaultRSC0 = state.rightShoulder and state.rightShoulder.C0 or CFrame.new()
+		local defaultLHC0 = state.leftHip and state.leftHip.C0 or CFrame.new()
+		local defaultRHC0 = state.rightHip and state.rightHip.C0 or CFrame.new()
+
+		local walkCycle = 0
+
+		while state.isAlive and state.model and state.rootPart and state.humanoid do
+			local dt = task.wait(0.033)
+			if not state.isAlive then break end
+
+			if not state.isAttacking and not state.isStunned and state.rootJoint and state.neck and state.leftShoulder and state.rightShoulder and state.leftHip and state.rightHip then
+				local moveDir = state.humanoid.MoveDirection
+				local isMoving = moveDir.Magnitude > 0.1
+
+				if isMoving then
+					walkCycle += dt * 7.5
+					local legAngle = math.sin(walkCycle) * 0.42
+					local armAngle = math.sin(walkCycle) * 0.38
+
+					-- Walking stride
+					state.leftHip.C0 = defaultLHC0 * CFrame.Angles(legAngle, 0, 0)
+					state.rightHip.C0 = defaultRHC0 * CFrame.Angles(-legAngle, 0, 0)
+					state.leftShoulder.C0 = defaultLSC0 * CFrame.Angles(-armAngle, 0, math.rad(-6))
+					state.rightShoulder.C0 = defaultRSC0 * CFrame.Angles(armAngle, 0, math.rad(6))
+					state.rootJoint.C0 = defaultRootC0 * CFrame.new(0, math.abs(math.sin(walkCycle)) * 0.35, 0) * CFrame.Angles(math.rad(8), 0, 0)
+					state.neck.C0 = defaultNeckC0 * CFrame.Angles(math.rad(-4), math.sin(walkCycle * 0.5) * 0.08, 0)
+				else
+					-- Idle breathing
+					local clock = os.clock()
+					local breath = math.sin(clock * 2.2)
+					local sway = math.cos(clock * 1.4) * 0.08
+
+					state.rootJoint.C0 = defaultRootC0 * CFrame.new(0, breath * 0.22, 0) * CFrame.Angles(breath * 0.025, sway * 0.5, 0)
+					state.neck.C0 = defaultNeckC0 * CFrame.Angles(breath * 0.03, sway, 0)
+					state.leftShoulder.C0 = defaultLSC0 * CFrame.Angles(breath * 0.06, 0, math.rad(-8) + breath * 0.03)
+					state.rightShoulder.C0 = defaultRSC0 * CFrame.Angles(breath * 0.06, 0, math.rad(8) - breath * 0.03)
+					state.leftHip.C0 = defaultLHC0
+					state.rightHip.C0 = defaultRHC0
+
+					if state.coreLight then
+						state.coreLight.Brightness = 3.0 + breath * 1.2
+					end
+				end
+			end
+		end
+	end)
+end
+
 -- Builds the physical 3D Infernal Magma Golem NPC (Zone 2)
 local function buildInfernalMagmaGolem(state: ActiveBossState)
 	local spawnPos = state.def.arenaCenter + Vector3.new(0, 6, 0)
@@ -100,14 +199,14 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 
 	-- 3. Massive Basalt Torso with Glowing Magma Core
 	local torso = createStudPart(model, "Torso", Vector3.new(7.2, 7.5, 4.5), spawnCF, basaltDark)
-	weldParts(root, torso)
+	local rootJoint = createMotor(root, torso, CFrame.new(0, 0, 0), CFrame.new(0, 0, 0), "RootJoint")
 
 	local core = createStudPart(model, "MagmaCore", Vector3.new(3.8, 4.5, 1.2), spawnCF * CFrame.new(0, 0.4, -2.1), magmaRed, Enum.Material.Neon)
 	weldParts(torso, core)
 
 	-- 4. Horned Stone Head & Glowing Eyes
 	local head = createStudPart(model, "Head", Vector3.new(4.2, 3.8, 3.8), spawnCF * CFrame.new(0, 5.2, 0), basaltMid)
-	weldParts(torso, head)
+	local neck = createMotor(torso, head, CFrame.new(0, 5.2, 0), CFrame.new(0, 0, 0), "Neck")
 
 	local eyeL = createStudPart(model, "EyeL", Vector3.new(0.8, 0.5, 0.4), spawnCF * CFrame.new(-1.1, 5.4, -1.95), eyeGold, Enum.Material.Neon)
 	local eyeR = createStudPart(model, "EyeR", Vector3.new(0.8, 0.5, 0.4), spawnCF * CFrame.new(1.1, 5.4, -1.95), eyeGold, Enum.Material.Neon)
@@ -123,8 +222,8 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 	-- 5. Heavy Stone Fists & Arms
 	local armL = createStudPart(model, "LeftArm", Vector3.new(3.2, 7.2, 3.2), spawnCF * CFrame.new(-5.2, 0.5, 0), basaltDark)
 	local armR = createStudPart(model, "RightArm", Vector3.new(3.2, 7.2, 3.2), spawnCF * CFrame.new(5.2, 0.5, 0), basaltDark)
-	weldParts(torso, armL)
-	weldParts(torso, armR)
+	local leftShoulder = createMotor(torso, armL, CFrame.new(-5.2, 0.5, 0), CFrame.new(0, 0, 0), "LeftShoulder")
+	local rightShoulder = createMotor(torso, armR, CFrame.new(5.2, 0.5, 0), CFrame.new(0, 0, 0), "RightShoulder")
 
 	local fistL = createStudPart(model, "FistL", Vector3.new(3.6, 2.2, 3.6), spawnCF * CFrame.new(-5.2, -3.2, 0), magmaRed, Enum.Material.Neon)
 	local fistR = createStudPart(model, "FistR", Vector3.new(3.6, 2.2, 3.6), spawnCF * CFrame.new(5.2, -3.2, 0), magmaRed, Enum.Material.Neon)
@@ -134,8 +233,8 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 	-- 6. Thick Basalt Leg Columns
 	local legL = createStudPart(model, "LeftLeg", Vector3.new(3.0, 5.5, 3.0), spawnCF * CFrame.new(-2.0, -5.5, 0), basaltMid)
 	local legR = createStudPart(model, "RightLeg", Vector3.new(3.0, 5.5, 3.0), spawnCF * CFrame.new(2.0, -5.5, 0), basaltMid)
-	weldParts(root, legL)
-	weldParts(root, legR)
+	local leftHip = createMotor(root, legL, CFrame.new(-2.0, -5.5, 0), CFrame.new(0, 0, 0), "LeftHip")
+	local rightHip = createMotor(root, legR, CFrame.new(2.0, -5.5, 0), CFrame.new(0, 0, 0), "RightHip")
 
 	-- 7. Fire Emitters & Dynamic Aura
 	local attach = Instance.new("Attachment")
@@ -242,6 +341,16 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 	state.rootPart = root
 	state.healthBarFill = barFill
 	state.healthLabel = healthText
+	state.rootJoint = rootJoint
+	state.neck = neck
+	state.leftShoulder = leftShoulder
+	state.rightShoulder = rightShoulder
+	state.leftHip = leftHip
+	state.rightHip = rightHip
+	state.coreLight = bossLight
+	state.corePart = core
+
+	startBossAnimations(state)
 end
 
 -- Builds the physical 3D Void Harbinger Chronos NPC (Zone 3)
@@ -279,14 +388,14 @@ local function buildVoidHarbinger(state: ActiveBossState)
 
 	-- 3. Massive Obsidian Torso with Glowing Void Core
 	local torso = createStudPart(model, "Torso", Vector3.new(8.0, 8.5, 5.0), spawnCF, voidDark)
-	weldParts(root, torso)
+	local rootJoint = createMotor(root, torso, CFrame.new(0, 0, 0), CFrame.new(0, 0, 0), "RootJoint")
 
 	local core = createStudPart(model, "VoidCore", Vector3.new(4.2, 5.0, 1.4), spawnCF * CFrame.new(0, 0.4, -2.4), astralPurple, Enum.Material.Neon)
 	weldParts(torso, core)
 
 	-- 4. Horned Crown Head & Glowing Cyan Eyes
 	local head = createStudPart(model, "Head", Vector3.new(4.5, 4.2, 4.2), spawnCF * CFrame.new(0, 6.0, 0), voidMid)
-	weldParts(torso, head)
+	local neck = createMotor(torso, head, CFrame.new(0, 6.0, 0), CFrame.new(0, 0, 0), "Neck")
 
 	local eyeL = createStudPart(model, "EyeL", Vector3.new(0.9, 0.6, 0.4), spawnCF * CFrame.new(-1.2, 6.2, -2.15), stardustCyan, Enum.Material.Neon)
 	local eyeR = createStudPart(model, "EyeR", Vector3.new(0.9, 0.6, 0.4), spawnCF * CFrame.new(1.2, 6.2, -2.15), stardustCyan, Enum.Material.Neon)
@@ -317,8 +426,8 @@ local function buildVoidHarbinger(state: ActiveBossState)
 	-- 6. Heavy Gauntlets & Void Claws
 	local armL = createStudPart(model, "LeftArm", Vector3.new(3.5, 8.0, 3.5), spawnCF * CFrame.new(-5.8, 0.5, 0), voidDark)
 	local armR = createStudPart(model, "RightArm", Vector3.new(3.5, 8.0, 3.5), spawnCF * CFrame.new(5.8, 0.5, 0), voidDark)
-	weldParts(torso, armL)
-	weldParts(torso, armR)
+	local leftShoulder = createMotor(torso, armL, CFrame.new(-5.8, 0.5, 0), CFrame.new(0, 0, 0), "LeftShoulder")
+	local rightShoulder = createMotor(torso, armR, CFrame.new(5.8, 0.5, 0), CFrame.new(0, 0, 0), "RightShoulder")
 
 	local fistL = createStudPart(model, "FistL", Vector3.new(4.0, 2.5, 4.0), spawnCF * CFrame.new(-5.8, -3.8, 0), stardustCyan, Enum.Material.Neon)
 	local fistR = createStudPart(model, "FistR", Vector3.new(4.0, 2.5, 4.0), spawnCF * CFrame.new(5.8, -3.8, 0), stardustCyan, Enum.Material.Neon)
@@ -328,8 +437,8 @@ local function buildVoidHarbinger(state: ActiveBossState)
 	-- 7. Heavy Void Pillar Legs
 	local legL = createStudPart(model, "LeftLeg", Vector3.new(3.4, 6.2, 3.4), spawnCF * CFrame.new(-2.2, -6.0, 0), voidMid)
 	local legR = createStudPart(model, "RightLeg", Vector3.new(3.4, 6.2, 3.4), spawnCF * CFrame.new(2.2, -6.0, 0), voidMid)
-	weldParts(root, legL)
-	weldParts(root, legR)
+	local leftHip = createMotor(root, legL, CFrame.new(-2.2, -6.0, 0), CFrame.new(0, 0, 0), "LeftHip")
+	local rightHip = createMotor(root, legR, CFrame.new(2.2, -6.0, 0), CFrame.new(0, 0, 0), "RightHip")
 
 	-- 8. Dynamic Stardust and Void Aura
 	local attach = Instance.new("Attachment")
@@ -436,6 +545,16 @@ local function buildVoidHarbinger(state: ActiveBossState)
 	state.rootPart = root
 	state.healthBarFill = barFill
 	state.healthLabel = healthText
+	state.rootJoint = rootJoint
+	state.neck = neck
+	state.leftShoulder = leftShoulder
+	state.rightShoulder = rightShoulder
+	state.leftHip = leftHip
+	state.rightHip = rightHip
+	state.coreLight = bossLight
+	state.corePart = core
+
+	startBossAnimations(state)
 end
 
 -- Spawns or respawns a world boss
@@ -486,7 +605,7 @@ function BossService.spawnBoss(bossId: string?)
 	end
 end
 
--- Executes the ground slam attack damaging all nearby players
+-- Executes the ground slam attack damaging all nearby players with telegraph & procedural animation
 function BossService.performSlamAttack(state: ActiveBossState)
 	if not state.isAlive or state.isAttacking or state.isStunned or not state.rootPart then
 		return
@@ -495,21 +614,52 @@ function BossService.performSlamAttack(state: ActiveBossState)
 	state.isAttacking = true
 	state.lastAttackTime = os.clock()
 
-	-- Broadcast telegraph to all clients
-	local attackEvent = Remotes.getEvent("BossAttacking")
-	attackEvent:FireAllClients(state.rootPart.Position, state.def.attackRadius, state.def.id)
+	if state.humanoid then
+		state.humanoid:MoveTo(state.rootPart.Position)
+	end
 
-	-- 0.45s Windup Telegraph before impact
-	task.wait(0.45)
+	local slamCenter = state.rootPart.Position - Vector3.new(0, 3.5, 0)
+	local attackRadius = state.def.attackRadius
+	local dmg = state.def.attackDamage
+
+	-- 1. Broadcast Telegraph to clients (danger ring appears on ground)
+	local telegraphEvent = Remotes.getEvent("BossTelegraphSlam")
+	telegraphEvent:FireAllClients(slamCenter, attackRadius, 0.75, state.def.id)
+
+	-- 2. Motor6D Windup Pose (Arms raised high overhead, torso arched back)
+	local defaultRootC0 = CFrame.new()
+	local defaultNeckC0 = if state.def.id == "VoidHarbinger" then CFrame.new(0, 6.0, 0) else CFrame.new(0, 5.2, 0)
+	local defaultLSC0 = if state.def.id == "VoidHarbinger" then CFrame.new(-5.8, 0.5, 0) else CFrame.new(-5.2, 0.5, 0)
+	local defaultRSC0 = if state.def.id == "VoidHarbinger" then CFrame.new(5.8, 0.5, 0) else CFrame.new(5.2, 0.5, 0)
+
+	tweenMotor(state.rootJoint, defaultRootC0 * CFrame.new(0, 0.4, 0) * CFrame.Angles(math.rad(-14), 0, 0), 0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	tweenMotor(state.neck, defaultNeckC0 * CFrame.Angles(math.rad(12), 0, 0), 0.65)
+	tweenMotor(state.leftShoulder, defaultLSC0 * CFrame.Angles(math.rad(130), 0, math.rad(24)), 0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	tweenMotor(state.rightShoulder, defaultRSC0 * CFrame.Angles(math.rad(130), 0, math.rad(-24)), 0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+	task.wait(0.75)
 
 	if not state.isAlive or not state.rootPart then
 		state.isAttacking = false
 		return
 	end
 
-	local slamCenter = state.rootPart.Position - Vector3.new(0, 3.5, 0)
-	local attackRadius = state.def.attackRadius
-	local dmg = state.def.attackDamage
+	-- 3. Downward Smash Impact Pose (Fists slam down into earth)
+	tweenMotor(state.rootJoint, defaultRootC0 * CFrame.new(0, -0.6, 0) * CFrame.Angles(math.rad(22), 0, 0), 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	tweenMotor(state.neck, defaultNeckC0 * CFrame.Angles(math.rad(-16), 0, 0), 0.12)
+	tweenMotor(state.leftShoulder, defaultLSC0 * CFrame.Angles(math.rad(-58), 0, math.rad(-12)), 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	tweenMotor(state.rightShoulder, defaultRSC0 * CFrame.Angles(math.rad(-58), 0, math.rad(12)), 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+	task.wait(0.12)
+
+	if not state.isAlive or not state.rootPart then
+		state.isAttacking = false
+		return
+	end
+
+	-- 4. Impact Blast & Camera Shake
+	local attackEvent = Remotes.getEvent("BossAttacking")
+	attackEvent:FireAllClients(slamCenter, attackRadius, state.def.id)
 
 	-- Check players caught in slam radius
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -524,7 +674,7 @@ function BossService.performSlamAttack(state: ActiveBossState)
 
 				-- Knockback pulse away from slam center
 				local diff = (pRoot.Position - slamCenter).Unit
-				local pushDir = Vector3.new(diff.X, 0.4, diff.Z).Unit * 24
+				local pushDir = Vector3.new(diff.X, 0.45, diff.Z).Unit * 28
 				pRoot.AssemblyLinearVelocity = pushDir
 
 				print(string.format("💥 [BossService] %s slammed %s for %d DMG! (%d HP remaining)", state.def.name, p.Name, dmg, math.floor(pHum.Health)))
@@ -532,8 +682,163 @@ function BossService.performSlamAttack(state: ActiveBossState)
 		end
 	end
 
-	task.wait(0.3)
+	-- 5. Recovery back to normal idle
+	task.wait(0.35)
+	if state.isAlive then
+		tweenMotor(state.rootJoint, defaultRootC0, 0.35)
+		tweenMotor(state.neck, defaultNeckC0, 0.35)
+		tweenMotor(state.leftShoulder, defaultLSC0, 0.35)
+		tweenMotor(state.rightShoulder, defaultRSC0, 0.35)
+		task.wait(0.35)
+	end
 	state.isAttacking = false
+end
+
+-- Executes the special Meteor Barrage attack
+function BossService.performMeteorBarrage(state: ActiveBossState)
+	if not state.isAlive or state.isAttacking or state.isStunned or not state.rootPart then
+		return
+	end
+
+	state.isAttacking = true
+	state.lastSpecialAttackTime = os.clock()
+
+	if state.humanoid then
+		state.humanoid:MoveTo(state.rootPart.Position)
+	end
+
+	local defaultRootC0 = CFrame.new()
+	local defaultNeckC0 = if state.def.id == "VoidHarbinger" then CFrame.new(0, 6.0, 0) else CFrame.new(0, 5.2, 0)
+	local defaultLSC0 = if state.def.id == "VoidHarbinger" then CFrame.new(-5.8, 0.5, 0) else CFrame.new(-5.2, 0.5, 0)
+	local defaultRSC0 = if state.def.id == "VoidHarbinger" then CFrame.new(5.8, 0.5, 0) else CFrame.new(5.2, 0.5, 0)
+
+	-- Summoning Pose: Roar skyward, arms spread wide
+	tweenMotor(state.rootJoint, defaultRootC0 * CFrame.Angles(math.rad(-10), 0, 0), 0.5)
+	tweenMotor(state.neck, defaultNeckC0 * CFrame.Angles(math.rad(35), 0, 0), 0.5)
+	tweenMotor(state.leftShoulder, defaultLSC0 * CFrame.Angles(math.rad(80), 0, math.rad(-70)), 0.5)
+	tweenMotor(state.rightShoulder, defaultRSC0 * CFrame.Angles(math.rad(80), 0, math.rad(70)), 0.5)
+
+	if state.coreLight then
+		state.coreLight.Brightness = 8.0
+	end
+
+	-- Pick 4 target positions across the arena
+	local targets: { Vector3 } = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		local char = p.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			local pPos = char.HumanoidRootPart.Position
+			local distFromCenter = (Vector3.new(pPos.X, state.def.arenaCenter.Y, pPos.Z) - state.def.arenaCenter).Magnitude
+			if distFromCenter <= (state.def.arenaRadius - 5) then
+				table.insert(targets, pPos)
+			end
+		end
+	end
+
+	while #targets < 4 do
+		local angle = math.random() * math.pi * 2
+		local r = math.random(8, math.floor(state.def.arenaRadius - 12))
+		local pos = state.def.arenaCenter + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
+		table.insert(targets, pos)
+	end
+
+	-- Broadcast meteor event
+	local meteorEvent = Remotes.getEvent("BossMeteorEvent")
+	meteorEvent:FireAllClients(targets, state.def.id)
+
+	-- Wait 1.35s for meteors to impact
+	task.wait(1.35)
+
+	if state.isAlive and state.rootPart then
+		local meteorDmg = math.floor(state.def.attackDamage * 0.75)
+		for _, targetPos in ipairs(targets) do
+			for _, p in ipairs(Players:GetPlayers()) do
+				local char = p.Character
+				if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") then
+					local pRoot = char.HumanoidRootPart :: BasePart
+					local pHum = char:FindFirstChildOfClass("Humanoid") :: Humanoid
+					local dist = (Vector3.new(pRoot.Position.X, 0, pRoot.Position.Z) - Vector3.new(targetPos.X, 0, targetPos.Z)).Magnitude
+					if dist <= 11 and pHum.Health > 0 then
+						pHum:TakeDamage(meteorDmg)
+						pRoot.AssemblyLinearVelocity = Vector3.new(0, 24, 0)
+						print(string.format("☄️ [BossService] Meteor struck %s for %d DMG!", p.Name, meteorDmg))
+					end
+				end
+			end
+		end
+	end
+
+	-- Reset poses
+	if state.isAlive then
+		tweenMotor(state.rootJoint, defaultRootC0, 0.4)
+		tweenMotor(state.neck, defaultNeckC0, 0.4)
+		tweenMotor(state.leftShoulder, defaultLSC0, 0.4)
+		tweenMotor(state.rightShoulder, defaultRSC0, 0.4)
+		if state.coreLight then
+			state.coreLight.Brightness = 3.2
+		end
+		task.wait(0.4)
+	end
+	state.isAttacking = false
+end
+
+-- Executes the dramatic death animation
+function BossService.performDeathAnimation(state: ActiveBossState)
+	if state.animThread then
+		task.cancel(state.animThread)
+		state.animThread = nil
+	end
+
+	local defaultRootC0 = CFrame.new()
+	local defaultNeckC0 = if state.def.id == "VoidHarbinger" then CFrame.new(0, 6.0, 0) else CFrame.new(0, 5.2, 0)
+	local defaultLSC0 = if state.def.id == "VoidHarbinger" then CFrame.new(-5.8, 0.5, 0) else CFrame.new(-5.2, 0.5, 0)
+	local defaultRSC0 = if state.def.id == "VoidHarbinger" then CFrame.new(5.8, 0.5, 0) else CFrame.new(5.2, 0.5, 0)
+	local defaultLHC0 = if state.def.id == "VoidHarbinger" then CFrame.new(-2.2, -6.0, 0) else CFrame.new(-2.0, -5.5, 0)
+	local defaultRHC0 = if state.def.id == "VoidHarbinger" then CFrame.new(2.2, -6.0, 0) else CFrame.new(2.0, -5.5, 0)
+
+	-- 1. Collapse to knees
+	tweenMotor(state.leftHip, defaultLHC0 * CFrame.Angles(math.rad(-45), 0, math.rad(-15)), 0.6)
+	tweenMotor(state.rightHip, defaultRHC0 * CFrame.Angles(math.rad(-45), 0, math.rad(15)), 0.6)
+	tweenMotor(state.rootJoint, defaultRootC0 * CFrame.new(0, -3.2, 0) * CFrame.Angles(math.rad(25), 0, 0), 0.6)
+	tweenMotor(state.neck, defaultNeckC0 * CFrame.Angles(math.rad(-30), 0, 0), 0.6)
+	tweenMotor(state.leftShoulder, defaultLSC0 * CFrame.Angles(math.rad(-30), 0, math.rad(-25)), 0.6)
+	tweenMotor(state.rightShoulder, defaultRSC0 * CFrame.Angles(math.rad(-30), 0, math.rad(25)), 0.6)
+
+	-- 2. Core Overload flashing
+	task.spawn(function()
+		for i = 1, 8 do
+			if state.coreLight then
+				state.coreLight.Brightness = (i % 2 == 0) and 10 or 1
+				state.coreLight.Color = (i % 2 == 0) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 60, 10)
+			end
+			task.wait(0.1)
+		end
+	end)
+
+	task.wait(0.85)
+
+	-- 3. Massive Explosion
+	if state.rootPart then
+		local exp = Instance.new("Explosion")
+		exp.Position = state.rootPart.Position
+		exp.BlastRadius = 0
+		exp.DestroyJointRadiusPercent = 0
+		exp.Parent = Workspace
+	end
+
+	-- 4. Sink into the dais
+	if state.rootPart then
+		local sinkTween = TweenService:Create(state.rootPart, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			CFrame = state.rootPart.CFrame - Vector3.new(0, 14, 0),
+		})
+		sinkTween:Play()
+		task.wait(0.8)
+	end
+
+	if state.model then
+		state.model:Destroy()
+		state.model = nil
+	end
 end
 
 -- Handles player pickaxe strikes against the boss
@@ -550,7 +855,7 @@ function BossService.attackBoss(player: Player, targetBossId: string?): (boolean
 	if targetBossId and activeBosses[targetBossId] then
 		chosenState = activeBosses[targetBossId]
 	else
-		local closestDist = 28
+		local closestDist = 32
 		for _, state in activeBosses do
 			if state.isAlive and state.rootPart then
 				local dist = (pRoot.Position - state.rootPart.Position).Magnitude
@@ -567,7 +872,7 @@ function BossService.attackBoss(player: Player, targetBossId: string?): (boolean
 	end
 
 	local dist = (pRoot.Position - chosenState.rootPart.Position).Magnitude
-	if dist > 28 then
+	if dist > 32 then
 		return false, "Too far from boss"
 	end
 
@@ -676,22 +981,10 @@ function BossService.onBossDefeated(killer: Player, state: ActiveBossState)
 	local defeatedEvent = Remotes.getEvent("BossDefeated")
 	defeatedEvent:FireAllClients(killer.Name, cashReward, gemReward, state.def.respawnTime, state.def.name, state.def.id)
 
-	-- Celebratory explosion
-	if state.rootPart then
-		local explodePos = state.rootPart.Position
-		local exp = Instance.new("Explosion")
-		exp.Position = explodePos
-		exp.BlastRadius = 0
-		exp.DestroyJointRadiusPercent = 0
-		exp.Parent = Workspace
-
-		task.delay(0.6, function()
-			if state.model then
-				state.model:Destroy()
-				state.model = nil
-			end
-		end)
-	end
+	-- Run dramatic procedural death sequence (kneels, core overloads, explodes, sinks)
+	task.spawn(function()
+		BossService.performDeathAnimation(state)
+	end)
 
 	-- Respawn Loop for this specific boss
 	local bossId = state.def.id
@@ -750,10 +1043,16 @@ function BossService.init()
 						local targetPos = closestPlayer.Character.HumanoidRootPart.Position
 						state.humanoid:MoveTo(targetPos)
 
-						-- If in melee range, execute ground slam attack!
 						local distToTarget = (targetPos - state.rootPart.Position).Magnitude
 						local now = os.clock()
-						if distToTarget <= 10.5 and (now - state.lastAttackTime) >= state.def.attackCooldown then
+
+						-- Special Meteor Barrage check (every 18s)
+						if (now - (state.lastSpecialAttackTime or 0)) >= 18 then
+							task.spawn(function()
+								BossService.performMeteorBarrage(state)
+							end)
+						-- If in melee range, execute ground slam attack!
+						elseif distToTarget <= 14 and (now - state.lastAttackTime) >= state.def.attackCooldown then
 							task.spawn(function()
 								BossService.performSlamAttack(state)
 							end)

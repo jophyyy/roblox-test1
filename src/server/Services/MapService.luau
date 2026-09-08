@@ -2176,70 +2176,112 @@ function MapService.buildMagmaEggStand(folder: Folder)
 	eggShrine.Parent = folder
 end
 
--- 16. Zone 2: The Infernal Crucible Boss Arena (At Z = -260)
+-- 16. Zone 2: The Infernal Colosseum Boss Arena (At Z = -260)
 function MapService.buildBossArena(folder: Folder)
 	local arenaFolder = Instance.new("Folder")
 	arenaFolder.Name = "BossArena"
 	arenaFolder.Parent = folder
 
 	local center = Vector3.new(0, 0.4, -260)
-	local darkObsidian = Color3.fromRGB(24, 18, 20)
-	local basaltTrim = Color3.fromRGB(45, 34, 38)
+	local darkObsidian = Color3.fromRGB(22, 16, 18)
+	local basaltTrim = Color3.fromRGB(42, 32, 36)
+	local basaltDark = Color3.fromRGB(32, 24, 28)
 	local magmaRed = Color3.fromRGB(255, 60, 10)
+	local magmaOrange = Color3.fromRGB(255, 120, 20)
 	local goldAccent = Color3.fromRGB(255, 190, 30)
 
-	-- 1. Main Octagonal/Stepped Battle Dais
-	createStudPart(arenaFolder, "ArenaBasePlinth", Vector3.new(62, 0.8, 62), CFrame.new(center + Vector3.new(0, 0.4, 0)), darkObsidian)
-	createStudPart(arenaFolder, "ArenaTierMid", Vector3.new(54, 0.5, 54), CFrame.new(center + Vector3.new(0, 0.85, 0)), basaltTrim)
-
-	-- Molten Rune Ring Inset
-	local runeRing = createStudPart(arenaFolder, "RuneRing", Vector3.new(46, 0.2, 46), CFrame.new(center + Vector3.new(0, 1.1, 0)), magmaRed)
-	runeRing.Material = Enum.Material.Neon
+	-- 1. Colossal 3-Tiered Stepped Battle Dais (126 x 126 studs)
+	createStudPart(arenaFolder, "ColosseumBasePlinth", Vector3.new(126, 1.2, 126), CFrame.new(center + Vector3.new(0, 0.6, 0)), darkObsidian)
+	createStudPart(arenaFolder, "ColosseumMidTier", Vector3.new(112, 0.8, 112), CFrame.new(center + Vector3.new(0, 1.5, 0)), basaltTrim)
+	createStudPart(arenaFolder, "ColosseumInnerDais", Vector3.new(98, 0.6, 98), CFrame.new(center + Vector3.new(0, 2.1, 0)), darkObsidian)
 
 	-- Raised Center Boss Pentagram Pad
-	createStudPart(arenaFolder, "ArenaBossPad", Vector3.new(38, 0.35, 38), CFrame.new(center + Vector3.new(0, 1.25, 0)), darkObsidian)
+	createStudPart(arenaFolder, "ArenaBossPad", Vector3.new(48, 0.4, 48), CFrame.new(center + Vector3.new(0, 2.5, 0)), basaltDark)
 
 	-- Glowing Center Boss Spawn Sigil
-	local sigil = createStudPart(arenaFolder, "BossSigil", Vector3.new(16, 0.1, 16), CFrame.new(center + Vector3.new(0, 1.45, 0)), goldAccent)
+	local sigil = createStudPart(arenaFolder, "BossSigil", Vector3.new(22, 0.15, 22), CFrame.new(center + Vector3.new(0, 2.75, 0)), goldAccent)
 	sigil.Material = Enum.Material.Neon
 	sigil.CanCollide = false
 
-	-- 2. 4 Grand Flaming Crucible Towers at Arena Perimeter
-	local towerOffsets = {
-		Vector3.new(-24, 0, -24),
-		Vector3.new(24, 0, -24),
-		Vector3.new(-24, 0, 24),
-		Vector3.new(24, 0, 24),
-	}
-	for tIdx, tOff in ipairs(towerOffsets) do
-		local towerPos = center + tOff
-		createStudPart(arenaFolder, "CruciblePillar_" .. tIdx, Vector3.new(6, 18, 6), CFrame.new(towerPos + Vector3.new(0, 9, 0)), darkObsidian)
-		createStudPart(arenaFolder, "CrucibleCap_" .. tIdx, Vector3.new(8, 2, 8), CFrame.new(towerPos + Vector3.new(0, 18.5, 0)), basaltTrim)
-		createDungeonBrazier(arenaFolder, "CrucibleBrazier_" .. tIdx, CFrame.new(towerPos + Vector3.new(0, 19.5, 0)))
+	-- Radial Inset Lava Canals (8 glowing molten channels radiating from center)
+	for i = 0, 7 do
+		local angle = math.rad(i * 45)
+		local canalLength = 46
+		local canalPos = center + Vector3.new(math.sin(angle) * (canalLength / 2 + 10), 2.25, math.cos(angle) * (canalLength / 2 + 10))
+		local canal = createStudPart(arenaFolder, "LavaCanal_" .. i, Vector3.new(2.8, 0.15, canalLength), CFrame.new(canalPos) * CFrame.Angles(0, angle, 0), magmaRed)
+		canal.Material = Enum.Material.Neon
+		canal.CanCollide = false
 	end
 
-	-- 3. Entrance Portal Archway (Facing South at Z = -232)
-	local archZ = -232
-	createStudPart(arenaFolder, "ArenaGatePillarL", Vector3.new(6, 22, 6), CFrame.new(-12, 11, archZ), darkObsidian)
-	createStudPart(arenaFolder, "ArenaGatePillarR", Vector3.new(6, 22, 6), CFrame.new(12, 11, archZ), darkObsidian)
-	createStudPart(arenaFolder, "ArenaGateArch", Vector3.new(30, 4, 6), CFrame.new(0, 21, archZ), basaltTrim)
+	-- Concentric Circular Molten Rings
+	local outerRing = createStudPart(arenaFolder, "LavaRingOuter", Vector3.new(94, 0.15, 94), CFrame.new(center + Vector3.new(0, 2.2, 0)), magmaOrange)
+	outerRing.Material = Enum.Material.Neon
+	outerRing.CanCollide = false
 
-	-- Arch Glowing Sign
-	local archSign = createStudPart(arenaFolder, "ArenaGateSign", Vector3.new(26, 4, 1.2), CFrame.new(0, 21, archZ + 3.1), darkObsidian)
+	local midRing = createStudPart(arenaFolder, "LavaRingMid", Vector3.new(70, 0.15, 70), CFrame.new(center + Vector3.new(0, 2.25, 0)), magmaRed)
+	midRing.Material = Enum.Material.Neon
+	midRing.CanCollide = false
+
+	-- 2. 8 Colossal Bastion Spire Towers at Arena Perimeter (Radius = 55 studs)
+	local towerRadius = 55
+	for tIdx = 1, 8 do
+		local angle = math.rad((tIdx - 1) * 45)
+		local towerPos = center + Vector3.new(math.sin(angle) * towerRadius, 0, math.cos(angle) * towerRadius)
+
+		-- Tower Shaft
+		createStudPart(arenaFolder, "BastionPillar_" .. tIdx, Vector3.new(7.5, 26, 7.5), CFrame.new(towerPos + Vector3.new(0, 13, 0)), darkObsidian)
+		createStudPart(arenaFolder, "BastionTrim_" .. tIdx, Vector3.new(8.5, 3, 8.5), CFrame.new(towerPos + Vector3.new(0, 25, 0)), basaltTrim)
+		createStudPart(arenaFolder, "BastionCap_" .. tIdx, Vector3.new(9.5, 2, 9.5), CFrame.new(towerPos + Vector3.new(0, 27, 0)), basaltDark)
+
+		-- Brazier on top
+		createDungeonBrazier(arenaFolder, "BastionBrazier_" .. tIdx, CFrame.new(towerPos + Vector3.new(0, 28.5, 0)))
+
+		-- Glowing Magma Veins on Pillar Sides
+		local vein = createStudPart(arenaFolder, "PillarVein_" .. tIdx, Vector3.new(1.4, 20, 1.4), CFrame.new(towerPos + Vector3.new(0, 11, 0)), magmaRed)
+		vein.Material = Enum.Material.Neon
+		vein.CanCollide = false
+
+		-- Perimeter Wall Segment connecting to next pillar (except at South entrance, angle near 180)
+		if tIdx ~= 5 then
+			local nextAngle = math.rad(tIdx * 45)
+			local nextPos = center + Vector3.new(math.sin(nextAngle) * towerRadius, 0, math.cos(nextAngle) * towerRadius)
+			local midP = (towerPos + nextPos) / 2
+			local wallLen = (nextPos - towerPos).Magnitude
+			local wallAngle = math.atan2(nextPos.X - towerPos.X, nextPos.Z - towerPos.Z)
+
+			local wall = createStudPart(arenaFolder, "PerimeterWall_" .. tIdx, Vector3.new(3.5, 9, wallLen), CFrame.new(midP + Vector3.new(0, 5.5, 0)) * CFrame.Angles(0, wallAngle, 0), basaltTrim)
+			-- Wall Crenelations / Battlements
+			createStudPart(arenaFolder, "WallCrenel_" .. tIdx, Vector3.new(4.2, 1.8, wallLen), CFrame.new(midP + Vector3.new(0, 10.5, 0)) * CFrame.Angles(0, wallAngle, 0), darkObsidian)
+		end
+	end
+
+	-- 3. Grand Colosseum Triumphal Entrance Gate (Facing South at Z = -202)
+	local archZ = -202
+	createStudPart(arenaFolder, "ColosseumGateL", Vector3.new(8, 28, 8), CFrame.new(-16, 14, archZ), darkObsidian)
+	createStudPart(arenaFolder, "ColosseumGateR", Vector3.new(8, 28, 8), CFrame.new(16, 14, archZ), darkObsidian)
+	createStudPart(arenaFolder, "ColosseumGateArch", Vector3.new(40, 5, 8), CFrame.new(0, 27, archZ), basaltTrim)
+	createStudPart(arenaFolder, "ColosseumGateCrest", Vector3.new(16, 4, 9), CFrame.new(0, 31, archZ), basaltDark)
+
+	-- Giant Braziers atop Entrance Pillars
+	createDungeonBrazier(arenaFolder, "GateBrazierL", CFrame.new(-16, 29, archZ))
+	createDungeonBrazier(arenaFolder, "GateBrazierR", CFrame.new(16, 29, archZ))
+
+	-- Arch Glowing Holographic Sign
+	local archSign = createStudPart(arenaFolder, "ColosseumSignPart", Vector3.new(34, 4.5, 1.2), CFrame.new(0, 27, archZ + 4.1), darkObsidian)
 	local signGui = Instance.new("BillboardGui")
 	signGui.Name = "ArenaSignGui"
-	signGui.Size = UDim2.new(0, 340, 0, 65)
+	signGui.Size = UDim2.new(0, 420, 0, 75)
 	signGui.StudsOffset = Vector3.new(0, 0.4, 0.8)
 	signGui.AlwaysOnTop = false
-	signGui.MaxDistance = 85
+	signGui.MaxDistance = 110
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
 	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "⚔️ THE INFERNAL CRUCIBLE ⚔️"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 80, 20)
+	titleLabel.Text = "⚔️ THE INFERNAL COLOSSEUM ⚔️"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 90, 20)
 	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 18
+	titleLabel.TextSize = 21
 	titleLabel.TextStrokeTransparency = 0.2
 	titleLabel.Parent = signGui
 
@@ -2247,18 +2289,18 @@ function MapService.buildBossArena(folder: Folder)
 	subLabel.Size = UDim2.new(1, 0, 0.45, 0)
 	subLabel.Position = UDim2.new(0, 0, 0.55, 0)
 	subLabel.BackgroundTransparency = 1
-	subLabel.Text = "[WORLD BOSS: 50,000 HP • 25 DMG]"
+	subLabel.Text = "[WORLD BOSS • 50,000 HP • VOLCANIC METEORS • 25 DMG]"
 	subLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 	subLabel.Font = Enum.Font.GothamBold
-	subLabel.TextSize = 13
+	subLabel.TextSize = 12.5
 	subLabel.TextStrokeTransparency = 0.2
 	subLabel.Parent = signGui
 	signGui.Parent = archSign
 
-	-- Road connecting Magma Egg (Z = -210) to Arena Gate (Z = -232)
-	createStudPart(arenaFolder, "ArenaAccessRoad", Vector3.new(10, 0.35, 22), CFrame.new(0, 0.25, -221), Color3.fromRGB(45, 38, 42))
-	createDungeonBrazier(arenaFolder, "RoadBrazierL", CFrame.new(-7, 0.3, -221))
-	createDungeonBrazier(arenaFolder, "RoadBrazierR", CFrame.new(7, 0.3, -221))
+	-- Fiery Access Avenue from Magma Egg (Z = -210) through Gate (Z = -202) into Arena
+	createStudPart(arenaFolder, "ColosseumRoad", Vector3.new(14, 0.35, 16), CFrame.new(0, 0.25, -206), Color3.fromRGB(45, 38, 42))
+	createDungeonBrazier(arenaFolder, "RoadTorchL", CFrame.new(-9, 0.3, -206))
+	createDungeonBrazier(arenaFolder, "RoadTorchR", CFrame.new(9, 0.3, -206))
 end
 
 -- Service Initialization

@@ -19,6 +19,8 @@ local REGISTERED_EVENTS = {
 	"OreDestroyed",
 	"BossDamaged",
 	"BossAttacking",
+	"BossTelegraphSlam",
+	"BossMeteorEvent",
 	"BossDefeated",
 	"BossRespawned",
 	"TrainingOreHit",

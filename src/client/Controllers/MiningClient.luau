@@ -193,10 +193,10 @@ function MiningClient.performSwing()
 		for _, bModel in bossFolder:GetChildren() do
 			if bModel:IsA("Model") and bModel.PrimaryPart then
 				local distToBoss = (bModel.PrimaryPart.Position - rootPart.Position).Magnitude
-				if mouse.Target and mouse.Target:IsDescendantOf(bModel) and distToBoss <= 26 then
+				if mouse.Target and mouse.Target:IsDescendantOf(bModel) and distToBoss <= 30 then
 					targetBossId = bModel.Name
 					break
-				elseif distToBoss <= 18 then
+				elseif distToBoss <= 22 then
 					targetBossId = bModel.Name
 					break
 				end

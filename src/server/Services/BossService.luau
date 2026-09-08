@@ -166,7 +166,7 @@ end
 
 -- Builds the physical 3D Infernal Magma Golem NPC (Zone 2)
 local function buildInfernalMagmaGolem(state: ActiveBossState)
-	local spawnPos = state.def.arenaCenter + Vector3.new(0, 6, 0)
+	local spawnPos = state.def.arenaCenter + Vector3.new(0, 10, 0)
 	local spawnCF = CFrame.new(spawnPos)
 
 	local model = Instance.new("Model")
@@ -183,7 +183,7 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 	root.Size = Vector3.new(6, 8, 4)
 	root.CFrame = spawnCF
 	root.Transparency = 1
-	root.CanCollide = true
+	root.CanCollide = false
 	root.Massless = false
 	root.Parent = model
 	model.PrimaryPart = root
@@ -195,6 +195,7 @@ local function buildInfernalMagmaGolem(state: ActiveBossState)
 	hum.Health = state.maxHealth
 	hum.WalkSpeed = 12
 	hum.AutoRotate = true
+	hum.HipHeight = 4.8
 	hum.Parent = model
 
 	-- 3. Massive Basalt Torso with Glowing Magma Core
@@ -355,7 +356,7 @@ end
 
 -- Builds the physical 3D Void Harbinger Chronos NPC (Zone 3)
 local function buildVoidHarbinger(state: ActiveBossState)
-	local spawnPos = state.def.arenaCenter + Vector3.new(0, 7, 0)
+	local spawnPos = state.def.arenaCenter + Vector3.new(0, 11, 0)
 	local spawnCF = CFrame.new(spawnPos)
 
 	local model = Instance.new("Model")
@@ -372,7 +373,7 @@ local function buildVoidHarbinger(state: ActiveBossState)
 	root.Size = Vector3.new(7, 9, 5)
 	root.CFrame = spawnCF
 	root.Transparency = 1
-	root.CanCollide = true
+	root.CanCollide = false
 	root.Massless = false
 	root.Parent = model
 	model.PrimaryPart = root
@@ -384,6 +385,7 @@ local function buildVoidHarbinger(state: ActiveBossState)
 	hum.Health = state.maxHealth
 	hum.WalkSpeed = 13
 	hum.AutoRotate = true
+	hum.HipHeight = 5.2
 	hum.Parent = model
 
 	-- 3. Massive Obsidian Torso with Glowing Void Core
@@ -730,7 +732,7 @@ function BossService.performMeteorBarrage(state: ActiveBossState)
 			local pPos = char.HumanoidRootPart.Position
 			local distFromCenter = (Vector3.new(pPos.X, state.def.arenaCenter.Y, pPos.Z) - state.def.arenaCenter).Magnitude
 			if distFromCenter <= (state.def.arenaRadius - 5) then
-				table.insert(targets, pPos)
+				table.insert(targets, Vector3.new(pPos.X, state.def.arenaCenter.Y, pPos.Z))
 			end
 		end
 	end

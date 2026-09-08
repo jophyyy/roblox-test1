@@ -329,21 +329,47 @@ function BossClient.showCombatNumber(worldPos: Vector3, damage: number, isCrit: 
 	Debris:AddItem(part, 0.9)
 end
 
+-- Accurately raycasts down to find the floor surface at any (X, Z) coordinate
+local function getFloorY(pos: Vector3): number
+	local rayOrigin = Vector3.new(pos.X, 45, pos.Z)
+	local rayDir = Vector3.new(0, -90, 0)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local ignoreList = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			table.insert(ignoreList, p.Character)
+		end
+	end
+	local bossFolder = Workspace:FindFirstChild("BossFolder")
+	if bossFolder then
+		table.insert(ignoreList, bossFolder)
+	end
+	rayParams.FilterDescendantsInstances = ignoreList
+
+	local result = Workspace:Raycast(rayOrigin, rayDir, rayParams)
+	if result then
+		return result.Position.Y + 0.12
+	end
+	return 2.85 -- Default Colosseum floor height
+end
+
 -- Renders an expanding danger zone ring on the floor with fill countdown
 function BossClient.visualizeTelegraphSlam(centerPos: Vector3, radius: number, duration: number, bossId: string?)
-	local floorY = centerPos.Y + 0.15
-	local ringColor = if bossId == "VoidHarbinger" then Color3.fromRGB(170, 40, 255) else Color3.fromRGB(255, 45, 10)
-	local fillColor = if bossId == "VoidHarbinger" then Color3.fromRGB(120, 20, 220) else Color3.fromRGB(255, 80, 20)
+	local floorY = getFloorY(centerPos)
+	local ringColor = if bossId == "VoidHarbinger" then Color3.fromRGB(180, 50, 255) else Color3.fromRGB(255, 40, 10)
+	local fillColor = if bossId == "VoidHarbinger" then Color3.fromRGB(140, 30, 240) else Color3.fromRGB(255, 80, 20)
 
 	-- Outer glowing perimeter ring
 	local border = Instance.new("Part")
 	border.Name = "TelegraphBorder"
 	border.Shape = Enum.PartType.Cylinder
-	border.Size = Vector3.new(0.2, radius * 2, radius * 2)
+	border.Size = Vector3.new(0.35, radius * 2, radius * 2)
 	border.CFrame = CFrame.new(centerPos.X, floorY, centerPos.Z) * CFrame.Angles(0, 0, math.rad(90))
 	border.Color = ringColor
 	border.Material = Enum.Material.Neon
-	border.Transparency = 0.55
+	border.Transparency = 0.45
 	border.Anchored = true
 	border.CanCollide = false
 	border.Parent = Workspace
@@ -352,18 +378,18 @@ function BossClient.visualizeTelegraphSlam(centerPos: Vector3, radius: number, d
 	local fill = Instance.new("Part")
 	fill.Name = "TelegraphFill"
 	fill.Shape = Enum.PartType.Cylinder
-	fill.Size = Vector3.new(0.25, 1, 1)
+	fill.Size = Vector3.new(0.4, 1, 1)
 	fill.CFrame = CFrame.new(centerPos.X, floorY + 0.05, centerPos.Z) * CFrame.Angles(0, 0, math.rad(90))
 	fill.Color = fillColor
 	fill.Material = Enum.Material.Neon
-	fill.Transparency = 0.4
+	fill.Transparency = 0.35
 	fill.Anchored = true
 	fill.CanCollide = false
 	fill.Parent = Workspace
 
 	local fillTween = TweenService:Create(fill, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
-		Size = Vector3.new(0.25, radius * 2, radius * 2),
-		Transparency = 0.15,
+		Size = Vector3.new(0.4, radius * 2, radius * 2),
+		Transparency = 0.1,
 	})
 	fillTween:Play()
 
@@ -378,6 +404,7 @@ end
 function BossClient.visualizeGroundSlam(bossPos: Vector3, radius: number)
 	playImpactBoom()
 
+	local floorY = getFloorY(bossPos)
 	local isVoid = (currentThemedBossId == "VoidHarbinger")
 	local primaryColor = if isVoid then Color3.fromRGB(150, 50, 255) else Color3.fromRGB(255, 75, 15)
 	local rockColor = if isVoid then Color3.fromRGB(24, 18, 36) else Color3.fromRGB(36, 26, 28)
@@ -386,8 +413,8 @@ function BossClient.visualizeGroundSlam(bossPos: Vector3, radius: number)
 	local ring = Instance.new("Part")
 	ring.Name = "SlamShockwave"
 	ring.Shape = Enum.PartType.Cylinder
-	ring.Size = Vector3.new(0.4, 4, 4)
-	ring.CFrame = CFrame.new(bossPos.X, bossPos.Y - 3.4, bossPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Size = Vector3.new(0.45, 4, 4)
+	ring.CFrame = CFrame.new(bossPos.X, floorY, bossPos.Z) * CFrame.Angles(0, 0, math.rad(90))
 	ring.Color = primaryColor
 	ring.Material = Enum.Material.Neon
 	ring.Transparency = 0.2
@@ -407,7 +434,7 @@ function BossClient.visualizeGroundSlam(bossPos: Vector3, radius: number)
 	geyser.Name = "SlamGeyser"
 	geyser.Shape = Enum.PartType.Cylinder
 	geyser.Size = Vector3.new(4, 3, 3)
-	geyser.CFrame = CFrame.new(bossPos.X, bossPos.Y - 2, bossPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+	geyser.CFrame = CFrame.new(bossPos.X, floorY + 1.5, bossPos.Z) * CFrame.Angles(0, 0, math.rad(90))
 	geyser.Color = primaryColor
 	geyser.Material = Enum.Material.Neon
 	geyser.Transparency = 0.15
@@ -417,7 +444,7 @@ function BossClient.visualizeGroundSlam(bossPos: Vector3, radius: number)
 
 	local geyserTween = TweenService:Create(geyser, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		Size = Vector3.new(24, 6.5, 6.5),
-		CFrame = CFrame.new(bossPos.X, bossPos.Y + 8, bossPos.Z) * CFrame.Angles(0, 0, math.rad(90)),
+		CFrame = CFrame.new(bossPos.X, floorY + 12, bossPos.Z) * CFrame.Angles(0, 0, math.rad(90)),
 		Transparency = 1,
 	})
 	geyserTween:Play()
@@ -429,7 +456,7 @@ function BossClient.visualizeGroundSlam(bossPos: Vector3, radius: number)
 	for i = 1, numSpikes do
 		local angle = (i / numSpikes) * math.pi * 2
 		local spikeOffset = Vector3.new(math.cos(angle) * spikeRadius, 0, math.sin(angle) * spikeRadius)
-		local groundPoint = Vector3.new(bossPos.X + spikeOffset.X, bossPos.Y - 3.2, bossPos.Z + spikeOffset.Z)
+		local groundPoint = Vector3.new(bossPos.X + spikeOffset.X, floorY, bossPos.Z + spikeOffset.Z)
 
 		local spike = Instance.new("WedgePart")
 		spike.Name = "BasaltSpike"
@@ -482,38 +509,99 @@ function BossClient.visualizeGroundSlam(bossPos: Vector3, radius: number)
 	end
 end
 
--- Renders apocalyptic meteor strikes across the arena
+-- Renders apocalyptic meteor strikes across the arena with crystal-clear AOE indicators
 function BossClient.visualizeMeteorBarrage(targets: { Vector3 }, bossId: string?)
 	local isVoid = (bossId == "VoidHarbinger")
-	local meteorColor = if isVoid then Color3.fromRGB(190, 60, 255) else Color3.fromRGB(255, 90, 10)
-	local fireColor = if isVoid then Color3.fromRGB(150, 40, 255) else Color3.fromRGB(255, 200, 40)
+	local meteorColor = if isVoid then Color3.fromRGB(190, 60, 255) else Color3.fromRGB(255, 60, 10)
+	local fireColor = if isVoid then Color3.fromRGB(150, 40, 255) else Color3.fromRGB(255, 180, 20)
+	local aoeRadius = 14
 
-	for _, targetPos in ipairs(targets) do
+	for _, rawTargetPos in ipairs(targets) do
 		task.spawn(function()
-			-- Ground warning indicator
-			local warning = Instance.new("Part")
-			warning.Name = "MeteorWarning"
-			warning.Shape = Enum.PartType.Cylinder
-			warning.Size = Vector3.new(0.15, 12, 12)
-			warning.CFrame = CFrame.new(targetPos.X, 0.45, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
-			warning.Color = meteorColor
-			warning.Material = Enum.Material.Neon
-			warning.Transparency = 0.5
-			warning.Anchored = true
-			warning.CanCollide = false
-			warning.Parent = Workspace
+			local floorY = getFloorY(rawTargetPos)
+			local targetPos = Vector3.new(rawTargetPos.X, floorY, rawTargetPos.Z)
 
-			local pulse = TweenService:Create(warning, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-				Transparency = 0.15,
+			-- 1. Outer Danger Ring (Cylinder on floor)
+			local warningBorder = Instance.new("Part")
+			warningBorder.Name = "MeteorWarningBorder"
+			warningBorder.Shape = Enum.PartType.Cylinder
+			warningBorder.Size = Vector3.new(0.35, aoeRadius, aoeRadius)
+			warningBorder.CFrame = CFrame.new(targetPos.X, floorY + 0.08, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+			warningBorder.Color = meteorColor
+			warningBorder.Material = Enum.Material.Neon
+			warningBorder.Transparency = 0.45
+			warningBorder.Anchored = true
+			warningBorder.CanCollide = false
+			warningBorder.Parent = Workspace
+
+			-- 2. Expanding Inner Fill Disk (Countdown fill towards aoeRadius)
+			local warningFill = Instance.new("Part")
+			warningFill.Name = "MeteorWarningFill"
+			warningFill.Shape = Enum.PartType.Cylinder
+			warningFill.Size = Vector3.new(0.4, 1.5, 1.5)
+			warningFill.CFrame = CFrame.new(targetPos.X, floorY + 0.12, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+			warningFill.Color = fireColor
+			warningFill.Material = Enum.Material.Neon
+			warningFill.Transparency = 0.35
+			warningFill.Anchored = true
+			warningFill.CanCollide = false
+			warningFill.Parent = Workspace
+
+			local fillTween = TweenService:Create(warningFill, TweenInfo.new(1.25, Enum.EasingStyle.Linear), {
+				Size = Vector3.new(0.4, aoeRadius, aoeRadius),
+				Transparency = 0.1,
 			})
-			pulse:Play()
+			fillTween:Play()
 
-			-- Flaming Meteor falling from the sky
-			local startPos = targetPos + Vector3.new((math.random() - 0.5) * 8, 70, (math.random() - 0.5) * 8)
+			-- 3. Vertical Target Beacon Beam (Visible from anywhere in the colosseum)
+			local targetBeam = Instance.new("Part")
+			targetBeam.Name = "MeteorTargetBeam"
+			targetBeam.Shape = Enum.PartType.Cylinder
+			targetBeam.Size = Vector3.new(45, 2.8, 2.8)
+			targetBeam.CFrame = CFrame.new(targetPos.X, floorY + 22.5, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+			targetBeam.Color = meteorColor
+			targetBeam.Material = Enum.Material.Neon
+			targetBeam.Transparency = 0.65
+			targetBeam.Anchored = true
+			targetBeam.CanCollide = false
+			targetBeam.Parent = Workspace
+
+			local pulseBeam = TweenService:Create(targetBeam, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+				Transparency = 0.35,
+			})
+			pulseBeam:Play()
+
+			-- 4. Floating Warning Billboard on ground
+			local bbPart = Instance.new("Part")
+			bbPart.Size = Vector3.new(0.1, 0.1, 0.1)
+			bbPart.CFrame = CFrame.new(targetPos.X, floorY + 1.2, targetPos.Z)
+			bbPart.Transparency = 1
+			bbPart.Anchored = true
+			bbPart.CanCollide = false
+			bbPart.Parent = Workspace
+
+			local bb = Instance.new("BillboardGui")
+			bb.Size = UDim2.new(0, 140, 0, 40)
+			bb.AlwaysOnTop = true
+			bb.MaxDistance = 90
+			bb.Parent = bbPart
+
+			local bbLabel = Instance.new("TextLabel")
+			bbLabel.Size = UDim2.new(1, 0, 1, 0)
+			bbLabel.BackgroundTransparency = 1
+			bbLabel.Text = "⚠️ INCOMING!"
+			bbLabel.TextColor3 = fireColor
+			bbLabel.Font = Enum.Font.GothamBlack
+			bbLabel.TextSize = 14
+			bbLabel.TextStrokeTransparency = 0.2
+			bbLabel.Parent = bb
+
+			-- 5. Flaming Meteor falling from the sky
+			local startPos = targetPos + Vector3.new((math.random() - 0.5) * 6, 65, (math.random() - 0.5) * 6)
 			local meteor = Instance.new("Part")
 			meteor.Name = "FallingMeteor"
 			meteor.Shape = Enum.PartType.Ball
-			meteor.Size = Vector3.new(4.5, 4.5, 4.5)
+			meteor.Size = Vector3.new(5.0, 5.0, 5.0)
 			meteor.Position = startPos
 			meteor.Color = meteorColor
 			meteor.Material = Enum.Material.Neon
@@ -530,12 +618,12 @@ function BossClient.visualizeMeteorBarrage(targets: { Vector3 }, bossId: string?
 				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 10, 5)),
 			})
 			trailEmitter.Size = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 3.5),
+				NumberSequenceKeypoint.new(0, 3.8),
 				NumberSequenceKeypoint.new(1, 0.2),
 			})
 			trailEmitter.Lifetime = NumberRange.new(0.3, 0.6)
-			trailEmitter.Rate = 40
-			trailEmitter.Speed = NumberRange.new(4, 8)
+			trailEmitter.Rate = 45
+			trailEmitter.Speed = NumberRange.new(5, 9)
 			trailEmitter.Parent = attach
 
 			-- Accelerate down to target in 1.25s
@@ -545,8 +633,12 @@ function BossClient.visualizeMeteorBarrage(targets: { Vector3 }, bossId: string?
 			dropTween:Play()
 
 			dropTween.Completed:Connect(function()
-				pulse:Cancel()
-				if warning and warning.Parent then warning:Destroy() end
+				fillTween:Cancel()
+				pulseBeam:Cancel()
+				if warningBorder and warningBorder.Parent then warningBorder:Destroy() end
+				if warningFill and warningFill.Parent then warningFill:Destroy() end
+				if targetBeam and targetBeam.Parent then targetBeam:Destroy() end
+				if bbPart and bbPart.Parent then bbPart:Destroy() end
 				if meteor and meteor.Parent then meteor:Destroy() end
 
 				playImpactBoom()
@@ -555,8 +647,8 @@ function BossClient.visualizeMeteorBarrage(targets: { Vector3 }, bossId: string?
 				local shockwave = Instance.new("Part")
 				shockwave.Name = "MeteorShockwave"
 				shockwave.Shape = Enum.PartType.Cylinder
-				shockwave.Size = Vector3.new(0.3, 2, 2)
-				shockwave.CFrame = CFrame.new(targetPos.X, 0.45, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+				shockwave.Size = Vector3.new(0.35, 2, 2)
+				shockwave.CFrame = CFrame.new(targetPos.X, floorY + 0.12, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
 				shockwave.Color = meteorColor
 				shockwave.Material = Enum.Material.Neon
 				shockwave.Transparency = 0.1
@@ -565,7 +657,7 @@ function BossClient.visualizeMeteorBarrage(targets: { Vector3 }, bossId: string?
 				shockwave.Parent = Workspace
 
 				local boomTween = TweenService:Create(shockwave, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = Vector3.new(0.2, 16, 16),
+					Size = Vector3.new(0.2, 18, 18),
 					Transparency = 1,
 				})
 				boomTween:Play()
@@ -575,14 +667,14 @@ function BossClient.visualizeMeteorBarrage(targets: { Vector3 }, bossId: string?
 				local myChar = player.Character
 				if myChar and myChar:FindFirstChild("HumanoidRootPart") then
 					local dist = (myChar.HumanoidRootPart.Position - targetPos).Magnitude
-					if dist <= 38 then
+					if dist <= 40 then
 						task.spawn(function()
-							local intensity = math.clamp(1 - (dist / 38), 0.2, 0.8)
-							for _ = 1, 5 do
+							local intensity = math.clamp(1 - (dist / 40), 0.2, 0.85)
+							for _ = 1, 6 do
 								local camOffset = Vector3.new(
-									(math.random() - 0.5) * 1.5 * intensity,
-									(math.random() - 0.5) * 1.5 * intensity,
-									(math.random() - 0.5) * 1.0 * intensity
+									(math.random() - 0.5) * 1.6 * intensity,
+									(math.random() - 0.5) * 1.6 * intensity,
+									(math.random() - 0.5) * 1.1 * intensity
 								)
 								camera.CFrame = camera.CFrame * CFrame.new(camOffset)
 								RunService.RenderStepped:Wait()

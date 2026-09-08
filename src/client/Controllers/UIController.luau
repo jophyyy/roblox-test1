@@ -360,7 +360,12 @@ local function closeModal()
 end
 
 -- Rebirth Modal
-local function openRebirthModal()
+local function openRebirthModal(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "RebirthModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	if not cachedData then
 		local getFn = Remotes.getFunction("GetPlayerData")
@@ -515,7 +520,7 @@ local function openRebirthModal()
 			end)
 			if ok and success then
 				showFloatingPopup(string.format("⚡ +%d REBIRTH(S)! (Total: %d)", count, newRebirths or (cachedData.Rebirths or 0) + count), Color3.fromRGB(255, 120, 220), 0)
-				openRebirthModal() -- refresh modal
+				openRebirthModal(true) -- refresh modal
 			end
 		end)
 	end
@@ -568,12 +573,17 @@ local function openRebirthModal()
 end
 
 -- Forward declarations for Pet Modals
-local openPetModal: () -> ()
-local openPetIndexModal: (filter: string?) -> ()
-local openFusionModal: (initialMode: ("Golden" | "Rainbow")?) -> ()
+local openPetModal: (isRefresh: boolean?) -> ()
+local openPetIndexModal: (filter: string?, isRefresh: boolean?) -> ()
+local openFusionModal: (initialMode: ("Golden" | "Rainbow")?, isRefresh: boolean?) -> ()
 
 -- Pet Hatching & Inventory Modal
-openPetModal = function()
+openPetModal = function(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "PetModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	if not cachedData then return end
 
@@ -706,7 +716,7 @@ openPetModal = function()
 				if ok and firstId and PetConfig.PETS[firstId] then
 					eggBtn.Text = "HATCHED!\n" .. PetConfig.PETS[firstId].name
 					task.wait(1.2)
-					openPetModal() -- refresh
+					openPetModal(true) -- refresh
 				end
 			end)
 		end
@@ -820,7 +830,7 @@ openPetModal = function()
 			end
 
 			task.wait(0.2)
-			openPetModal()
+			openPetModal(true)
 		end)
 	end
 
@@ -1019,7 +1029,7 @@ openPetModal = function()
 			local equipFn = Remotes.getFunction("ToggleEquipPet")
 			equipFn:InvokeServer(petId)
 			task.wait(0.15)
-			openPetModal()
+			openPetModal(true)
 		end)
 	end
 
@@ -1061,7 +1071,12 @@ end
 -- ==========================================
 -- 📖 PET BESTIARY / COLLECTION INDEX MODAL
 -- ==========================================
-openPetIndexModal = function(currentFilter: string?)
+openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
+	if isRefresh ~= true and currentFilter == nil and activeModal and activeModal.Name == "PetIndexModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	if not cachedData then return end
 
@@ -1293,7 +1308,7 @@ openPetIndexModal = function(currentFilter: string?)
 				local ok, msg = claimFn:InvokeServer(m.id)
 				if ok then
 					showFloatingPopup(string.format("🏆 CLAIMED %s! (+%s 💎)", m.name:upper(), FormatNumber.formatCompact(m.gemsReward)), Color3.fromRGB(0, 255, 180), 0)
-					openPetIndexModal(activeFilter)
+					openPetIndexModal(activeFilter, true)
 				end
 			end)
 		else
@@ -1340,7 +1355,7 @@ openPetIndexModal = function(currentFilter: string?)
 		fCorner.Parent = fBtn
 
 		fBtn.MouseButton1Click:Connect(function()
-			openPetIndexModal(opt.id)
+			openPetIndexModal(opt.id, true)
 		end)
 	end
 
@@ -1522,7 +1537,12 @@ end
 -- ==========================================
 -- ⚗️ PET FUSION CHAMBER MODAL (GOLDEN & RAINBOW)
 -- ==========================================
-openFusionModal = function(initialMode: ("Golden" | "Rainbow")?)
+openFusionModal = function(initialMode: ("Golden" | "Rainbow")?, isRefresh: boolean?)
+	if isRefresh ~= true and initialMode == nil and activeModal and activeModal.Name == "PetFusionModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	if not cachedData then return end
 
@@ -1618,7 +1638,7 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?)
 	gStroke.Parent = goldBtn
 
 	goldBtn.MouseButton1Click:Connect(function()
-		openFusionModal("Golden")
+		openFusionModal("Golden", true)
 	end)
 
 	-- Rainbow Mode Button
@@ -1643,7 +1663,7 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?)
 	rbStroke.Parent = rbBtn
 
 	rbBtn.MouseButton1Click:Connect(function()
-		openFusionModal("Rainbow")
+		openFusionModal("Rainbow", true)
 	end)
 
 	-- Info tip banner
@@ -1853,10 +1873,10 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?)
 					local ok, targetId, batchCount, msg = fuseFn:InvokeServer(activeMode, cand.baseId, false)
 					if ok then
 						showFloatingPopup(msg or "✨ Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
-						openFusionModal(activeMode)
+						openFusionModal(activeMode, true)
 					else
 						showFloatingPopup("⚠️ " .. tostring(msg), Color3.fromRGB(255, 80, 80), 0)
-						openFusionModal(activeMode)
+						openFusionModal(activeMode, true)
 					end
 				end)
 
@@ -1882,10 +1902,10 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?)
 						local ok, targetId, batchCount, msg = fuseFn:InvokeServer(activeMode, cand.baseId, true)
 						if ok then
 							showFloatingPopup(msg or "✨ Batch Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
-							openFusionModal(activeMode)
+							openFusionModal(activeMode, true)
 						else
 							showFloatingPopup("⚠️ " .. tostring(msg), Color3.fromRGB(255, 80, 80), 0)
-							openFusionModal(activeMode)
+							openFusionModal(activeMode, true)
 						end
 					end)
 				end
@@ -1932,7 +1952,12 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?)
 	}):Play()
 end
 
-local function openRobuxEggModal()
+local function openRobuxEggModal(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "RobuxEggModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 
 	local modal = createStyledFrame(screenGui, "RobuxEggModal", UDim2.new(0, 520, 0, 440), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 20, 28))
@@ -2160,7 +2185,12 @@ local function openRobuxEggModal()
 	tween:Play()
 end
 
-local function openVIPModal()
+local function openVIPModal(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "VIPModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 
 	local modal = createStyledFrame(screenGui, "VIPModal", UDim2.new(0, 500, 0, 440), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 32))
@@ -2308,7 +2338,7 @@ local function openVIPModal()
 		if ok and res and res.success then
 			isLocalPlayerVIP = res.isVIP
 			UIController.updateVIPDisplay(res.isVIP)
-			openVIPModal() -- re-render modal with updated status
+			openVIPModal(true) -- re-render modal with updated status
 			showFloatingPopup("👑 VIP " .. (res.isVIP and "ACTIVATED (2x Gems)!" or "DEACTIVATED!"), Color3.fromRGB(255, 215, 0), 0)
 		end
 	end)
@@ -2336,7 +2366,12 @@ local function openVIPModal()
 	tween:Play()
 end
 
-local function openEquipmentShopModal()
+local function openEquipmentShopModal(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "EquipmentShopModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	closeDialogue()
 
@@ -2613,7 +2648,12 @@ local function openEquipmentShopModal()
 	}):Play()
 end
 
-local function openWheelModal()
+local function openWheelModal(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "WheelModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	closeDialogue()
 
@@ -3144,7 +3184,12 @@ local function openWheelModal()
 	}):Play()
 end
 
-local function openTrailsShopModal()
+local function openTrailsShopModal(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "TrailsShopModal" then
+		closeModal()
+		return
+	end
+
 	closeModal()
 	closeDialogue()
 
@@ -3380,8 +3425,8 @@ local function openTrailsShopModal()
 	}):Play()
 end
 
-local function openUpgradeTreeModal()
-	if activeModal and activeModal.Name == "UpgradeTreeModal" then
+local function openUpgradeTreeModal(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "UpgradeTreeModal" then
 		closeModal()
 		return
 	end

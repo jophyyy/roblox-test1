@@ -25,6 +25,7 @@ local REGISTERED_EVENTS = {
 	"BossRespawned",
 	"TrainingOreHit",
 	"OpenFusionModal",
+	"MasteryLevelUp",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -36,6 +37,7 @@ local REGISTERED_FUNCTIONS = {
 	"ToggleEquipPet",
 	"DevAddCash",
 	"DevAddRebirth",
+	"DevAddMasteryXP",
 	"BuyShopItem",
 	"EquipShopItem",
 	"SpinWheel",

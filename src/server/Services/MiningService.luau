@@ -241,11 +241,25 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 	local petDamageMult = PetService.getCashMultiplier(player)
 	local skillMiningMult = SkillTreeConfig.getTotalMiningPowerMult(data.UnlockedSkills)
 
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	local masteryPowerMult = if okMastery and MasteryService then MasteryService.getMiningPowerMultiplier(player) else 1.0
+	local masteryCashMult = if okMastery and MasteryService then MasteryService.getCashOreMultiplier(player) else 1.0
+	local masteryGemMult = if okMastery and MasteryService then MasteryService.getGemOreBonusMultiplier(player) else 1.0
+	local globalCashMult = if okMastery and MasteryService then MasteryService.getCashMultiplier(player) else 1.0
+	local globalGemMult = if okMastery and MasteryService then MasteryService.getGemMultiplier(player) else 1.0
+
 	-- 15% Chance of Critical Strike
 	local isCrit = math.random() <= 0.15
 	local critBonus = if isCrit then 2.0 else 1.0
 
-	local totalDamage = math.max(1, math.floor(playerPower * rebirthMult * petDamageMult * skillMiningMult * critBonus))
+	local totalDamage = math.max(1, math.floor(playerPower * rebirthMult * petDamageMult * skillMiningMult * masteryPowerMult * critBonus))
+
+	-- Award Mining Hit XP
+	if okMastery and MasteryService then
+		MasteryService.addXP(player, "Mining", 2)
+	end
 
 	-- 2. Apply Damage
 	ore.health = math.max(0, ore.health - totalDamage)
@@ -276,6 +290,11 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 	if isBroken and not ore.isDestroyed then
 		ore.isDestroyed = true
 
+		-- Award Mining Ore Break XP (+15 XP)
+		if okMastery and MasteryService then
+			MasteryService.addXP(player, "Mining", 15)
+		end
+
 		-- Calculate Rewards
 		local bpMultiplier = 1.0
 		local bpBonusGems = 0
@@ -295,8 +314,8 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 		local skillBonusGems = SkillTreeConfig.getTotalBonusGems(data.UnlockedSkills)
 
 		local petGemMult = PetService.getGemMultiplier(player)
-		cashEarned = math.max(1, math.floor(oreDef.cashReward * bpMultiplier * trailCashMult * skillCashMult * rebirthMult * petDamageMult))
-		gemsEarned = math.max(1, math.floor((oreDef.gemsReward + bpBonusGems + trailBonusGems + skillBonusGems) * petGemMult))
+		cashEarned = math.max(1, math.floor(oreDef.cashReward * bpMultiplier * trailCashMult * skillCashMult * rebirthMult * petDamageMult * masteryCashMult * globalCashMult))
+		gemsEarned = math.max(1, math.floor((oreDef.gemsReward + bpBonusGems + trailBonusGems + skillBonusGems) * petGemMult * masteryGemMult * globalGemMult))
 
 		-- Award to player
 		DataService.addCash(player, cashEarned)

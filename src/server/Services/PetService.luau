@@ -16,10 +16,21 @@ function PetService.getCashMultiplier(player: Player): number
 	local data = DataService.get(player)
 	if not data then return 1 end
 
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	local petStatsBonus = if okMastery and MasteryService then MasteryService.getPetStatsMultiplier(player) else 1.0
+	local cashPetBonus = if okMastery and MasteryService then MasteryService.getCashPetMultiplier(player) else 1.0
+
 	local mult = 1.0
 	for petId, equipped in data.EquippedPets do
 		if equipped and PetConfig.PETS[petId] then
-			mult += (PetConfig.PETS[petId].cashMultiplier - 1)
+			local petDef = PetConfig.PETS[petId]
+			local bonus = (petDef.cashMultiplier - 1) * petStatsBonus * cashPetBonus
+			if petDef.tier == "Rainbow" and okMastery and MasteryService then
+				bonus *= MasteryService.getRainbowPetExtraMultiplier(player)
+			end
+			mult += bonus
 		end
 	end
 	return mult
@@ -29,10 +40,20 @@ function PetService.getGemMultiplier(player: Player): number
 	local data = DataService.get(player)
 	if not data then return 1 end
 
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	local petStatsBonus = if okMastery and MasteryService then MasteryService.getPetStatsMultiplier(player) else 1.0
+
 	local mult = 1.0
 	for petId, equipped in data.EquippedPets do
 		if equipped and PetConfig.PETS[petId] then
-			mult += (PetConfig.PETS[petId].gemMultiplier - 1)
+			local petDef = PetConfig.PETS[petId]
+			local bonus = (petDef.gemMultiplier - 1) * petStatsBonus
+			if petDef.tier == "Rainbow" and okMastery and MasteryService then
+				bonus *= MasteryService.getRainbowPetExtraMultiplier(player)
+			end
+			mult += bonus
 		end
 	end
 	return mult
@@ -52,8 +73,13 @@ function PetService.hatchEgg(player: Player, eggId: string, count: number?): (bo
 		return false, nil, "Player data not loaded"
 	end
 
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+
 	if eggDef.currency == "Gems" then
-		local totalCost = eggDef.cost * hatchCount
+		local discount = if okMastery and MasteryService then MasteryService.getEggCostDiscount(player) else 0
+		local totalCost = math.max(1, math.floor(eggDef.cost * hatchCount * (1 - discount)))
 		if data.Gems < totalCost then
 			local hatchEvent = Remotes.getEvent("EggHatched")
 			hatchEvent:FireClient(player, false, nil, "Not enough Gems! (Need " .. tostring(totalCost) .. " 💎)")
@@ -61,6 +87,11 @@ function PetService.hatchEgg(player: Player, eggId: string, count: number?): (bo
 		end
 		-- Deduct gems
 		DataService.addGems(player, -totalCost)
+	end
+
+	-- Award Egg Mastery XP
+	if okMastery and MasteryService then
+		MasteryService.addXP(player, "Eggs", 10 * hatchCount)
 	end
 
 	-- Calculate total drop pool weight
@@ -106,6 +137,12 @@ function PetService.toggleEquip(player: Player, petId: string): boolean
 		return false
 	end
 
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	local extraSlots = if okMastery and MasteryService then MasteryService.getExtraEquippedSlots(player) else 0
+	local maxAllowed = PetConfig.MAX_EQUIPPED + extraSlots
+
 	if data.EquippedPets[petId] then
 		data.EquippedPets[petId] = nil
 	else
@@ -113,7 +150,7 @@ function PetService.toggleEquip(player: Player, petId: string): boolean
 		for _, equipped in data.EquippedPets do
 			if equipped then count += 1 end
 		end
-		if count >= PetConfig.MAX_EQUIPPED then
+		if count >= maxAllowed then
 			return false
 		end
 		data.EquippedPets[petId] = true
@@ -323,11 +360,26 @@ function PetService.fusePets(player: Player, mode: "Golden" | "Rainbow", rawBase
 	-- Update followers if equipped changed
 	PetService.updateFollowers(player)
 
+	-- Award Pet Fusion Mastery XP
+	local successMsg = string.format("✨ FUSED %dx %s!", batches, targetDef.name)
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	if okMastery and MasteryService then
+		local xpPerBatch = if mode == "Golden" then 50 else 150
+		MasteryService.addXP(player, "PetFusion", xpPerBatch * batches)
+
+		local fusionLvl = MasteryService.getMasteryLevel(player, "PetFusion")
+		if fusionLvl >= 50 and math.random() <= 0.15 then
+			data.OwnedPets[targetPetId] = (data.OwnedPets[targetPetId] or 0) + 1
+			successMsg ..= " 🔮 PHILOSOPHER'S DUPE (+1 Free)!"
+		end
+	end
+
 	-- Sync updated data to client
 	local syncEvent = Remotes.getEvent("SyncPlayerData")
 	syncEvent:FireClient(player, data)
 
-	local successMsg = string.format("✨ FUSED %dx %s!", batches, targetDef.name)
 	print(string.format("⚗️ [PetService] %s fused %dx %s (%s)", player.Name, batches, targetDef.name, mode))
 
 	return true, targetPetId, batches, successMsg

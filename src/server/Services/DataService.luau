@@ -34,6 +34,7 @@ export type PlayerData = {
 	OwnedTrails: { [string]: boolean },
 	EquippedTrail: string?,
 	UnlockedSkills: { [string]: boolean },
+	Mastery: { [string]: number }?,
 	LastWheelSpin: number?,
 	FreeSpins: number?,
 	LastSaved: number,
@@ -73,6 +74,13 @@ local function getDefaultData(): PlayerData
 		OwnedTrails = {},
 		EquippedTrail = nil,
 		UnlockedSkills = {},
+		Mastery = {
+			Eggs = 0,
+			BossSlayer = 0,
+			Mining = 0,
+			PetFusion = 0,
+			Rebirth = 0,
+		},
 		LastWheelSpin = 0,
 		FreeSpins = 1,
 		LastSaved = os.time(),
@@ -340,6 +348,13 @@ function DataService.load(player: Player)
 	data.OwnedTrails = data.OwnedTrails or {}
 	data.EquippedTrail = data.EquippedTrail or nil
 	data.UnlockedSkills = data.UnlockedSkills or {}
+	data.Mastery = data.Mastery or {
+		Eggs = 0,
+		BossSlayer = 0,
+		Mining = 0,
+		PetFusion = 0,
+		Rebirth = 0,
+	}
 	data.LastWheelSpin = data.LastWheelSpin or 0
 	data.FreeSpins = data.FreeSpins or 1
 	data.Power = data.Power or GameConfig.STARTER_POWER

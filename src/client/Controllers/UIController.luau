@@ -17,6 +17,7 @@ local WheelConfig = require(ReplicatedStorage.Shared.Config.WheelConfig)
 local GamepassConfig = require(ReplicatedStorage.Shared.Config.GamepassConfig)
 local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
+local MasteryConfig = require(ReplicatedStorage.Shared.Config.MasteryConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 local MiningClient = require(script.Parent.MiningClient)
@@ -4114,6 +4115,611 @@ local function openUpgradeTreeModal(isRefresh: boolean?)
 	}):Play()
 end
 
+-- Forward declaration for Mastery Modals
+local openMasteryModal: (isRefresh: boolean?) -> ()
+local openTrackMilestonesModal: (trackId: string) -> ()
+
+-- Celebratory Real-Time Level-Up Banner & Fanfare
+local function playMasteryCelebration(trackId: string, newLevel: number, milestone: any)
+	if not screenGui then return end
+
+	local trackDef = MasteryConfig.TRACKS[trackId]
+	local trackColor = if trackDef then trackDef.color else Color3.fromRGB(255, 215, 80)
+	local trackIcon = if trackDef then trackDef.icon else "⭐"
+	local trackName = if trackDef then trackDef.name else "Mastery"
+
+	-- Play Level Up Audio Chime
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxassetid://5153737200" -- Triumphant victory fanfare
+	sound.PlaybackSpeed = 1.05
+	sound.Volume = 0.9
+	sound.Parent = SoundService
+	sound:Play()
+	sound.Ended:Connect(function()
+		sound:Destroy()
+	end)
+
+	-- Celebratory Banner Frame
+	local banner = Instance.new("Frame")
+	banner.Name = "MasteryCelebrationBanner"
+	banner.Size = UDim2.new(0, 520, 0, 92)
+	banner.Position = UDim2.new(0.5, 0, -0.2, 0) -- Starts above viewport
+	banner.AnchorPoint = Vector2.new(0.5, 0.5)
+	banner.BackgroundColor3 = Color3.fromRGB(18, 15, 24)
+	banner.BorderSizePixel = 0
+	banner.ZIndex = 30
+	banner.Parent = screenGui
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 16)
+	bCorner.Parent = banner
+
+	local bStroke = Instance.new("UIStroke")
+	bStroke.Color = Color3.fromRGB(255, 215, 80)
+	bStroke.Thickness = 2.5
+	bStroke.Parent = banner
+
+	-- Title Header
+	local tLabel = Instance.new("TextLabel")
+	tLabel.Size = UDim2.new(1, 0, 0, 24)
+	tLabel.Position = UDim2.new(0, 0, 0, 8)
+	tLabel.BackgroundTransparency = 1
+	tLabel.Text = "🎉 MASTERY LEVEL UP! 🎉"
+	tLabel.TextColor3 = Color3.fromRGB(255, 215, 80)
+	tLabel.Font = Enum.Font.GothamBlack
+	tLabel.TextSize = 16
+	tLabel.ZIndex = 31
+	tLabel.Parent = banner
+
+	-- Level Up text
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Size = UDim2.new(1, 0, 0, 24)
+	subLabel.Position = UDim2.new(0, 0, 0, 32)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Text = string.format("%s %s REACHED LEVEL %d!", trackIcon, trackName:upper(), newLevel)
+	subLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	subLabel.Font = Enum.Font.GothamBlack
+	subLabel.TextSize = 15
+	subLabel.ZIndex = 31
+	subLabel.Parent = banner
+
+	-- Perk detail
+	local perkLabel = Instance.new("TextLabel")
+	perkLabel.Size = UDim2.new(1, -20, 0, 22)
+	perkLabel.Position = UDim2.new(0, 10, 0, 58)
+	perkLabel.BackgroundTransparency = 1
+	if milestone then
+		perkLabel.Text = string.format("🌟 UNLOCKED PERK: %s • %s", milestone.name, milestone.description)
+		perkLabel.TextColor3 = Color3.fromRGB(0, 240, 150)
+	else
+		perkLabel.Text = string.format("⚡ Passive Bonus Upgraded: +%.1f%% Boost!", newLevel * (if trackId == "Eggs" or trackId == "PetFusion" then 0.5 else 1.0))
+		perkLabel.TextColor3 = Color3.fromRGB(255, 235, 120)
+	end
+	perkLabel.Font = Enum.Font.GothamBold
+	perkLabel.TextSize = 12
+	perkLabel.ZIndex = 31
+	perkLabel.Parent = banner
+
+	-- Animate In (Slides down with bouncy spring)
+	TweenService:Create(banner, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.13, 0),
+	}):Play()
+
+	-- Lingers for 4.5s then slides back out
+	task.delay(4.5, function()
+		if banner and banner.Parent then
+			local outTween = TweenService:Create(banner, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.5, 0, -0.2, 0),
+			})
+			outTween:Play()
+			outTween.Completed:Connect(function()
+				banner:Destroy()
+			end)
+		end
+	end)
+end
+
+-- Mastery Skill Tree Main Dashboard Modal
+openMasteryModal = function(isRefresh: boolean?)
+	if isRefresh ~= true and activeModal and activeModal.Name == "MasteryModal" then
+		closeModal()
+		return
+	end
+
+	closeModal()
+	closeDialogue()
+
+	if not screenGui then return end
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		end
+	end
+
+	if not cachedData then return end
+
+	cachedData.Mastery = cachedData.Mastery or {
+		Eggs = 0,
+		BossSlayer = 0,
+		Mining = 0,
+		PetFusion = 0,
+		Rebirth = 0,
+	}
+
+	-- Calculate Total Mastery Level
+	local totalLevel = 0
+	for _, tId in ipairs(MasteryConfig.TRACK_ORDER) do
+		local xp = cachedData.Mastery[tId] or 0
+		local lvl, _, _, _ = MasteryConfig.getLevelFromXp(xp)
+		totalLevel += lvl
+	end
+	local maxTotalLevel = #MasteryConfig.TRACK_ORDER * MasteryConfig.MAX_LEVEL
+
+	local modal = createStyledFrame(screenGui, "MasteryModal", UDim2.new(0, 680, 0, 560), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 16, 24))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	-- Modal Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 36)
+	title.Position = UDim2.new(0, 0, 0, 8)
+	title.BackgroundTransparency = 1
+	title.Text = "📜 MASTERY SKILL TREE 📜"
+	title.TextColor3 = Color3.fromRGB(255, 205, 50)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 22
+	title.Parent = modal
+
+	-- Total Level Pill Badge
+	local pill = Instance.new("Frame")
+	pill.Size = UDim2.new(0, 200, 0, 24)
+	pill.Position = UDim2.new(0.5, 0, 0, 44)
+	pill.AnchorPoint = Vector2.new(0.5, 0)
+	pill.BackgroundColor3 = Color3.fromRGB(32, 26, 44)
+	pill.BorderSizePixel = 0
+	pill.Parent = modal
+
+	local pCorner = Instance.new("UICorner")
+	pCorner.CornerRadius = UDim.new(1, 0)
+	pCorner.Parent = pill
+
+	local pStroke = Instance.new("UIStroke")
+	pStroke.Color = Color3.fromRGB(255, 205, 50)
+	pStroke.Thickness = 1.5
+	pStroke.Parent = pill
+
+	local pillText = Instance.new("TextLabel")
+	pillText.Size = UDim2.new(1, 0, 1, 0)
+	pillText.BackgroundTransparency = 1
+	pillText.Text = string.format("⭐ TOTAL LEVEL: %d / %d", totalLevel, maxTotalLevel)
+	pillText.TextColor3 = Color3.fromRGB(255, 230, 120)
+	pillText.Font = Enum.Font.GothamBlack
+	pillText.TextSize = 11
+	pillText.Parent = pill
+
+	-- Subtitle Info Label
+	local sub = Instance.new("TextLabel")
+	sub.Size = UDim2.new(1, -40, 0, 18)
+	sub.Position = UDim2.new(0, 20, 0, 72)
+	sub.BackgroundTransparency = 1
+	sub.Text = "Perform activities to earn Mastery XP, level up disciplines, and unlock permanent perks!"
+	sub.TextColor3 = Color3.fromRGB(180, 185, 205)
+	sub.Font = Enum.Font.GothamMedium
+	sub.TextSize = 11.5
+	sub.Parent = modal
+
+	-- Scrollable List of Mastery Cards
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "MasteryScroll"
+	scroll.Size = UDim2.new(1, -32, 1, -104)
+	scroll.Position = UDim2.new(0, 16, 0, 96)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 5
+	scroll.ScrollBarImageColor3 = Color3.fromRGB(120, 100, 160)
+	scroll.CanvasSize = UDim2.new(0, 0, 0, #MasteryConfig.TRACK_ORDER * 86 + 10)
+	scroll.Parent = modal
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.Padding = UDim.new(0, 8)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Parent = scroll
+
+	for orderIdx, trackId in ipairs(MasteryConfig.TRACK_ORDER) do
+		local trackDef = MasteryConfig.TRACKS[trackId]
+		local totalXp = cachedData.Mastery[trackId] or 0
+		local level, xpIntoLevel, xpNeeded, ratio = MasteryConfig.getLevelFromXp(totalXp)
+		local nextMilestone = MasteryConfig.getNextMilestone(trackId, level)
+
+		local card = Instance.new("Frame")
+		card.Name = "Card_" .. trackId
+		card.Size = UDim2.new(1, -8, 0, 80)
+		card.BackgroundColor3 = Color3.fromRGB(25, 22, 34)
+		card.BorderSizePixel = 0
+		card.LayoutOrder = orderIdx
+		card.Parent = scroll
+
+		local cCorner = Instance.new("UICorner")
+		cCorner.CornerRadius = UDim.new(0, 12)
+		cCorner.Parent = card
+
+		local cStroke = Instance.new("UIStroke")
+		cStroke.Color = trackDef.color
+		cStroke.Thickness = 1.5
+		cStroke.Transparency = 0.35
+		cStroke.Parent = card
+
+		-- Icon Badge (Left)
+		local iconFrame = Instance.new("Frame")
+		iconFrame.Size = UDim2.new(0, 52, 0, 52)
+		iconFrame.Position = UDim2.new(0, 12, 0.5, 0)
+		iconFrame.AnchorPoint = Vector2.new(0, 0.5)
+		iconFrame.BackgroundColor3 = trackDef.color
+		iconFrame.BackgroundTransparency = 0.8
+		iconFrame.BorderSizePixel = 0
+		iconFrame.Parent = card
+
+		local iCorner = Instance.new("UICorner")
+		iCorner.CornerRadius = UDim.new(0, 12)
+		iCorner.Parent = iconFrame
+
+		local iStroke = Instance.new("UIStroke")
+		iStroke.Color = trackDef.color
+		iStroke.Thickness = 1.5
+		iStroke.Parent = iconFrame
+
+		local iconLabel = Instance.new("TextLabel")
+		iconLabel.Size = UDim2.new(1, 0, 1, 0)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Text = trackDef.icon
+		iconLabel.TextSize = 26
+		iconLabel.Parent = iconFrame
+
+		-- Title & Level Row
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(0, 150, 0, 20)
+		nameLabel.Position = UDim2.new(0, 74, 0, 10)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = trackDef.name
+		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nameLabel.Font = Enum.Font.GothamBlack
+		nameLabel.TextSize = 15
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nameLabel.Parent = card
+
+		-- Level Pill
+		local lvlPill = Instance.new("Frame")
+		lvlPill.Size = UDim2.new(0, 64, 0, 18)
+		lvlPill.Position = UDim2.new(0, 230, 0, 11)
+		lvlPill.BackgroundColor3 = trackDef.color
+		lvlPill.BackgroundTransparency = 0.2
+		lvlPill.BorderSizePixel = 0
+		lvlPill.Parent = card
+
+		local lCorner = Instance.new("UICorner")
+		lCorner.CornerRadius = UDim.new(1, 0)
+		lCorner.Parent = lvlPill
+
+		local lvlText = Instance.new("TextLabel")
+		lvlText.Size = UDim2.new(1, 0, 1, 0)
+		lvlText.BackgroundTransparency = 1
+		lvlText.Text = string.format("LVL %d", level)
+		lvlText.TextColor3 = Color3.fromRGB(255, 255, 255)
+		lvlText.Font = Enum.Font.GothamBlack
+		lvlText.TextSize = 10
+		lvlText.Parent = lvlPill
+
+		-- Action Hint text
+		local hintLabel = Instance.new("TextLabel")
+		hintLabel.Size = UDim2.new(0, 340, 0, 14)
+		hintLabel.Position = UDim2.new(0, 74, 0, 32)
+		hintLabel.BackgroundTransparency = 1
+		hintLabel.Text = trackDef.actionHint
+		hintLabel.TextColor3 = Color3.fromRGB(160, 170, 195)
+		hintLabel.Font = Enum.Font.GothamMedium
+		hintLabel.TextSize = 10
+		hintLabel.TextXAlignment = Enum.TextXAlignment.Left
+		hintLabel.Parent = card
+
+		-- Progress Bar Track
+		local barTrack = Instance.new("Frame")
+		barTrack.Name = "BarTrack"
+		barTrack.Size = UDim2.new(0.55, 0, 0, 16)
+		barTrack.Position = UDim2.new(0, 74, 0, 50)
+		barTrack.BackgroundColor3 = Color3.fromRGB(36, 32, 48)
+		barTrack.BorderSizePixel = 0
+		barTrack.Parent = card
+
+		local bCorner = Instance.new("UICorner")
+		bCorner.CornerRadius = UDim.new(0, 8)
+		bCorner.Parent = barTrack
+
+		local barFill = Instance.new("Frame")
+		barFill.Name = "BarFill"
+		barFill.Size = UDim2.new(ratio, 0, 1, 0)
+		barFill.BackgroundColor3 = trackDef.color
+		barFill.BorderSizePixel = 0
+		barFill.Parent = barTrack
+
+		local fCorner = Instance.new("UICorner")
+		fCorner.CornerRadius = UDim.new(0, 8)
+		fCorner.Parent = barFill
+
+		-- XP Label
+		local xpLabel = Instance.new("TextLabel")
+		xpLabel.Size = UDim2.new(1, 0, 1, 0)
+		xpLabel.BackgroundTransparency = 1
+		if level >= MasteryConfig.MAX_LEVEL then
+			xpLabel.Text = "⭐ MAX LEVEL 50 ⭐"
+		else
+			xpLabel.Text = string.format("%s / %s XP (%d%%)", FormatNumber.formatCompact(xpIntoLevel), FormatNumber.formatCompact(xpNeeded), math.floor(ratio * 100))
+		end
+		xpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		xpLabel.Font = Enum.Font.GothamBold
+		xpLabel.TextSize = 10
+		xpLabel.TextStrokeTransparency = 0.3
+		xpLabel.Parent = barTrack
+
+		-- Next Milestone Preview & Road map Button on Right Side
+		local nextBox = Instance.new("Frame")
+		nextBox.Size = UDim2.new(0, 150, 0, 36)
+		nextBox.Position = UDim2.new(1, -162, 0, 10)
+		nextBox.BackgroundColor3 = Color3.fromRGB(34, 30, 46)
+		nextBox.BorderSizePixel = 0
+		nextBox.Parent = card
+
+		local nbCorner = Instance.new("UICorner")
+		nbCorner.CornerRadius = UDim.new(0, 8)
+		nbCorner.Parent = nextBox
+
+		local nextTitle = Instance.new("TextLabel")
+		nextTitle.Size = UDim2.new(1, -8, 0, 14)
+		nextTitle.Position = UDim2.new(0, 4, 0, 3)
+		nextTitle.BackgroundTransparency = 1
+		nextTitle.TextColor3 = if nextMilestone then Color3.fromRGB(255, 215, 80) else Color3.fromRGB(80, 240, 150)
+		nextTitle.Font = Enum.Font.GothamBlack
+		nextTitle.TextSize = 9.5
+		nextTitle.TextXAlignment = Enum.TextXAlignment.Left
+		nextTitle.Text = if nextMilestone then string.format("NEXT: LVL %d PERK", nextMilestone.level) else "🏆 FULLY MASTERED!"
+		nextTitle.Parent = nextBox
+
+		local nextDesc = Instance.new("TextLabel")
+		nextDesc.Size = UDim2.new(1, -8, 0, 14)
+		nextDesc.Position = UDim2.new(0, 4, 0, 18)
+		nextDesc.BackgroundTransparency = 1
+		nextDesc.TextColor3 = Color3.fromRGB(200, 205, 220)
+		nextDesc.Font = Enum.Font.GothamMedium
+		nextDesc.TextSize = 9
+		nextDesc.TextXAlignment = Enum.TextXAlignment.Left
+		nextDesc.Text = if nextMilestone then nextMilestone.name else "+100% Boosts Active"
+		nextDesc.Parent = nextBox
+
+		-- "Milestones" Roadmap Button
+		local roadmapBtn = Instance.new("TextButton")
+		roadmapBtn.Size = UDim2.new(0, 150, 0, 22)
+		roadmapBtn.Position = UDim2.new(1, -162, 0, 50)
+		roadmapBtn.BackgroundColor3 = trackDef.color
+		roadmapBtn.BackgroundTransparency = 0.15
+		roadmapBtn.Text = "🌟 View Milestones"
+		roadmapBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		roadmapBtn.Font = Enum.Font.GothamBlack
+		roadmapBtn.TextSize = 10.5
+		roadmapBtn.BorderSizePixel = 0
+		roadmapBtn.Parent = card
+
+		local rCorner = Instance.new("UICorner")
+		rCorner.CornerRadius = UDim.new(0, 6)
+		rCorner.Parent = roadmapBtn
+
+		roadmapBtn.MouseButton1Click:Connect(function()
+			openTrackMilestonesModal(trackId)
+		end)
+	end
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -42, 0, 8)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	-- Animate In
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
+-- Detailed 50-Level Milestone Roadmap for a Specific Track
+openTrackMilestonesModal = function(trackId: string)
+	closeModal()
+	if not screenGui or not cachedData then return end
+
+	local trackDef = MasteryConfig.TRACKS[trackId]
+	if not trackDef then return end
+
+	cachedData.Mastery = cachedData.Mastery or {}
+	local totalXp = cachedData.Mastery[trackId] or 0
+	local currentLvl, _, _, _ = MasteryConfig.getLevelFromXp(totalXp)
+
+	local modal = createStyledFrame(screenGui, "TrackMilestoneModal", UDim2.new(0, 600, 0, 500), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 16, 24))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local header = Instance.new("TextLabel")
+	header.Size = UDim2.new(1, 0, 0, 36)
+	header.Position = UDim2.new(0, 0, 0, 8)
+	header.BackgroundTransparency = 1
+	header.Text = string.format("%s %s MILESTONES %s", trackDef.icon, trackDef.name:upper(), trackDef.icon)
+	header.TextColor3 = trackDef.color
+	header.Font = Enum.Font.GothamBlack
+	header.TextSize = 20
+	header.Parent = modal
+
+	local sub = Instance.new("TextLabel")
+	sub.Size = UDim2.new(1, 0, 0, 18)
+	sub.Position = UDim2.new(0, 0, 0, 42)
+	sub.BackgroundTransparency = 1
+	sub.Text = string.format("Current Progress: Level %d / %d • %s", currentLvl, MasteryConfig.MAX_LEVEL, trackDef.description)
+	sub.TextColor3 = Color3.fromRGB(190, 195, 215)
+	sub.Font = Enum.Font.GothamMedium
+	sub.TextSize = 11
+	sub.Parent = modal
+
+	-- Back Button to return to main Mastery modal
+	local backBtn = Instance.new("TextButton")
+	backBtn.Size = UDim2.new(0, 90, 0, 28)
+	backBtn.Position = UDim2.new(0, 16, 0, 12)
+	backBtn.BackgroundColor3 = Color3.fromRGB(40, 36, 54)
+	backBtn.Text = "← Back"
+	backBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	backBtn.Font = Enum.Font.GothamBold
+	backBtn.TextSize = 12
+	backBtn.BorderSizePixel = 0
+	backBtn.Parent = modal
+
+	local bckCorner = Instance.new("UICorner")
+	bckCorner.CornerRadius = UDim.new(0, 6)
+	bckCorner.Parent = backBtn
+
+	backBtn.MouseButton1Click:Connect(function()
+		openMasteryModal(false)
+	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -42, 0, 8)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(1, 0)
+	cCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	-- Scrollable milestone list
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(1, -32, 1, -74)
+	scroll.Position = UDim2.new(0, 16, 0, 66)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 5
+	scroll.ScrollBarImageColor3 = trackDef.color
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 5 * 76 + 10)
+	scroll.Parent = modal
+
+	local sList = Instance.new("UIListLayout")
+	sList.Padding = UDim.new(0, 8)
+	sList.SortOrder = Enum.SortOrder.LayoutOrder
+	sList.Parent = scroll
+
+	local milestoneLevels = { 5, 10, 20, 35, 50 }
+	for idx, ml in ipairs(milestoneLevels) do
+		local mDef = trackDef.milestones[ml]
+		if not mDef then continue end
+
+		local isUnlocked = (currentLvl >= ml)
+
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -8, 0, 68)
+		row.BackgroundColor3 = if isUnlocked then Color3.fromRGB(28, 36, 32) else Color3.fromRGB(24, 20, 30)
+		row.BorderSizePixel = 0
+		row.LayoutOrder = idx
+		row.Parent = scroll
+
+		local rCorner = Instance.new("UICorner")
+		rCorner.CornerRadius = UDim.new(0, 10)
+		rCorner.Parent = row
+
+		local rStroke = Instance.new("UIStroke")
+		rStroke.Color = if isUnlocked then Color3.fromRGB(0, 230, 120) else Color3.fromRGB(60, 50, 75)
+		rStroke.Thickness = 1.5
+		rStroke.Parent = row
+
+		-- Status Icon Badge (Checkmark or Lock)
+		local statusIcon = Instance.new("TextLabel")
+		statusIcon.Size = UDim2.new(0, 44, 0, 44)
+		statusIcon.Position = UDim2.new(0, 12, 0.5, 0)
+		statusIcon.AnchorPoint = Vector2.new(0, 0.5)
+		statusIcon.BackgroundTransparency = 1
+		statusIcon.Text = if isUnlocked then "✅" else "🔒"
+		statusIcon.TextSize = 24
+		statusIcon.Parent = row
+
+		-- Level & Name
+		local mTitle = Instance.new("TextLabel")
+		mTitle.Size = UDim2.new(0.6, 0, 0, 20)
+		mTitle.Position = UDim2.new(0, 64, 0, 10)
+		mTitle.BackgroundTransparency = 1
+		mTitle.Text = string.format("Level %d: %s %s", ml, mDef.icon, mDef.name)
+		mTitle.TextColor3 = if isUnlocked then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(170, 165, 185)
+		mTitle.Font = Enum.Font.GothamBlack
+		mTitle.TextSize = 14
+		mTitle.TextXAlignment = Enum.TextXAlignment.Left
+		mTitle.Parent = row
+
+		-- Description
+		local mDesc = Instance.new("TextLabel")
+		mDesc.Size = UDim2.new(0.85, 0, 0, 28)
+		mDesc.Position = UDim2.new(0, 64, 0, 32)
+		mDesc.BackgroundTransparency = 1
+		mDesc.Text = mDef.description
+		mDesc.TextColor3 = if isUnlocked then Color3.fromRGB(0, 240, 150) else Color3.fromRGB(130, 125, 145)
+		mDesc.Font = Enum.Font.GothamMedium
+		mDesc.TextSize = 11.5
+		mDesc.TextXAlignment = Enum.TextXAlignment.Left
+		mDesc.Parent = row
+
+		-- Status pill on right
+		local statusPill = Instance.new("Frame")
+		statusPill.Size = UDim2.new(0, 95, 0, 24)
+		statusPill.Position = UDim2.new(1, -107, 0.5, 0)
+		statusPill.AnchorPoint = Vector2.new(0.5, 0.5)
+		statusPill.BackgroundColor3 = if isUnlocked then Color3.fromRGB(0, 180, 100) else Color3.fromRGB(45, 40, 58)
+		statusPill.BorderSizePixel = 0
+		statusPill.Parent = row
+
+		local spCorner = Instance.new("UICorner")
+		spCorner.CornerRadius = UDim.new(1, 0)
+		spCorner.Parent = statusPill
+
+		local spText = Instance.new("TextLabel")
+		spText.Size = UDim2.new(1, 0, 1, 0)
+		spText.BackgroundTransparency = 1
+		spText.Text = if isUnlocked then "UNLOCKED" else string.format("LOCKED (%d)", ml)
+		spText.TextColor3 = Color3.fromRGB(255, 255, 255)
+		spText.Font = Enum.Font.GothamBlack
+		spText.TextSize = 10
+		spText.Parent = statusPill
+	end
+
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
 local function openDialogueModal(npcName: string)
 	print("🗣️ [UIController] openDialogueModal initiated for " .. tostring(npcName or "Barnaby"))
 	closeModal()
@@ -4498,6 +5104,9 @@ function UIController.buildHUD()
 	createMenuButton("ShopBtn", "🛒 Shop", Color3.fromRGB(220, 100, 30), openEquipmentShopModal)
 	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
+	createMenuButton("MasteryBtn", "📜 Mastery", Color3.fromRGB(255, 170, 0), function()
+		openMasteryModal()
+	end)
 	createMenuButton("IndexBtn", "📖 Pet Index", Color3.fromRGB(0, 165, 215), function()
 		openPetIndexModal()
 	end)
@@ -4523,6 +5132,26 @@ function UIController.buildHUD()
 			showFloatingPopup("+$10,000,000!", Color3.fromRGB(255, 215, 0), -35)
 			showFloatingPopup("+50,000 💎!", Color3.fromRGB(0, 255, 220), 35)
 		end
+	end)
+
+	-- DEV TESTING MASTERY BUTTON (+1,000 XP to all Masteries on Click, +5,000 XP on Right Click)
+	local devMasteryBtn = createMenuButton("DevMasteryBtn", "📜 +1k XP (Dev)", Color3.fromRGB(255, 140, 20), function()
+		local devMasteryFn = Remotes.getFunction("DevAddMasteryXP")
+		for _, trackId in ipairs(MasteryConfig.TRACK_ORDER) do
+			pcall(function()
+				devMasteryFn:InvokeServer(trackId, 1000)
+			end)
+		end
+		showFloatingPopup("📜 +1,000 Mastery XP (All Tracks)!", Color3.fromRGB(255, 215, 80), 0)
+	end)
+	devMasteryBtn.MouseButton2Click:Connect(function()
+		local devMasteryFn = Remotes.getFunction("DevAddMasteryXP")
+		for _, trackId in ipairs(MasteryConfig.TRACK_ORDER) do
+			pcall(function()
+				devMasteryFn:InvokeServer(trackId, 5000)
+			end)
+		end
+		showFloatingPopup("📜 +5,000 Mastery XP (All Tracks)!", Color3.fromRGB(255, 180, 40), 0)
 	end)
 
 	-- DEV TESTING REBIRTH CHEAT BUTTON (+1 on Left Click, +5 on Right Click)
@@ -4691,6 +5320,12 @@ function UIController.buildHUD()
 			elseif not activeModal and not activeDialogue then
 				openUpgradeTreeModal()
 			end
+		elseif input.KeyCode == Enum.KeyCode.M then
+			if activeModal and activeModal.Name == "MasteryModal" then
+				closeModal()
+			elseif not activeModal and not activeDialogue then
+				openMasteryModal()
+			end
 		end
 	end)
 
@@ -4744,6 +5379,15 @@ function UIController.buildHUD()
 	local openFusionEvent = Remotes.getEvent("OpenFusionModal")
 	openFusionEvent.OnClientEvent:Connect(function()
 		openFusionModal()
+	end)
+
+	-- Real-Time Mastery Level-Up Celebrations
+	local masteryEvent = Remotes.getEvent("MasteryLevelUp")
+	masteryEvent.OnClientEvent:Connect(function(trackId: string, newLevel: number, milestone: any)
+		playMasteryCelebration(trackId, newLevel, milestone)
+		if activeModal and activeModal.Name == "MasteryModal" then
+			openMasteryModal(true)
+		end
 	end)
 
 	-- Sync VIP Status in Real-Time

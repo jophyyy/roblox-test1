@@ -906,14 +906,24 @@ function BossService.attackBoss(player: Player, targetBossId: string?): (boolean
 		DataService.addGems(player, clickGems)
 	end
 
-	-- Compute Damage using Player's Power, Pickaxe Trait, Trail Boss Multiplier, and Skill Tree Multiplier
+	-- Compute Damage using Player's Power, Pickaxe Trait, Trail Boss Multiplier, Skill Tree, and Mastery
 	local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 	local trailBossMult = TrailConfig.getBossMultiplier(data.EquippedTrail)
 	local skillBossMult = SkillTreeConfig.getTotalBossMult(data.UnlockedSkills)
 
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	local masteryBossMult = if okMastery and MasteryService then MasteryService.getBossDamageMultiplier(player) else 1.0
+
 	local playerPower = math.max(1, data.Power or 10)
 	local damage, isCrit, trait = BossConfig.calculateDamage(playerPower, data.EquippedShovel, rebirthMult, petMult)
-	damage = math.max(1, math.floor(damage * trailBossMult * skillBossMult))
+	damage = math.max(1, math.floor(damage * trailBossMult * skillBossMult * masteryBossMult))
+
+	-- Award Boss Slayer Hit XP
+	if okMastery and MasteryService then
+		MasteryService.addXP(player, "BossSlayer", 2)
+	end
 
 	-- Apply damage
 	chosenState.currentHealth = math.max(0, chosenState.currentHealth - damage)
@@ -928,27 +938,28 @@ function BossService.attackBoss(player: Player, targetBossId: string?): (boolean
 
 	-- Execute Special Pickaxe Combat Effects
 	local effectTag = if isCrit then "CRIT!" else nil
-	if trait.specialEffect == "Stun" then
-		if math.random() <= 0.15 and not chosenState.isStunned then
-			chosenState.isStunned = true
-			effectTag = "STAGGER!"
-			task.delay(0.8, function()
-				chosenState.isStunned = false
-			end)
-		end
-	elseif trait.specialEffect == "GoldRush" then
-		DataService.addCash(player, 250)
-		effectTag = "+$250!"
-	elseif trait.specialEffect == "VoidSiphon" then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum and hum.Health > 0 then
-			hum.Health = math.min(hum.MaxHealth, hum.Health + 10)
-		end
-		effectTag = "+10 HP!"
-	elseif trait.specialEffect == "MoltenBurn" then
-		effectTag = "BURN!"
-		task.delay(0.5, function()
-			if chosenState.isAlive and chosenState.currentHealth > 0 then
+	if trait.specialEffect == "Stun" and isCrit then
+		chosenState.isStunned = true
+		effectTag = "⚡ STUNNED!"
+		task.delay(1.5, function()
+			chosenState.isStunned = false
+		end)
+	elseif trait.specialEffect == "GoldRush" and isCrit then
+		local bonusGems = math.random(15, 45)
+		DataService.addGems(player, bonusGems)
+		effectTag = string.format("+%d 💎 RUSH!", bonusGems)
+	elseif trait.specialEffect == "ArmorPierce" then
+		damage = math.floor(damage * 1.35)
+	elseif trait.specialEffect == "VoidSiphon" and isCrit then
+		local siphonPower = math.max(5, math.floor(playerPower * 0.15))
+		DataService.addPower(player, siphonPower)
+		effectTag = string.format("+%d POWER SIPHON!", siphonPower)
+	elseif trait.specialEffect == "MoltenBurn" and isCrit then
+		effectTag = "🔥 BURN TICK!"
+		task.spawn(function()
+			for _ = 1, 3 do
+				task.wait(0.6)
+				if not chosenState.isAlive then break end
 				local tickDmg = math.max(1, math.floor(damage * 0.12))
 				chosenState.currentHealth = math.max(0, chosenState.currentHealth - tickDmg)
 				local damagedEvent = Remotes.getEvent("BossDamaged")
@@ -985,11 +996,22 @@ function BossService.onBossDefeated(killer: Player, state: ActiveBossState)
 
 	print(string.format("🏆 [BossService] %s defeated %s!", killer.Name, state.def.name))
 
-	local cashReward = state.def.rewardCash
-	local gemReward = state.def.rewardGems
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	local masteryRewardsMult = if okMastery and MasteryService then MasteryService.getBossRewardsMultiplier(killer) else 1.0
+
+	local cashReward = math.floor(state.def.rewardCash * masteryRewardsMult)
+	local gemReward = math.floor(state.def.rewardGems * masteryRewardsMult)
 
 	DataService.addCash(killer, cashReward)
 	DataService.addGems(killer, gemReward)
+
+	-- Award Boss Slayer Kill XP (+300 for Golem, +600 for Void Harbinger)
+	if okMastery and MasteryService then
+		local killXP = if state.def.id == "VoidHarbinger" then 600 else 300
+		MasteryService.addXP(killer, "BossSlayer", killXP)
+	end
 
 	-- Broadcast defeat celebration event
 	local defeatedEvent = Remotes.getEvent("BossDefeated")

@@ -13,7 +13,12 @@ function RebirthService.canRebirth(player: Player): (boolean, number)
 	local data = DataService.get(player)
 	if not data then return false, 0 end
 
-	local cost = RebirthConfig.getCostForRebirth(data.Rebirths)
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+	local discount = if okMastery and MasteryService then MasteryService.getRebirthCostDiscount(player) else 0
+	local baseCost = RebirthConfig.getCostForRebirth(data.Rebirths)
+	local cost = math.max(1, math.floor(baseCost * (1 - discount)))
 	return (data.Cash >= cost), cost
 end
 
@@ -21,17 +26,39 @@ function RebirthService.rebirth(player: Player): boolean
 	local data = DataService.get(player)
 	if not data then return false end
 
-	local cost = RebirthConfig.getCostForRebirth(data.Rebirths)
-	if data.Cash < cost then
+	local canDo, cost = RebirthService.canRebirth(player)
+	if not canDo or data.Cash < cost then
 		return false
 	end
 
+	local okMastery, MasteryService = pcall(function()
+		return require(script.Parent.MasteryService)
+	end)
+
 	-- Execute rebirth
 	data.Rebirths += 1
-	data.Cash = GameConfig.STARTER_CASH
-	data.Power = GameConfig.STARTER_POWER
+
+	local starterCash = GameConfig.STARTER_CASH
+	local starterPower = GameConfig.STARTER_POWER
+	if okMastery and MasteryService then
+		local rebirthLvl = MasteryService.getMasteryLevel(player, "Rebirth")
+		if rebirthLvl >= 5 then
+			starterCash = 5000
+			starterPower = 500
+		end
+	end
+
+	data.Cash = starterCash
+	data.Power = starterPower
 	
 	local bonusGems = RebirthConfig.getRewardGems(data.Rebirths)
+	if okMastery and MasteryService then
+		local rebirthLvl = MasteryService.getMasteryLevel(player, "Rebirth")
+		if rebirthLvl >= 35 then
+			bonusGems = math.floor(bonusGems * 1.5)
+		end
+		MasteryService.addXP(player, "Rebirth", 250)
+	end
 	data.Gems += bonusGems
 
 	-- Update leaderstats

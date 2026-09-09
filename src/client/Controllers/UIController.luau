@@ -38,6 +38,7 @@ local multiplierBadge: TextLabel
 local vipBadge: TextLabel? = nil
 
 local activeModal: Frame? = nil
+local activeModalUpdater: (() -> ())? = nil
 local activeDialogue: Frame? = nil
 local currentShopTab = "Shovel"
 local isSpinningWheel = false
@@ -130,6 +131,23 @@ function UIController.updateHUD()
 		local elapsed = now - lastSpin
 		local hasFree = (cachedData.FreeSpins and cachedData.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
 		wheelFreeBadge.Visible = hasFree
+	end
+
+	-- Auto-update whichever modal is currently active with zero latency
+	if activeModalUpdater then
+		local ok, err = pcall(activeModalUpdater)
+		if not ok then
+			warn("[UIController] activeModalUpdater error:", err)
+		end
+	end
+end
+
+function UIController.refreshActiveModal()
+	if activeModalUpdater then
+		local ok, err = pcall(activeModalUpdater)
+		if not ok then
+			warn("[UIController] activeModalUpdater error:", err)
+		end
 	end
 end
 
@@ -347,6 +365,7 @@ end
 
 local function closeModal()
 	closeDialogue()
+	activeModalUpdater = nil
 	if activeModal then
 		local target = activeModal
 		local tween = TweenService:Create(target, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
@@ -362,9 +381,16 @@ end
 
 -- Rebirth Modal
 local function openRebirthModal(isRefresh: boolean?)
-	if isRefresh ~= true and activeModal and activeModal.Name == "RebirthModal" then
-		closeModal()
-		return
+	if activeModal and activeModal.Name == "RebirthModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
 	end
 
 	closeModal()
@@ -387,6 +413,7 @@ local function openRebirthModal(isRefresh: boolean?)
 	local nextMult = RebirthConfig.getMultiplier(currentRebirths + 1)
 	local currentCash = cachedData.Cash or 0
 	local progressPct = math.clamp(currentCash / math.max(1, cost), 0, 1)
+	local canAfford = currentCash >= cost
 
 	local modal = createStyledFrame(screenGui, "RebirthModal", UDim2.new(0, 440, 0, 430), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(20, 22, 30))
 	modal.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -459,12 +486,11 @@ local function openRebirthModal(isRefresh: boolean?)
 	barText.Parent = barBg
 
 	-- Rebirth Button
-	local canAfford = currentCash >= cost
 	local rebirthBtn = Instance.new("TextButton")
 	rebirthBtn.Size = UDim2.new(0.9, 0, 0, 50)
 	rebirthBtn.Position = UDim2.new(0.05, 0, 0, 235)
 	rebirthBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 200, 100) else Color3.fromRGB(80, 85, 95)
-	rebirthBtn.Text = if canAfford then "⚡ REBIRTH NOW! (+100 💎) ⚡" else "NEED MORE CASH"
+	rebirthBtn.Text = if canAfford then string.format("⚡ REBIRTH NOW! (+%d 💎) ⚡", rewardGems) else "NEED MORE CASH"
 	rebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	rebirthBtn.Font = Enum.Font.GothamBlack
 	rebirthBtn.TextSize = 16
@@ -567,6 +593,50 @@ local function openRebirthModal(isRefresh: boolean?)
 
 	closeBtn.MouseButton1Click:Connect(closeModal)
 
+	-- In-place auto-updater for RebirthModal
+	local function updateRebirthModalState()
+		if not activeModal or activeModal ~= modal then return end
+		if not cachedData then return end
+
+		currentRebirths = cachedData.Rebirths or 0
+		cost = RebirthConfig.getCostForRebirth(currentRebirths)
+		rewardGems = RebirthConfig.getRewardGems(currentRebirths)
+		currentMult = RebirthConfig.getMultiplier(currentRebirths)
+		nextMult = RebirthConfig.getMultiplier(currentRebirths + 1)
+		currentCash = cachedData.Cash or 0
+		progressPct = math.clamp(currentCash / math.max(1, cost), 0, 1)
+		canAfford = currentCash >= cost
+
+		info.Text = string.format(
+			"Reset your Cash in exchange for permanent cosmic power!\n\n" ..
+			"• Current Multiplier: %.1fx\n" ..
+			"• Next Multiplier: %.1fx (+50%% Cash & Mine Boost!)\n" ..
+			"• Bonus Gems: +%d Gems 💎\n" ..
+			"• Required Cash: $%s",
+			currentMult,
+			nextMult,
+			rewardGems,
+			FormatNumber.formatComma(cost)
+		)
+
+		barFill.Size = UDim2.new(progressPct, 0, 1, 0)
+		barFill.BackgroundColor3 = if progressPct >= 1 then Color3.fromRGB(0, 230, 118) else Color3.fromRGB(255, 170, 0)
+		barText.Text = string.format("$%s / $%s (%d%%)", FormatNumber.formatCompact(currentCash), FormatNumber.formatCompact(cost), math.floor(progressPct * 100))
+
+		rebirthBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 200, 100) else Color3.fromRGB(80, 85, 95)
+		rebirthBtn.Text = if canAfford then string.format("⚡ REBIRTH NOW! (+%d 💎) ⚡", rewardGems) else "NEED MORE CASH"
+
+		feedbackLabel.Text = if canAfford then "Ready to transcend!" else string.format("Need $%s more cash to Rebirth!", FormatNumber.formatCompact(cost - currentCash))
+		feedbackLabel.TextColor3 = if canAfford then Color3.fromRGB(0, 255, 170) else Color3.fromRGB(255, 120, 120)
+	end
+
+	activeModalUpdater = updateRebirthModalState
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == updateRebirthModalState then
+			activeModalUpdater = nil
+		end
+	end)
+
 	-- Animate In
 	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -582,6 +652,13 @@ local openFusionModal: (initialMode: ("Golden" | "Rainbow")?, isRefresh: boolean
 openPetModal = function(isRefresh: boolean?)
 	if isRefresh ~= true and activeModal and activeModal.Name == "PetModal" then
 		closeModal()
+		return
+	end
+
+	if isRefresh == true and activeModal and activeModal.Name == "PetModal" then
+		if activeModalUpdater then
+			activeModalUpdater()
+		end
 		return
 	end
 
@@ -691,6 +768,7 @@ openPetModal = function(isRefresh: boolean?)
 	eggSecTitle.TextSize = 12
 	eggSecTitle.Parent = eggSection
 
+	local eggButtons: { [string]: TextButton } = {}
 	local eggList = {"BasicEgg", "CosmicEgg", "MagmaEgg"}
 	for i, eggId in ipairs(eggList) do
 		local eggDef = PetConfig.EGGS[eggId]
@@ -699,12 +777,13 @@ openPetModal = function(isRefresh: boolean?)
 			eggBtn.Size = UDim2.new(0.306, 0, 0, 62)
 			eggBtn.Position = UDim2.new(0.02 + (i - 1) * 0.327, 0, 0, 26)
 			eggBtn.BackgroundColor3 = if eggId == "MagmaEgg" then Color3.fromRGB(60, 32, 28) else Color3.fromRGB(36, 44, 62)
-			eggBtn.Text = eggDef.name .. "\n💎 " .. eggDef.cost .. " Gems"
+			eggBtn.Text = eggDef.name .. "\n💎 " .. FormatNumber.formatCompact(eggDef.cost) .. " Gems"
 			eggBtn.TextColor3 = if eggId == "MagmaEgg" then Color3.fromRGB(255, 150, 60) else Color3.fromRGB(255, 255, 255)
 			eggBtn.Font = Enum.Font.GothamBold
 			eggBtn.TextSize = 12
 			eggBtn.BorderSizePixel = 0
 			eggBtn.Parent = eggSection
+			eggButtons[eggId] = eggBtn
 
 			local corner = Instance.new("UICorner")
 			corner.CornerRadius = UDim.new(0, 6)
@@ -717,47 +796,13 @@ openPetModal = function(isRefresh: boolean?)
 				if ok and firstId and PetConfig.PETS[firstId] then
 					eggBtn.Text = "HATCHED!\n" .. PetConfig.PETS[firstId].name
 					task.wait(1.2)
-					openPetModal(true) -- refresh
+					if activeModal and activeModal.Name == "PetModal" and activeModalUpdater then
+						activeModalUpdater()
+					end
 				end
 			end)
 		end
 	end
-
-	-- Prepare Owned Pets List & Count
-	type OwnedPetEntry = {
-		id: string,
-		count: number,
-		pet: PetConfig.PetDef,
-		isEquipped: boolean,
-	}
-
-	local ownedList: { OwnedPetEntry } = {}
-	local equippedCount = 0
-	for petId, count in cachedData.OwnedPets or {} do
-		if count > 0 and PetConfig.PETS[petId] then
-			local isEquipped = (cachedData.EquippedPets and cachedData.EquippedPets[petId] == true) or false
-			if isEquipped then
-				equippedCount += 1
-			end
-			table.insert(ownedList, {
-				id = petId,
-				count = count,
-				pet = PetConfig.PETS[petId],
-				isEquipped = isEquipped,
-			})
-		end
-	end
-
-	-- Sort: Equipped first, then highest multiplier, then name
-	table.sort(ownedList, function(a, b)
-		if a.isEquipped ~= b.isEquipped then
-			return a.isEquipped
-		end
-		if a.pet.cashMultiplier ~= b.pet.cashMultiplier then
-			return a.pet.cashMultiplier > b.pet.cashMultiplier
-		end
-		return a.pet.name < b.pet.name
-	end)
 
 	-- Inventory Header Row
 	local invHeaderRow = Instance.new("Frame")
@@ -770,7 +815,7 @@ openPetModal = function(isRefresh: boolean?)
 	invLabel.Size = UDim2.new(0.65, 0, 1, 0)
 	invLabel.Position = UDim2.new(0, 0, 0, 0)
 	invLabel.BackgroundTransparency = 1
-	invLabel.Text = string.format("🐾 Your Pets (Equipped: %d/%d)", equippedCount, PetConfig.MAX_EQUIPPED or 3)
+	invLabel.Text = "🐾 Your Pets (Equipped: 0/3)"
 	invLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 	invLabel.Font = Enum.Font.GothamBlack
 	invLabel.TextSize = 13
@@ -778,62 +823,21 @@ openPetModal = function(isRefresh: boolean?)
 	invLabel.Parent = invHeaderRow
 
 	-- Equip Best Button
-	if #ownedList > 0 then
-		local equipBestBtn = Instance.new("TextButton")
-		equipBestBtn.Size = UDim2.new(0, 110, 0, 24)
-		equipBestBtn.Position = UDim2.new(1, -110, 0, 1)
-		equipBestBtn.BackgroundColor3 = Color3.fromRGB(0, 175, 225)
-		equipBestBtn.Text = "⚡ Equip Best"
-		equipBestBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		equipBestBtn.Font = Enum.Font.GothamBlack
-		equipBestBtn.TextSize = 11
-		equipBestBtn.BorderSizePixel = 0
-		equipBestBtn.Parent = invHeaderRow
+	local equipBestBtn = Instance.new("TextButton")
+	equipBestBtn.Size = UDim2.new(0, 110, 0, 24)
+	equipBestBtn.Position = UDim2.new(1, -110, 0, 1)
+	equipBestBtn.BackgroundColor3 = Color3.fromRGB(0, 175, 225)
+	equipBestBtn.Text = "⚡ Equip Best"
+	equipBestBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	equipBestBtn.Font = Enum.Font.GothamBlack
+	equipBestBtn.TextSize = 11
+	equipBestBtn.BorderSizePixel = 0
+	equipBestBtn.Visible = false
+	equipBestBtn.Parent = invHeaderRow
 
-		local ebCorner = Instance.new("UICorner")
-		ebCorner.CornerRadius = UDim.new(0, 6)
-		ebCorner.Parent = equipBestBtn
-
-		equipBestBtn.MouseButton1Click:Connect(function()
-			equipBestBtn.Text = "Equipping..."
-			equipBestBtn.Active = false
-
-			-- Find top pets by multiplier
-			local sortedByPower = {}
-			for _, item in ipairs(ownedList) do
-				table.insert(sortedByPower, item)
-			end
-			table.sort(sortedByPower, function(a, b)
-				if a.pet.cashMultiplier ~= b.pet.cashMultiplier then
-					return a.pet.cashMultiplier > b.pet.cashMultiplier
-				end
-				return a.pet.gemMultiplier > b.pet.gemMultiplier
-			end)
-
-			local maxEquip = PetConfig.MAX_EQUIPPED or 3
-			local targetMap = {}
-			for i = 1, math.min(maxEquip, #sortedByPower) do
-				targetMap[sortedByPower[i].id] = true
-			end
-
-			local equipFn = Remotes.getFunction("ToggleEquipPet")
-			-- Unequip pets not in target
-			for pId, isEq in pairs(cachedData.EquippedPets or {}) do
-				if isEq and not targetMap[pId] then
-					equipFn:InvokeServer(pId)
-				end
-			end
-			-- Equip target pets not yet equipped
-			for pId, _ in pairs(targetMap) do
-				if not (cachedData.EquippedPets and cachedData.EquippedPets[pId]) then
-					equipFn:InvokeServer(pId)
-				end
-			end
-
-			task.wait(0.2)
-			openPetModal(true)
-		end)
-	end
+	local ebCorner = Instance.new("UICorner")
+	ebCorner.CornerRadius = UDim.new(0, 6)
+	ebCorner.Parent = equipBestBtn
 
 	-- Pet Inventory Grid in ScrollingFrame
 	local scroll = Instance.new("ScrollingFrame")
@@ -862,189 +866,316 @@ openPetModal = function(isRefresh: boolean?)
 	grid.CellPadding = UDim2.new(0, 10, 0, 10)
 	grid.Parent = scroll
 
-	for _, entry in ipairs(ownedList) do
-		local pet = entry.pet
-		local petId = entry.id
-		local count = entry.count
-		local isEquipped = entry.isEquipped
-		local rarityColor = PetConfig.getRarityColor(pet.rarity)
+	type OwnedPetEntry = {
+		id: string,
+		count: number,
+		pet: PetConfig.PetDef,
+		isEquipped: boolean,
+	}
 
-		-- Card Container
-		local card = Instance.new("Frame")
-		card.BackgroundColor3 = if isEquipped then Color3.fromRGB(20, 36, 30) else Color3.fromRGB(22, 25, 34)
-		card.BorderSizePixel = 0
-		card.Parent = scroll
+	local function renderInventory()
+		if not activeModal or activeModal.Name ~= "PetModal" or not cachedData then return end
 
-		local cCorner = Instance.new("UICorner")
-		cCorner.CornerRadius = UDim.new(0, 8)
-		cCorner.Parent = card
+		-- Update Index Tab Counter
+		local pIndex = cachedData.PetIndex or {}
+		local dCount = 0
+		for petId, _ in PetConfig.PETS do
+			if pIndex[petId] then dCount += 1 end
+		end
+		indexTab.Text = string.format("📖 Index (%d/%d)", dCount, PetConfig.getTotalPetsCount())
 
-		local cStroke = Instance.new("UIStroke")
-		cStroke.Color = if isEquipped then Color3.fromRGB(0, 235, 140) else Color3.fromRGB(44, 48, 62)
-		cStroke.Thickness = if isEquipped then 1.8 else 1
-		cStroke.Transparency = if isEquipped then 0 else 0.4
-		cStroke.Parent = card
-
-		-- Top: Pet Picture Frame
-		local picBox = Instance.new("Frame")
-		picBox.Size = UDim2.new(1, -12, 0, 78)
-		picBox.Position = UDim2.new(0, 6, 0, 6)
-		picBox.BackgroundColor3 = if isEquipped then Color3.fromRGB(15, 26, 22) else Color3.fromRGB(15, 17, 24)
-		picBox.BorderSizePixel = 0
-		picBox.ClipsDescendants = true
-		picBox.Parent = card
-
-		local pCorner = Instance.new("UICorner")
-		pCorner.CornerRadius = UDim.new(0, 6)
-		pCorner.Parent = picBox
-
-		local pStroke = Instance.new("UIStroke")
-		pStroke.Color = if isEquipped then Color3.fromRGB(0, 200, 120) else rarityColor
-		pStroke.Thickness = 1
-		pStroke.Transparency = if isEquipped then 0.3 else 0.6
-		pStroke.Parent = picBox
-
-		-- Pet Picture / Icon
-		local petIcon = Instance.new("TextLabel")
-		petIcon.Size = UDim2.new(1, 0, 1, 0)
-		petIcon.Position = UDim2.new(0, 0, 0, -2)
-		petIcon.BackgroundTransparency = 1
-		petIcon.Text = pet.icon or "🐾"
-		petIcon.TextSize = 38
-		petIcon.Parent = picBox
-
-		-- Top-Left Status / Tier Badge
-		if pet.tier == "Golden" then
-			local tBadge = Instance.new("TextLabel")
-			tBadge.Size = UDim2.new(0, 40, 0, 15)
-			tBadge.Position = UDim2.new(0, 4, 0, 4)
-			tBadge.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
-			tBadge.Text = "✨ GOLD"
-			tBadge.TextColor3 = Color3.fromRGB(30, 25, 0)
-			tBadge.Font = Enum.Font.GothamBlack
-			tBadge.TextSize = 8
-			tBadge.BorderSizePixel = 0
-			tBadge.Parent = picBox
-
-			local tc = Instance.new("UICorner")
-			tc.CornerRadius = UDim.new(0, 4)
-			tc.Parent = tBadge
-		elseif pet.tier == "Rainbow" then
-			local tBadge = Instance.new("TextLabel")
-			tBadge.Size = UDim2.new(0, 52, 0, 15)
-			tBadge.Position = UDim2.new(0, 4, 0, 4)
-			tBadge.BackgroundColor3 = Color3.fromRGB(255, 100, 220)
-			tBadge.Text = "🌈 RAINBOW"
-			tBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-			tBadge.Font = Enum.Font.GothamBlack
-			tBadge.TextSize = 7.5
-			tBadge.BorderSizePixel = 0
-			tBadge.Parent = picBox
-
-			local tc = Instance.new("UICorner")
-			tc.CornerRadius = UDim.new(0, 4)
-			tc.Parent = tBadge
-		elseif isEquipped then
-			local eqBadge = Instance.new("TextLabel")
-			eqBadge.Size = UDim2.new(0, 50, 0, 15)
-			eqBadge.Position = UDim2.new(0, 4, 0, 4)
-			eqBadge.BackgroundColor3 = Color3.fromRGB(0, 200, 120)
-			eqBadge.Text = "✓ EQUIPPED"
-			eqBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-			eqBadge.Font = Enum.Font.GothamBlack
-			eqBadge.TextSize = 7.5
-			eqBadge.BorderSizePixel = 0
-			eqBadge.Parent = picBox
-
-			local eqc = Instance.new("UICorner")
-			eqc.CornerRadius = UDim.new(0, 4)
-			eqc.Parent = eqBadge
+		-- Update Egg Buttons Affordance
+		local playerGems = cachedData.Gems or 0
+		for eggId, btn in pairs(eggButtons) do
+			local eggDef = PetConfig.EGGS[eggId]
+			if eggDef and not string.find(btn.Text, "HATCHED") then
+				local canAfford = playerGems >= eggDef.cost
+				btn.Text = eggDef.name .. "\n💎 " .. FormatNumber.formatCompact(eggDef.cost) .. " Gems"
+				if eggId == "MagmaEgg" then
+					btn.BackgroundColor3 = if canAfford then Color3.fromRGB(75, 34, 28) else Color3.fromRGB(42, 24, 22)
+					btn.TextColor3 = if canAfford then Color3.fromRGB(255, 160, 60) else Color3.fromRGB(160, 120, 100)
+				else
+					btn.BackgroundColor3 = if canAfford then Color3.fromRGB(36, 55, 80) else Color3.fromRGB(28, 32, 44)
+					btn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(140, 145, 160)
+				end
+			end
 		end
 
-		-- Count Badge AT THE BOTTOM OF THE PICTURE
-		local countBadge = Instance.new("TextLabel")
-		countBadge.Size = UDim2.new(0, 40, 0, 18)
-		countBadge.Position = UDim2.new(1, -44, 1, -21)
-		countBadge.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
-		countBadge.BackgroundTransparency = 0.15
-		countBadge.Text = "x" .. count
-		countBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-		countBadge.Font = Enum.Font.GothamBlack
-		countBadge.TextSize = 11
-		countBadge.BorderSizePixel = 0
-		countBadge.ZIndex = 3
-		countBadge.Parent = picBox
+		-- Prepare Owned Pets List & Count
+		local ownedList: { OwnedPetEntry } = {}
+		local equippedCount = 0
+		for petId, count in cachedData.OwnedPets or {} do
+			if count > 0 and PetConfig.PETS[petId] then
+				local isEquipped = (cachedData.EquippedPets and cachedData.EquippedPets[petId] == true) or false
+				if isEquipped then
+					equippedCount += 1
+				end
+				table.insert(ownedList, {
+					id = petId,
+					count = count,
+					pet = PetConfig.PETS[petId],
+					isEquipped = isEquipped,
+				})
+			end
+		end
 
-		local cbCorner = Instance.new("UICorner")
-		cbCorner.CornerRadius = UDim.new(0, 4)
-		cbCorner.Parent = countBadge
-
-		local cbStroke = Instance.new("UIStroke")
-		cbStroke.Color = Color3.fromRGB(60, 68, 88)
-		cbStroke.Thickness = 1
-		cbStroke.Parent = countBadge
-
-		-- Below Picture: Pet Name
-		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Size = UDim2.new(1, -10, 0, 16)
-		nameLabel.Position = UDim2.new(0, 5, 0, 88)
-		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = pet.name
-		nameLabel.TextColor3 = pet.color or Color3.fromRGB(255, 255, 255)
-		nameLabel.Font = Enum.Font.GothamBold
-		nameLabel.TextSize = 11
-		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-		nameLabel.Parent = card
-
-		-- Stats Below Picture & Name
-		local statsLabel = Instance.new("TextLabel")
-		statsLabel.Size = UDim2.new(1, -10, 0, 30)
-		statsLabel.Position = UDim2.new(0, 5, 0, 106)
-		statsLabel.BackgroundTransparency = 1
-		statsLabel.Text = string.format("💰 +%.0f%% Cash\n💎 +%.0f%% Gems", (pet.cashMultiplier - 1) * 100, (pet.gemMultiplier - 1) * 100)
-		statsLabel.TextColor3 = Color3.fromRGB(0, 230, 140)
-		statsLabel.Font = Enum.Font.GothamBold
-		statsLabel.TextSize = 9
-		statsLabel.LineHeight = 1.15
-		statsLabel.TextXAlignment = Enum.TextXAlignment.Center
-		statsLabel.Parent = card
-
-		-- Equip / Unequip Button
-		local equipBtn = Instance.new("TextButton")
-		equipBtn.Size = UDim2.new(1, -14, 0, 25)
-		equipBtn.Position = UDim2.new(0, 7, 0, 146)
-		equipBtn.BackgroundColor3 = if isEquipped then Color3.fromRGB(205, 55, 55) else Color3.fromRGB(0, 175, 95)
-		equipBtn.Text = if isEquipped then "UNEQUIP" else "EQUIP"
-		equipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		equipBtn.Font = Enum.Font.GothamBlack
-		equipBtn.TextSize = 10
-		equipBtn.BorderSizePixel = 0
-		equipBtn.Parent = card
-
-		local eqCorner = Instance.new("UICorner")
-		eqCorner.CornerRadius = UDim.new(0, 5)
-		eqCorner.Parent = equipBtn
-
-		equipBtn.MouseButton1Click:Connect(function()
-			local equipFn = Remotes.getFunction("ToggleEquipPet")
-			equipFn:InvokeServer(petId)
-			task.wait(0.15)
-			openPetModal(true)
+		-- Sort: Equipped first, then highest multiplier, then name
+		table.sort(ownedList, function(a, b)
+			if a.isEquipped ~= b.isEquipped then
+				return a.isEquipped
+			end
+			if a.pet.cashMultiplier ~= b.pet.cashMultiplier then
+				return a.pet.cashMultiplier > b.pet.cashMultiplier
+			end
+			return a.pet.name < b.pet.name
 		end)
+
+		invLabel.Text = string.format("🐾 Your Pets (Equipped: %d/%d)", equippedCount, PetConfig.MAX_EQUIPPED or 3)
+		equipBestBtn.Visible = #ownedList > 0
+
+		local savedY = scroll.CanvasPosition.Y
+
+		-- Clear only the pet cards and empty labels, preserve layout & padding
+		for _, child in ipairs(scroll:GetChildren()) do
+			if child:IsA("Frame") or child:IsA("TextLabel") then
+				child:Destroy()
+			end
+		end
+
+		for _, entry in ipairs(ownedList) do
+			local pet = entry.pet
+			local petId = entry.id
+			local count = entry.count
+			local isEquipped = entry.isEquipped
+			local rarityColor = PetConfig.getRarityColor(pet.rarity)
+
+			-- Card Container
+			local card = Instance.new("Frame")
+			card.BackgroundColor3 = if isEquipped then Color3.fromRGB(20, 36, 30) else Color3.fromRGB(22, 25, 34)
+			card.BorderSizePixel = 0
+			card.Parent = scroll
+
+			local cCorner = Instance.new("UICorner")
+			cCorner.CornerRadius = UDim.new(0, 8)
+			cCorner.Parent = card
+
+			local cStroke = Instance.new("UIStroke")
+			cStroke.Color = if isEquipped then Color3.fromRGB(0, 235, 140) else Color3.fromRGB(44, 48, 62)
+			cStroke.Thickness = if isEquipped then 1.8 else 1
+			cStroke.Transparency = if isEquipped then 0 else 0.4
+			cStroke.Parent = card
+
+			-- Top: Pet Picture Frame
+			local picBox = Instance.new("Frame")
+			picBox.Size = UDim2.new(1, -12, 0, 78)
+			picBox.Position = UDim2.new(0, 6, 0, 6)
+			picBox.BackgroundColor3 = if isEquipped then Color3.fromRGB(15, 26, 22) else Color3.fromRGB(15, 17, 24)
+			picBox.BorderSizePixel = 0
+			picBox.ClipsDescendants = true
+			picBox.Parent = card
+
+			local pCorner = Instance.new("UICorner")
+			pCorner.CornerRadius = UDim.new(0, 6)
+			pCorner.Parent = picBox
+
+			local pStroke = Instance.new("UIStroke")
+			pStroke.Color = if isEquipped then Color3.fromRGB(0, 200, 120) else rarityColor
+			pStroke.Thickness = 1
+			pStroke.Transparency = if isEquipped then 0.3 else 0.6
+			pStroke.Parent = picBox
+
+			-- Pet Picture / Icon
+			local petIcon = Instance.new("TextLabel")
+			petIcon.Size = UDim2.new(1, 0, 1, 0)
+			petIcon.Position = UDim2.new(0, 0, 0, -2)
+			petIcon.BackgroundTransparency = 1
+			petIcon.Text = pet.icon or "🐾"
+			petIcon.TextSize = 38
+			petIcon.Parent = picBox
+
+			-- Top-Left Status / Tier Badge
+			if pet.tier == "Golden" then
+				local tBadge = Instance.new("TextLabel")
+				tBadge.Size = UDim2.new(0, 40, 0, 15)
+				tBadge.Position = UDim2.new(0, 4, 0, 4)
+				tBadge.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+				tBadge.Text = "✨ GOLD"
+				tBadge.TextColor3 = Color3.fromRGB(30, 25, 0)
+				tBadge.Font = Enum.Font.GothamBlack
+				tBadge.TextSize = 8
+				tBadge.BorderSizePixel = 0
+				tBadge.Parent = picBox
+
+				local tc = Instance.new("UICorner")
+				tc.CornerRadius = UDim.new(0, 4)
+				tc.Parent = tBadge
+			elseif pet.tier == "Rainbow" then
+				local tBadge = Instance.new("TextLabel")
+				tBadge.Size = UDim2.new(0, 52, 0, 15)
+				tBadge.Position = UDim2.new(0, 4, 0, 4)
+				tBadge.BackgroundColor3 = Color3.fromRGB(255, 100, 220)
+				tBadge.Text = "🌈 RAINBOW"
+				tBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+				tBadge.Font = Enum.Font.GothamBlack
+				tBadge.TextSize = 7.5
+				tBadge.BorderSizePixel = 0
+				tBadge.Parent = picBox
+
+				local tc = Instance.new("UICorner")
+				tc.CornerRadius = UDim.new(0, 4)
+				tc.Parent = tBadge
+			elseif isEquipped then
+				local eqBadge = Instance.new("TextLabel")
+				eqBadge.Size = UDim2.new(0, 50, 0, 15)
+				eqBadge.Position = UDim2.new(0, 4, 0, 4)
+				eqBadge.BackgroundColor3 = Color3.fromRGB(0, 200, 120)
+				eqBadge.Text = "✓ EQUIPPED"
+				eqBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+				eqBadge.Font = Enum.Font.GothamBlack
+				eqBadge.TextSize = 7.5
+				eqBadge.BorderSizePixel = 0
+				eqBadge.Parent = picBox
+
+				local eqc = Instance.new("UICorner")
+				eqc.CornerRadius = UDim.new(0, 4)
+				eqc.Parent = eqBadge
+			end
+
+			-- Count Badge AT THE BOTTOM OF THE PICTURE
+			local countBadge = Instance.new("TextLabel")
+			countBadge.Size = UDim2.new(0, 40, 0, 18)
+			countBadge.Position = UDim2.new(1, -44, 1, -21)
+			countBadge.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+			countBadge.BackgroundTransparency = 0.15
+			countBadge.Text = "x" .. count
+			countBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+			countBadge.Font = Enum.Font.GothamBlack
+			countBadge.TextSize = 11
+			countBadge.BorderSizePixel = 0
+			countBadge.ZIndex = 3
+			countBadge.Parent = picBox
+
+			local cbCorner = Instance.new("UICorner")
+			cbCorner.CornerRadius = UDim.new(0, 4)
+			cbCorner.Parent = countBadge
+
+			local cbStroke = Instance.new("UIStroke")
+			cbStroke.Color = Color3.fromRGB(60, 68, 88)
+			cbStroke.Thickness = 1
+			cbStroke.Parent = countBadge
+
+			-- Below Picture: Pet Name
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Size = UDim2.new(1, -10, 0, 16)
+			nameLabel.Position = UDim2.new(0, 5, 0, 88)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = pet.name
+			nameLabel.TextColor3 = pet.color or Color3.fromRGB(255, 255, 255)
+			nameLabel.Font = Enum.Font.GothamBold
+			nameLabel.TextSize = 11
+			nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+			nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+			nameLabel.Parent = card
+
+			-- Stats Below Picture & Name
+			local statsLabel = Instance.new("TextLabel")
+			statsLabel.Size = UDim2.new(1, -10, 0, 30)
+			statsLabel.Position = UDim2.new(0, 5, 0, 106)
+			statsLabel.BackgroundTransparency = 1
+			statsLabel.Text = string.format("💰 +%.0f%% Cash\n💎 +%.0f%% Gems", (pet.cashMultiplier - 1) * 100, (pet.gemMultiplier - 1) * 100)
+			statsLabel.TextColor3 = Color3.fromRGB(0, 230, 140)
+			statsLabel.Font = Enum.Font.GothamBold
+			statsLabel.TextSize = 9
+			statsLabel.LineHeight = 1.15
+			statsLabel.TextXAlignment = Enum.TextXAlignment.Center
+			statsLabel.Parent = card
+
+			-- Equip / Unequip Button
+			local equipBtn = Instance.new("TextButton")
+			equipBtn.Size = UDim2.new(1, -14, 0, 25)
+			equipBtn.Position = UDim2.new(0, 7, 0, 146)
+			equipBtn.BackgroundColor3 = if isEquipped then Color3.fromRGB(205, 55, 55) else Color3.fromRGB(0, 175, 95)
+			equipBtn.Text = if isEquipped then "UNEQUIP" else "EQUIP"
+			equipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			equipBtn.Font = Enum.Font.GothamBlack
+			equipBtn.TextSize = 10
+			equipBtn.BorderSizePixel = 0
+			equipBtn.Parent = card
+
+			local eqCorner = Instance.new("UICorner")
+			eqCorner.CornerRadius = UDim.new(0, 5)
+			eqCorner.Parent = equipBtn
+
+			equipBtn.MouseButton1Click:Connect(function()
+				equipBtn.Text = "..."
+				local equipFn = Remotes.getFunction("ToggleEquipPet")
+				equipFn:InvokeServer(petId)
+				task.wait(0.15)
+				renderInventory()
+			end)
+		end
+
+		if #ownedList == 0 then
+			local emptyLabel = Instance.new("TextLabel")
+			emptyLabel.Size = UDim2.new(1, 0, 0, 120)
+			emptyLabel.Position = UDim2.new(0, 0, 0, 60)
+			emptyLabel.BackgroundTransparency = 1
+			emptyLabel.Text = "🐾 No pets in your inventory yet!\nHatch an egg above to get your first companion."
+			emptyLabel.TextColor3 = Color3.fromRGB(150, 155, 170)
+			emptyLabel.Font = Enum.Font.GothamMedium
+			emptyLabel.TextSize = 13
+			emptyLabel.Parent = scroll
+		end
+
+		scroll.CanvasPosition = Vector2.new(0, savedY)
 	end
 
-	if #ownedList == 0 then
-		local emptyLabel = Instance.new("TextLabel")
-		emptyLabel.Size = UDim2.new(1, 0, 0, 120)
-		emptyLabel.Position = UDim2.new(0, 0, 0, 60)
-		emptyLabel.BackgroundTransparency = 1
-		emptyLabel.Text = "🐾 No pets in your inventory yet!\nHatch an egg above to get your first companion."
-		emptyLabel.TextColor3 = Color3.fromRGB(150, 155, 170)
-		emptyLabel.Font = Enum.Font.GothamMedium
-		emptyLabel.TextSize = 13
-		emptyLabel.Parent = scroll
-	end
+	equipBestBtn.MouseButton1Click:Connect(function()
+		equipBestBtn.Text = "Equipping..."
+		equipBestBtn.Active = false
+
+		-- Find top pets by multiplier
+		local sortedByPower = {}
+		for petId, count in cachedData.OwnedPets or {} do
+			if count > 0 and PetConfig.PETS[petId] then
+				table.insert(sortedByPower, {
+					id = petId,
+					pet = PetConfig.PETS[petId],
+				})
+			end
+		end
+		table.sort(sortedByPower, function(a, b)
+			if a.pet.cashMultiplier ~= b.pet.cashMultiplier then
+				return a.pet.cashMultiplier > b.pet.cashMultiplier
+			end
+			return a.pet.gemMultiplier > b.pet.gemMultiplier
+		end)
+
+		local maxEquip = PetConfig.MAX_EQUIPPED or 3
+		local targetMap = {}
+		for i = 1, math.min(maxEquip, #sortedByPower) do
+			targetMap[sortedByPower[i].id] = true
+		end
+
+		local equipFn = Remotes.getFunction("ToggleEquipPet")
+		-- Unequip pets not in target
+		for pId, isEq in pairs(cachedData.EquippedPets or {}) do
+			if isEq and not targetMap[pId] then
+				equipFn:InvokeServer(pId)
+			end
+		end
+		-- Equip target pets not yet equipped
+		for pId, _ in pairs(targetMap) do
+			if not (cachedData.EquippedPets and cachedData.EquippedPets[pId]) then
+				equipFn:InvokeServer(pId)
+			end
+		end
+
+		task.wait(0.2)
+		equipBestBtn.Text = "⚡ Equip Best"
+		equipBestBtn.Active = true
+		renderInventory()
+	end)
 
 	-- Close Button
 	local closeBtn = Instance.new("TextButton")
@@ -1064,6 +1195,15 @@ openPetModal = function(isRefresh: boolean?)
 
 	closeBtn.MouseButton1Click:Connect(closeModal)
 
+	renderInventory()
+
+	activeModalUpdater = renderInventory
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == renderInventory then
+			activeModalUpdater = nil
+		end
+	end)
+
 	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
 	}):Play()
@@ -1078,30 +1218,17 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 		return
 	end
 
+	if isRefresh == true and activeModal and activeModal.Name == "PetIndexModal" then
+		if activeModalUpdater then
+			activeModalUpdater()
+		end
+		return
+	end
+
 	closeModal()
 	if not cachedData then return end
 
 	local activeFilter = currentFilter or "All"
-	local petIndex = cachedData.PetIndex or {}
-	local claimedMilestones = cachedData.ClaimedIndexMilestones or {}
-
-	-- Count discovered pets
-	local totalPets = PetConfig.getTotalPetsCount()
-	local discoveredCount = 0
-	for petId, _ in PetConfig.PETS do
-		if petIndex[petId] then
-			discoveredCount += 1
-		end
-	end
-	local pct = math.clamp(discoveredCount / math.max(1, totalPets), 0, 1)
-
-	-- Calculate total power boost from claimed milestones
-	local totalBoostPct = 0
-	for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
-		if claimedMilestones[m.id] then
-			totalBoostPct += m.powerBoostPct
-		end
-	end
 
 	local modal = createStyledFrame(screenGui, "PetIndexModal", UDim2.new(0, 640, 0, 530), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 20, 28))
 	modal.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1149,7 +1276,7 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 	local indexTabBtn = Instance.new("TextButton")
 	indexTabBtn.Size = UDim2.new(0.315, 0, 1, 0)
 	indexTabBtn.BackgroundColor3 = Color3.fromRGB(0, 165, 215)
-	indexTabBtn.Text = string.format("📖 Index (%d/%d)", discoveredCount, totalPets)
+	indexTabBtn.Text = "📖 Index"
 	indexTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	indexTabBtn.Font = Enum.Font.GothamBlack
 	indexTabBtn.TextSize = 12
@@ -1194,7 +1321,6 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 	progressLabel.Size = UDim2.new(0.55, 0, 0.45, 0)
 	progressLabel.Position = UDim2.new(0.03, 0, 0.1, 0)
 	progressLabel.BackgroundTransparency = 1
-	progressLabel.Text = string.format("Discovery Progress: %d / %d Pets (%d%%)", discoveredCount, totalPets, math.floor(pct * 100))
 	progressLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
 	progressLabel.Font = Enum.Font.GothamBold
 	progressLabel.TextSize = 12
@@ -1205,7 +1331,6 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 	boostLabel.Size = UDim2.new(0.4, 0, 0.45, 0)
 	boostLabel.Position = UDim2.new(0.57, 0, 0.1, 0)
 	boostLabel.BackgroundTransparency = 1
-	boostLabel.Text = string.format("⚡ Total Boost: +%d%% Power", totalBoostPct)
 	boostLabel.TextColor3 = Color3.fromRGB(0, 230, 118)
 	boostLabel.Font = Enum.Font.GothamBlack
 	boostLabel.TextSize = 12
@@ -1224,7 +1349,7 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 	bCorner.Parent = barBg
 
 	local barFill = Instance.new("Frame")
-	barFill.Size = UDim2.new(pct, 0, 1, 0)
+	barFill.Size = UDim2.new(0, 0, 1, 0)
 	barFill.BackgroundColor3 = Color3.fromRGB(0, 215, 255)
 	barFill.BorderSizePixel = 0
 	barFill.Parent = barBg
@@ -1250,14 +1375,19 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 	mLayout.Padding = UDim.new(0, 8)
 	mLayout.Parent = milestoneSec
 
-	for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
-		local isClaimed = claimedMilestones[m.id] == true
-		local isEligible = discoveredCount >= m.requiredCount and not isClaimed
+	type MilestoneRowRefs = {
+		card: Frame,
+		title: TextLabel,
+		reward: TextLabel,
+		button: TextButton,
+	}
+	local milestoneRefs: { [string]: MilestoneRowRefs } = {}
 
+	for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
 		local mCard = Instance.new("Frame")
 		mCard.Size = UDim2.new(0.235, 0, 0.9, 0)
 		mCard.Position = UDim2.new(0, 0, 0.05, 0)
-		mCard.BackgroundColor3 = if isEligible then Color3.fromRGB(35, 55, 45) elseif isClaimed then Color3.fromRGB(28, 30, 40) else Color3.fromRGB(25, 28, 38)
+		mCard.BackgroundColor3 = Color3.fromRGB(25, 28, 38)
 		mCard.BorderSizePixel = 0
 		mCard.Parent = milestoneSec
 
@@ -1269,7 +1399,7 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 		mTitle.Size = UDim2.new(1, 0, 0.35, 0)
 		mTitle.BackgroundTransparency = 1
 		mTitle.Text = string.format("%s %s (%d)", m.icon, m.name, m.requiredCount)
-		mTitle.TextColor3 = if isEligible then Color3.fromRGB(255, 220, 100) else Color3.fromRGB(210, 215, 230)
+		mTitle.TextColor3 = Color3.fromRGB(210, 215, 230)
 		mTitle.Font = Enum.Font.GothamBold
 		mTitle.TextSize = 10
 		mTitle.Parent = mCard
@@ -1296,27 +1426,12 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 		cbCorner.CornerRadius = UDim.new(0, 4)
 		cbCorner.Parent = claimBtn
 
-		if isClaimed then
-			claimBtn.BackgroundColor3 = Color3.fromRGB(45, 55, 50)
-			claimBtn.Text = "✓ CLAIMED"
-			claimBtn.TextColor3 = Color3.fromRGB(150, 200, 160)
-		elseif isEligible then
-			claimBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-			claimBtn.Text = "CLAIM REWARD"
-			claimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-			claimBtn.MouseButton1Click:Connect(function()
-				local claimFn = Remotes.getFunction("ClaimIndexMilestone")
-				local ok, msg = claimFn:InvokeServer(m.id)
-				if ok then
-					showFloatingPopup(string.format("🏆 CLAIMED %s! (+%s 💎)", m.name:upper(), FormatNumber.formatCompact(m.gemsReward)), Color3.fromRGB(0, 255, 180), 0)
-					openPetIndexModal(activeFilter, true)
-				end
-			end)
-		else
-			claimBtn.BackgroundColor3 = Color3.fromRGB(35, 38, 48)
-			claimBtn.Text = string.format("🔒 %d/%d", discoveredCount, m.requiredCount)
-			claimBtn.TextColor3 = Color3.fromRGB(140, 145, 160)
-		end
+		milestoneRefs[m.id] = {
+			card = mCard,
+			title = mTitle,
+			reward = mReward,
+			button = claimBtn,
+		}
 	end
 
 	-- Category Filter Bar
@@ -1339,13 +1454,15 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 		{ id = "RobuxEgg", label = "Exclusive" },
 	}
 
+	local filterButtons: { [string]: TextButton } = {}
+	local updateIndex: (filter: string?, resetScroll: boolean?) -> ()
+
 	for _, opt in ipairs(filterOptions) do
-		local isSel = (opt.id == activeFilter)
 		local fBtn = Instance.new("TextButton")
 		fBtn.Size = UDim2.new(0.188, 0, 1, 0)
-		fBtn.BackgroundColor3 = if isSel then Color3.fromRGB(0, 165, 215) else Color3.fromRGB(32, 36, 50)
+		fBtn.BackgroundColor3 = Color3.fromRGB(32, 36, 50)
 		fBtn.Text = opt.label
-		fBtn.TextColor3 = if isSel then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(190, 195, 215)
+		fBtn.TextColor3 = Color3.fromRGB(190, 195, 215)
 		fBtn.Font = Enum.Font.GothamBold
 		fBtn.TextSize = 11
 		fBtn.BorderSizePixel = 0
@@ -1355,8 +1472,10 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 		fCorner.CornerRadius = UDim.new(0, 6)
 		fCorner.Parent = fBtn
 
+		filterButtons[opt.id] = fBtn
+
 		fBtn.MouseButton1Click:Connect(function()
-			openPetIndexModal(opt.id, true)
+			updateIndex(opt.id, true)
 		end)
 	end
 
@@ -1387,7 +1506,6 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 	pListPad.PaddingBottom = UDim.new(0, 8)
 	pListPad.Parent = scroll
 
-	-- Fixed ordered list of pets
 	local petOrder = {
 		"CrystalDoge", "SparkleKitty", "NeonBunny",
 		"InfernoDragon", "VoidPhoenix",
@@ -1395,120 +1513,205 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 		"AstralKitsune", "VoidLeviathan", "ChronosDrake"
 	}
 
-	for _, petId in ipairs(petOrder) do
-		local pet = PetConfig.PETS[petId]
-		if pet then
-			if activeFilter == "All" or pet.originEgg == activeFilter then
-				local isDiscovered = (petIndex[petId] == true)
-				local rarityColor = PetConfig.getRarityColor(pet.rarity)
-				local ownedCount = cachedData.OwnedPets and cachedData.OwnedPets[petId] or 0
+	updateIndex = function(newFilter: string?, resetScroll: boolean?)
+		if not activeModal or activeModal.Name ~= "PetIndexModal" or not cachedData then return end
 
-				local card = Instance.new("Frame")
-				card.BackgroundColor3 = if isDiscovered then Color3.fromRGB(24, 28, 40) else Color3.fromRGB(20, 22, 30)
-				card.BorderSizePixel = 0
-				card.Parent = scroll
+		if newFilter then
+			activeFilter = newFilter
+		end
 
-				local cCorner = Instance.new("UICorner")
-				cCorner.CornerRadius = UDim.new(0, 10)
-				cCorner.Parent = card
+		local petIndex = cachedData.PetIndex or {}
+		local claimedMilestones = cachedData.ClaimedIndexMilestones or {}
 
-				local cStroke = Instance.new("UIStroke")
-				cStroke.Color = if isDiscovered then rarityColor else Color3.fromRGB(45, 48, 60)
-				cStroke.Thickness = if isDiscovered then 1.5 else 1
-				cStroke.Transparency = if isDiscovered then 0.2 else 0.6
-				cStroke.Parent = card
-
-				-- Rarity Pill Badge
-				local rarityBadge = Instance.new("TextLabel")
-				rarityBadge.Size = UDim2.new(0.9, 0, 0, 18)
-				rarityBadge.Position = UDim2.new(0.05, 0, 0, 6)
-				rarityBadge.BackgroundColor3 = if isDiscovered then rarityColor else Color3.fromRGB(38, 40, 50)
-				rarityBadge.BackgroundTransparency = if isDiscovered then 0.75 else 0.5
-				rarityBadge.Text = if isDiscovered then pet.rarity:upper() else string.format("??? • %s", pet.rarity:upper())
-				rarityBadge.TextColor3 = if isDiscovered then rarityColor else Color3.fromRGB(150, 155, 170)
-				rarityBadge.Font = Enum.Font.GothamBlack
-				rarityBadge.TextSize = 10
-				rarityBadge.BorderSizePixel = 0
-				rarityBadge.Parent = card
-
-				local rbCorner = Instance.new("UICorner")
-				rbCorner.CornerRadius = UDim.new(0, 4)
-				rbCorner.Parent = rarityBadge
-
-				-- Pet Icon
-				local iconLabel = Instance.new("TextLabel")
-				iconLabel.Size = UDim2.new(1, 0, 0, 44)
-				iconLabel.Position = UDim2.new(0, 0, 0, 28)
-				iconLabel.BackgroundTransparency = 1
-				iconLabel.Text = if isDiscovered then pet.icon else "❓"
-				iconLabel.TextSize = if isDiscovered then 36 else 30
-				iconLabel.Parent = card
-
-				-- Pet Name
-				local nameLabel = Instance.new("TextLabel")
-				nameLabel.Size = UDim2.new(0.92, 0, 0, 20)
-				nameLabel.Position = UDim2.new(0.04, 0, 0, 74)
-				nameLabel.BackgroundTransparency = 1
-				nameLabel.Text = if isDiscovered then pet.name else "???"
-				nameLabel.TextColor3 = if isDiscovered then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(150, 155, 170)
-				nameLabel.Font = Enum.Font.GothamBold
-				nameLabel.TextSize = 12
-				nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-				nameLabel.Parent = card
-
-				-- Multipliers
-				local multLabel = Instance.new("TextLabel")
-				multLabel.Size = UDim2.new(0.92, 0, 0, 16)
-				multLabel.Position = UDim2.new(0.04, 0, 0, 96)
-				multLabel.BackgroundTransparency = 1
-				if isDiscovered then
-					multLabel.Text = string.format("+%.0f%% Cash • +%.0f%% Gems", (pet.cashMultiplier - 1) * 100, (pet.gemMultiplier - 1) * 100)
-					multLabel.TextColor3 = Color3.fromRGB(0, 230, 140)
-				else
-					multLabel.Text = "🔒 Multipliers Hidden"
-					multLabel.TextColor3 = Color3.fromRGB(120, 125, 140)
-				end
-				multLabel.Font = Enum.Font.GothamMedium
-				multLabel.TextSize = 10
-				multLabel.Parent = card
-
-				-- Egg Origin Source
-				local eggDef = PetConfig.EGGS[pet.originEgg]
-				local originName = if eggDef then eggDef.name else "Egg"
-				local originLabel = Instance.new("TextLabel")
-				originLabel.Size = UDim2.new(0.92, 0, 0, 16)
-				originLabel.Position = UDim2.new(0.04, 0, 0, 116)
-				originLabel.BackgroundTransparency = 1
-				originLabel.Text = "🥚 " .. originName
-				originLabel.TextColor3 = Color3.fromRGB(255, 215, 120)
-				originLabel.Font = Enum.Font.GothamMedium
-				originLabel.TextSize = 10
-				originLabel.Parent = card
-
-				-- Discovery status footer pill
-				local statusPill = Instance.new("TextLabel")
-				statusPill.Size = UDim2.new(0.9, 0, 0, 24)
-				statusPill.Position = UDim2.new(0.05, 0, 0, 142)
-				statusPill.BorderSizePixel = 0
-				statusPill.Font = Enum.Font.GothamBold
-				statusPill.TextSize = 10
-
-				local spCorner = Instance.new("UICorner")
-				spCorner.CornerRadius = UDim.new(0, 6)
-				spCorner.Parent = statusPill
-
-				if isDiscovered then
-					statusPill.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
-					statusPill.Text = if ownedCount > 0 then string.format("✓ Owned (%dx)", ownedCount) else "✓ Discovered"
-					statusPill.TextColor3 = Color3.fromRGB(100, 255, 170)
-				else
-					statusPill.BackgroundColor3 = Color3.fromRGB(30, 32, 42)
-					statusPill.Text = "🔒 Undiscovered"
-					statusPill.TextColor3 = Color3.fromRGB(140, 145, 160)
-				end
-				statusPill.Parent = card
+		local totalPets = PetConfig.getTotalPetsCount()
+		local discoveredCount = 0
+		for petId, _ in PetConfig.PETS do
+			if petIndex[petId] then
+				discoveredCount += 1
 			end
 		end
+		local pct = math.clamp(discoveredCount / math.max(1, totalPets), 0, 1)
+
+		local totalBoostPct = 0
+		for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
+			if claimedMilestones[m.id] then
+				totalBoostPct += m.powerBoostPct
+			end
+		end
+
+		indexTabBtn.Text = string.format("📖 Index (%d/%d)", discoveredCount, totalPets)
+		progressLabel.Text = string.format("Discovery Progress: %d / %d Pets (%d%%)", discoveredCount, totalPets, math.floor(pct * 100))
+		boostLabel.Text = string.format("⚡ Total Boost: +%d%% Power", totalBoostPct)
+		barFill.Size = UDim2.new(pct, 0, 1, 0)
+
+		-- Update Milestone Cards
+		for _, m in ipairs(PetConfig.INDEX_MILESTONES) do
+			local refs = milestoneRefs[m.id]
+			if refs then
+				local isClaimed = claimedMilestones[m.id] == true
+				local isEligible = discoveredCount >= m.requiredCount and not isClaimed
+
+				refs.card.BackgroundColor3 = if isEligible then Color3.fromRGB(35, 55, 45) elseif isClaimed then Color3.fromRGB(28, 30, 40) else Color3.fromRGB(25, 28, 38)
+				refs.title.TextColor3 = if isEligible then Color3.fromRGB(255, 220, 100) else Color3.fromRGB(210, 215, 230)
+
+				refs.button.Active = true
+				if isClaimed then
+					refs.button.BackgroundColor3 = Color3.fromRGB(45, 55, 50)
+					refs.button.Text = "✓ CLAIMED"
+					refs.button.TextColor3 = Color3.fromRGB(150, 200, 160)
+				elseif isEligible then
+					refs.button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+					refs.button.Text = "CLAIM REWARD"
+					refs.button.TextColor3 = Color3.fromRGB(255, 255, 255)
+					refs.button.MouseButton1Click:Connect(function()
+						local claimFn = Remotes.getFunction("ClaimIndexMilestone")
+						local ok, msg = claimFn:InvokeServer(m.id)
+						if ok then
+							showFloatingPopup(string.format("🏆 CLAIMED %s! (+%s 💎)", m.name:upper(), FormatNumber.formatCompact(m.gemsReward)), Color3.fromRGB(0, 255, 180), 0)
+							updateIndex(activeFilter, false)
+						end
+					end)
+				else
+					refs.button.BackgroundColor3 = Color3.fromRGB(35, 38, 48)
+					refs.button.Text = string.format("🔒 %d/%d", discoveredCount, m.requiredCount)
+					refs.button.TextColor3 = Color3.fromRGB(140, 145, 160)
+				end
+			end
+		end
+
+		-- Update Filter Buttons
+		for optId, btn in pairs(filterButtons) do
+			local isSel = (optId == activeFilter)
+			btn.BackgroundColor3 = if isSel then Color3.fromRGB(0, 165, 215) else Color3.fromRGB(32, 36, 50)
+			btn.TextColor3 = if isSel then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(190, 195, 215)
+		end
+
+		local savedY = if resetScroll then 0 else scroll.CanvasPosition.Y
+
+		-- Rebuild Pet Catalog Cards
+		for _, child in ipairs(scroll:GetChildren()) do
+			if child:IsA("Frame") or child:IsA("TextLabel") then
+				child:Destroy()
+			end
+		end
+
+		for _, petId in ipairs(petOrder) do
+			local pet = PetConfig.PETS[petId]
+			if pet then
+				if activeFilter == "All" or pet.originEgg == activeFilter then
+					local isDiscovered = (petIndex[petId] == true)
+					local rarityColor = PetConfig.getRarityColor(pet.rarity)
+					local ownedCount = cachedData.OwnedPets and cachedData.OwnedPets[petId] or 0
+
+					local card = Instance.new("Frame")
+					card.BackgroundColor3 = if isDiscovered then Color3.fromRGB(24, 28, 40) else Color3.fromRGB(20, 22, 30)
+					card.BorderSizePixel = 0
+					card.Parent = scroll
+
+					local cCorner = Instance.new("UICorner")
+					cCorner.CornerRadius = UDim.new(0, 10)
+					cCorner.Parent = card
+
+					local cStroke = Instance.new("UIStroke")
+					cStroke.Color = if isDiscovered then rarityColor else Color3.fromRGB(45, 48, 60)
+					cStroke.Thickness = if isDiscovered then 1.5 else 1
+					cStroke.Transparency = if isDiscovered then 0.2 else 0.6
+					cStroke.Parent = card
+
+					-- Rarity Pill Badge
+					local rarityBadge = Instance.new("TextLabel")
+					rarityBadge.Size = UDim2.new(0.9, 0, 0, 18)
+					rarityBadge.Position = UDim2.new(0.05, 0, 0, 6)
+					rarityBadge.BackgroundColor3 = if isDiscovered then rarityColor else Color3.fromRGB(38, 40, 50)
+					rarityBadge.BackgroundTransparency = if isDiscovered then 0.75 else 0.5
+					rarityBadge.Text = if isDiscovered then pet.rarity:upper() else string.format("??? • %s", pet.rarity:upper())
+					rarityBadge.TextColor3 = if isDiscovered then rarityColor else Color3.fromRGB(150, 155, 170)
+					rarityBadge.Font = Enum.Font.GothamBlack
+					rarityBadge.TextSize = 10
+					rarityBadge.BorderSizePixel = 0
+					rarityBadge.Parent = card
+
+					local rbCorner = Instance.new("UICorner")
+					rbCorner.CornerRadius = UDim.new(0, 4)
+					rbCorner.Parent = rarityBadge
+
+					-- Pet Icon
+					local iconLabel = Instance.new("TextLabel")
+					iconLabel.Size = UDim2.new(1, 0, 0, 44)
+					iconLabel.Position = UDim2.new(0, 0, 0, 28)
+					iconLabel.BackgroundTransparency = 1
+					iconLabel.Text = if isDiscovered then pet.icon else "❓"
+					iconLabel.TextSize = if isDiscovered then 36 else 30
+					iconLabel.Parent = card
+
+					-- Pet Name
+					local nameLabel = Instance.new("TextLabel")
+					nameLabel.Size = UDim2.new(0.92, 0, 0, 20)
+					nameLabel.Position = UDim2.new(0.04, 0, 0, 74)
+					nameLabel.BackgroundTransparency = 1
+					nameLabel.Text = if isDiscovered then pet.name else "???"
+					nameLabel.TextColor3 = if isDiscovered then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(150, 155, 170)
+					nameLabel.Font = Enum.Font.GothamBold
+					nameLabel.TextSize = 12
+					nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+					nameLabel.Parent = card
+
+					-- Multipliers
+					local multLabel = Instance.new("TextLabel")
+					multLabel.Size = UDim2.new(0.92, 0, 0, 16)
+					multLabel.Position = UDim2.new(0.04, 0, 0, 96)
+					multLabel.BackgroundTransparency = 1
+					if isDiscovered then
+						multLabel.Text = string.format("+%.0f%% Cash • +%.0f%% Gems", (pet.cashMultiplier - 1) * 100, (pet.gemMultiplier - 1) * 100)
+						multLabel.TextColor3 = Color3.fromRGB(0, 230, 140)
+					else
+						multLabel.Text = "🔒 Multipliers Hidden"
+						multLabel.TextColor3 = Color3.fromRGB(120, 125, 140)
+					end
+					multLabel.Font = Enum.Font.GothamMedium
+					multLabel.TextSize = 10
+					multLabel.Parent = card
+
+					-- Egg Origin Source
+					local eggDef = PetConfig.EGGS[pet.originEgg]
+					local originName = if eggDef then eggDef.name else "Egg"
+					local originLabel = Instance.new("TextLabel")
+					originLabel.Size = UDim2.new(0.92, 0, 0, 16)
+					originLabel.Position = UDim2.new(0.04, 0, 0, 116)
+					originLabel.BackgroundTransparency = 1
+					originLabel.Text = "🥚 " .. originName
+					originLabel.TextColor3 = Color3.fromRGB(255, 215, 120)
+					originLabel.Font = Enum.Font.GothamMedium
+					originLabel.TextSize = 10
+					originLabel.Parent = card
+
+					-- Discovery status footer pill
+					local statusPill = Instance.new("TextLabel")
+					statusPill.Size = UDim2.new(0.9, 0, 0, 24)
+					statusPill.Position = UDim2.new(0.05, 0, 0, 142)
+					statusPill.BorderSizePixel = 0
+					statusPill.Font = Enum.Font.GothamBold
+					statusPill.TextSize = 10
+
+					local spCorner = Instance.new("UICorner")
+					spCorner.CornerRadius = UDim.new(0, 6)
+					spCorner.Parent = statusPill
+
+					if isDiscovered then
+						statusPill.BackgroundColor3 = Color3.fromRGB(35, 65, 45)
+						statusPill.Text = if ownedCount > 0 then string.format("✓ Owned (%dx)", ownedCount) else "✓ Discovered"
+						statusPill.TextColor3 = Color3.fromRGB(100, 255, 170)
+					else
+						statusPill.BackgroundColor3 = Color3.fromRGB(30, 32, 42)
+						statusPill.Text = "🔒 Undiscovered"
+						statusPill.TextColor3 = Color3.fromRGB(140, 145, 160)
+					end
+					statusPill.Parent = card
+				end
+			end
+		end
+
+		scroll.CanvasPosition = Vector2.new(0, savedY)
 	end
 
 	-- Close Button
@@ -1529,6 +1732,17 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 
 	closeBtn.MouseButton1Click:Connect(closeModal)
 
+	updateIndex(activeFilter, false)
+
+	activeModalUpdater = function()
+		updateIndex(activeFilter, false)
+	end
+	modal.Destroying:Connect(function()
+		if activeModalUpdater then
+			activeModalUpdater = nil
+		end
+	end)
+
 	-- Animate In
 	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -1539,9 +1753,16 @@ end
 -- ⚗️ PET FUSION CHAMBER MODAL (GOLDEN & RAINBOW)
 -- ==========================================
 openFusionModal = function(initialMode: ("Golden" | "Rainbow")?, isRefresh: boolean?)
-	if isRefresh ~= true and initialMode == nil and activeModal and activeModal.Name == "PetFusionModal" then
-		closeModal()
-		return
+	if activeModal and activeModal.Name == "PetFusionModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		elseif initialMode == nil then
+			closeModal()
+			return
+		end
 	end
 
 	closeModal()
@@ -1705,229 +1926,245 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?, isRefresh: bool
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 	scroll.Parent = modal
 
-	local sCorner = Instance.new("UICorner")
-	sCorner.CornerRadius = UDim.new(0, 8)
-	sCorner.Parent = scroll
+	local function renderCandidates()
+		local savedY = scroll.CanvasPosition.Y
+		scroll:ClearAllChildren()
 
-	local listLayout = Instance.new("UIListLayout")
-	listLayout.Padding = UDim.new(0, 8)
-	listLayout.Parent = scroll
+		local listLayout = Instance.new("UIListLayout")
+		listLayout.Padding = UDim.new(0, 8)
+		listLayout.Parent = scroll
 
-	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 8)
-	pad.PaddingBottom = UDim.new(0, 8)
-	pad.PaddingLeft = UDim.new(0, 8)
-	pad.PaddingRight = UDim.new(0, 8)
-	pad.Parent = scroll
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop = UDim.new(0, 8)
+		pad.PaddingBottom = UDim.new(0, 8)
+		pad.PaddingLeft = UDim.new(0, 8)
+		pad.PaddingRight = UDim.new(0, 8)
+		pad.Parent = scroll
 
-	-- Build species list sorted by (canFuse desc, ownedCount desc)
-	type FusionCandidate = {
-		baseId: string,
-		sourceId: string,
-		targetId: string,
-		ownedCount: number,
-		canFuse: boolean,
-	}
+		type FusionCandidate = {
+			baseId: string,
+			sourceId: string,
+			targetId: string,
+			ownedCount: number,
+			canFuse: boolean,
+		}
 
-	local candidates: { FusionCandidate } = {}
-	for _, baseId in ipairs(PetConfig.BASE_PET_IDS) do
-		local sourceId = if activeMode == "Golden" then baseId else PetConfig.getGoldenId(baseId)
-		local targetId = if activeMode == "Golden" then PetConfig.getGoldenId(baseId) else PetConfig.getRainbowId(baseId)
-		local count = ownedPets[sourceId] or 0
-		table.insert(candidates, {
-			baseId = baseId,
-			sourceId = sourceId,
-			targetId = targetId,
-			ownedCount = count,
-			canFuse = count >= 3,
-		})
-	end
-
-	table.sort(candidates, function(a, b)
-		if a.canFuse ~= b.canFuse then
-			return a.canFuse == true
+		local currentOwnedPets = if cachedData then (cachedData.OwnedPets or {}) else {}
+		local candidates: { FusionCandidate } = {}
+		for _, baseId in ipairs(PetConfig.BASE_PET_IDS) do
+			local sourceId = if activeMode == "Golden" then baseId else PetConfig.getGoldenId(baseId)
+			local targetId = if activeMode == "Golden" then PetConfig.getGoldenId(baseId) else PetConfig.getRainbowId(baseId)
+			local count = currentOwnedPets[sourceId] or 0
+			table.insert(candidates, {
+				baseId = baseId,
+				sourceId = sourceId,
+				targetId = targetId,
+				ownedCount = count,
+				canFuse = count >= 3,
+			})
 		end
-		return a.ownedCount > b.ownedCount
-	end)
 
-	for _, cand in ipairs(candidates) do
-		local srcPet = PetConfig.PETS[cand.sourceId]
-		local tgtPet = PetConfig.PETS[cand.targetId]
-		if srcPet and tgtPet then
-			local card = Instance.new("Frame")
-			card.Size = UDim2.new(1, 0, 0, 78)
-			card.BackgroundColor3 = if cand.canFuse then Color3.fromRGB(24, 28, 40) else Color3.fromRGB(20, 22, 30)
-			card.BorderSizePixel = 0
-			card.Parent = scroll
+		table.sort(candidates, function(a, b)
+			if a.canFuse ~= b.canFuse then
+				return a.canFuse == true
+			end
+			return a.ownedCount > b.ownedCount
+		end)
 
-			local cCorner = Instance.new("UICorner")
-			cCorner.CornerRadius = UDim.new(0, 8)
-			cCorner.Parent = card
+		for _, cand in ipairs(candidates) do
+			local srcPet = PetConfig.PETS[cand.sourceId]
+			local tgtPet = PetConfig.PETS[cand.targetId]
+			if srcPet and tgtPet then
+				local card = Instance.new("Frame")
+				card.Size = UDim2.new(1, 0, 0, 78)
+				card.BackgroundColor3 = if cand.canFuse then Color3.fromRGB(24, 28, 40) else Color3.fromRGB(20, 22, 30)
+				card.BorderSizePixel = 0
+				card.Parent = scroll
 
-			local cStroke = Instance.new("UIStroke")
-			cStroke.Color = if cand.canFuse then (if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 100, 220)) else Color3.fromRGB(38, 42, 54)
-			cStroke.Thickness = if cand.canFuse then 1.5 else 1
-			cStroke.Parent = card
+				local cCorner = Instance.new("UICorner")
+				cCorner.CornerRadius = UDim.new(0, 8)
+				cCorner.Parent = card
 
-			-- Left: Source Pet Column
-			local srcIcon = Instance.new("TextLabel")
-			srcIcon.Size = UDim2.new(0, 46, 0, 46)
-			srcIcon.Position = UDim2.new(0, 10, 0, 16)
-			srcIcon.BackgroundTransparency = 1
-			srcIcon.Text = srcPet.icon
-			srcIcon.TextSize = 30
-			srcIcon.Parent = card
+				local cStroke = Instance.new("UIStroke")
+				cStroke.Color = if cand.canFuse then (if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 100, 220)) else Color3.fromRGB(38, 42, 54)
+				cStroke.Thickness = if cand.canFuse then 1.5 else 1
+				cStroke.Parent = card
 
-			local srcName = Instance.new("TextLabel")
-			srcName.Size = UDim2.new(0, 140, 0, 20)
-			srcName.Position = UDim2.new(0, 58, 0, 14)
-			srcName.BackgroundTransparency = 1
-			srcName.Text = srcPet.name
-			srcName.TextColor3 = Color3.fromRGB(240, 245, 255)
-			srcName.Font = Enum.Font.GothamBold
-			srcName.TextSize = 13
-			srcName.TextXAlignment = Enum.TextXAlignment.Left
-			srcName.TextTruncate = Enum.TextTruncate.AtEnd
-			srcName.Parent = card
+				-- Left: Source Pet Column
+				local srcIcon = Instance.new("TextLabel")
+				srcIcon.Size = UDim2.new(0, 46, 0, 46)
+				srcIcon.Position = UDim2.new(0, 10, 0, 16)
+				srcIcon.BackgroundTransparency = 1
+				srcIcon.Text = srcPet.icon
+				srcIcon.TextSize = 30
+				srcIcon.Parent = card
 
-			local countPill = Instance.new("TextLabel")
-			countPill.Size = UDim2.new(0, 120, 0, 20)
-			countPill.Position = UDim2.new(0, 58, 0, 36)
-			countPill.BackgroundColor3 = if cand.canFuse then Color3.fromRGB(25, 55, 35) else Color3.fromRGB(32, 34, 44)
-			countPill.Text = if cand.canFuse then string.format("✓ %d / 3 Ready!", cand.ownedCount) else string.format("🔒 %d / 3 Needed", cand.ownedCount)
-			countPill.TextColor3 = if cand.canFuse then Color3.fromRGB(80, 255, 160) else Color3.fromRGB(150, 155, 170)
-			countPill.Font = Enum.Font.GothamBold
-			countPill.TextSize = 11
-			countPill.BorderSizePixel = 0
-			countPill.Parent = card
+				local srcName = Instance.new("TextLabel")
+				srcName.Size = UDim2.new(0, 140, 0, 20)
+				srcName.Position = UDim2.new(0, 58, 0, 14)
+				srcName.BackgroundTransparency = 1
+				srcName.Text = srcPet.name
+				srcName.TextColor3 = Color3.fromRGB(240, 245, 255)
+				srcName.Font = Enum.Font.GothamBold
+				srcName.TextSize = 13
+				srcName.TextXAlignment = Enum.TextXAlignment.Left
+				srcName.TextTruncate = Enum.TextTruncate.AtEnd
+				srcName.Parent = card
 
-			local cpCorner = Instance.new("UICorner")
-			cpCorner.CornerRadius = UDim.new(0, 4)
-			cpCorner.Parent = countPill
+				local countPill = Instance.new("TextLabel")
+				countPill.Size = UDim2.new(0, 120, 0, 20)
+				countPill.Position = UDim2.new(0, 58, 0, 36)
+				countPill.BackgroundColor3 = if cand.canFuse then Color3.fromRGB(25, 55, 35) else Color3.fromRGB(32, 34, 44)
+				countPill.Text = if cand.canFuse then string.format("✓ %d / 3 Ready!", cand.ownedCount) else string.format("🔒 %d / 3 Needed", cand.ownedCount)
+				countPill.TextColor3 = if cand.canFuse then Color3.fromRGB(80, 255, 160) else Color3.fromRGB(150, 155, 170)
+				countPill.Font = Enum.Font.GothamBold
+				countPill.TextSize = 11
+				countPill.BorderSizePixel = 0
+				countPill.Parent = card
 
-			-- Center Arrow
-			local arrow = Instance.new("TextLabel")
-			arrow.Size = UDim2.new(0, 36, 0, 36)
-			arrow.Position = UDim2.new(0, 206, 0, 21)
-			arrow.BackgroundTransparency = 1
-			arrow.Text = "➔"
-			arrow.TextColor3 = if cand.canFuse then (if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 100, 220)) else Color3.fromRGB(100, 105, 120)
-			arrow.Font = Enum.Font.GothamBlack
-			arrow.TextSize = 22
-			arrow.Parent = card
+				local cpCorner = Instance.new("UICorner")
+				cpCorner.CornerRadius = UDim.new(0, 4)
+				cpCorner.Parent = countPill
 
-			-- Right Column: Target Pet Result Preview
-			local tgtIcon = Instance.new("TextLabel")
-			tgtIcon.Size = UDim2.new(0, 46, 0, 46)
-			tgtIcon.Position = UDim2.new(0, 248, 0, 16)
-			tgtIcon.BackgroundTransparency = 1
-			tgtIcon.Text = tgtPet.icon
-			tgtIcon.TextSize = 30
-			tgtIcon.Parent = card
+				-- Center Arrow
+				local arrow = Instance.new("TextLabel")
+				arrow.Size = UDim2.new(0, 36, 0, 36)
+				arrow.Position = UDim2.new(0, 206, 0, 21)
+				arrow.BackgroundTransparency = 1
+				arrow.Text = "➔"
+				arrow.TextColor3 = if cand.canFuse then (if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 100, 220)) else Color3.fromRGB(100, 105, 120)
+				arrow.Font = Enum.Font.GothamBlack
+				arrow.TextSize = 22
+				arrow.Parent = card
 
-			local tgtName = Instance.new("TextLabel")
-			tgtName.Size = UDim2.new(0, 150, 0, 20)
-			tgtName.Position = UDim2.new(0, 298, 0, 14)
-			tgtName.BackgroundTransparency = 1
-			tgtName.Text = tgtPet.name
-			tgtName.TextColor3 = if activeMode == "Golden" then Color3.fromRGB(255, 220, 80) else Color3.fromRGB(255, 130, 240)
-			tgtName.Font = Enum.Font.GothamBlack
-			tgtName.TextSize = 13
-			tgtName.TextXAlignment = Enum.TextXAlignment.Left
-			tgtName.TextTruncate = Enum.TextTruncate.AtEnd
-			tgtName.Parent = card
+				-- Right Column: Target Pet Result Preview
+				local tgtIcon = Instance.new("TextLabel")
+				tgtIcon.Size = UDim2.new(0, 46, 0, 46)
+				tgtIcon.Position = UDim2.new(0, 248, 0, 16)
+				tgtIcon.BackgroundTransparency = 1
+				tgtIcon.Text = tgtPet.icon
+				tgtIcon.TextSize = 30
+				tgtIcon.Parent = card
 
-			local multLabel = Instance.new("TextLabel")
-			multLabel.Size = UDim2.new(0, 150, 0, 18)
-			multLabel.Position = UDim2.new(0, 298, 0, 36)
-			multLabel.BackgroundTransparency = 1
-			multLabel.Text = string.format("+%.0f%% Cash • +%.0f%% Gems", (tgtPet.cashMultiplier - 1) * 100, (tgtPet.gemMultiplier - 1) * 100)
-			multLabel.TextColor3 = Color3.fromRGB(0, 230, 160)
-			multLabel.Font = Enum.Font.GothamBold
-			multLabel.TextSize = 10
-			multLabel.TextXAlignment = Enum.TextXAlignment.Left
-			multLabel.Parent = card
+				local tgtName = Instance.new("TextLabel")
+				tgtName.Size = UDim2.new(0, 150, 0, 20)
+				tgtName.Position = UDim2.new(0, 298, 0, 14)
+				tgtName.BackgroundTransparency = 1
+				tgtName.Text = tgtPet.name
+				tgtName.TextColor3 = if activeMode == "Golden" then Color3.fromRGB(255, 225, 80) else Color3.fromRGB(255, 130, 240)
+				tgtName.Font = Enum.Font.GothamBlack
+				tgtName.TextSize = 13
+				tgtName.TextXAlignment = Enum.TextXAlignment.Left
+				tgtName.TextTruncate = Enum.TextTruncate.AtEnd
+				tgtName.Parent = card
 
-			-- Action Buttons (Fuse 1x, Fuse All)
-			if cand.canFuse then
-				local batches = math.floor(cand.ownedCount / 3)
-				local canFuseAll = (batches >= 2)
+				local multPill = Instance.new("TextLabel")
+				multPill.Size = UDim2.new(0, 150, 0, 20)
+				multPill.Position = UDim2.new(0, 298, 0, 36)
+				multPill.BackgroundColor3 = if activeMode == "Golden" then Color3.fromRGB(45, 38, 16) else Color3.fromRGB(45, 18, 50)
+				multPill.Text = string.format("⚡ %.1fx Cash • %.1fx Gems", tgtPet.cashMultiplier, tgtPet.gemMultiplier)
+				multPill.TextColor3 = if activeMode == "Golden" then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 120, 240)
+				multPill.Font = Enum.Font.GothamBold
+				multPill.TextSize = 10.5
+				multPill.BorderSizePixel = 0
+				multPill.Parent = card
 
-				local fuse1Btn = Instance.new("TextButton")
-				fuse1Btn.Size = if canFuseAll then UDim2.new(0, 78, 0, 38) else UDim2.new(0, 110, 0, 42)
-				fuse1Btn.Position = if canFuseAll then UDim2.new(1, -170, 0, 19) else UDim2.new(1, -122, 0, 18)
-				fuse1Btn.BackgroundColor3 = if activeMode == "Golden" then Color3.fromRGB(210, 160, 20) else Color3.fromRGB(180, 50, 160)
-				fuse1Btn.Text = "FUSE 1x"
-				fuse1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-				fuse1Btn.Font = Enum.Font.GothamBlack
-				fuse1Btn.TextSize = 12
-				fuse1Btn.BorderSizePixel = 0
-				fuse1Btn.Parent = card
+				local mpCorner = Instance.new("UICorner")
+				mpCorner.CornerRadius = UDim.new(0, 4)
+				mpCorner.Parent = multPill
 
-				local f1Corner = Instance.new("UICorner")
-				f1Corner.CornerRadius = UDim.new(0, 6)
-				f1Corner.Parent = fuse1Btn
+				-- Action Buttons Column (Fuse 1x / Fuse All)
+				if cand.canFuse then
+					local batches = math.floor(cand.ownedCount / 3)
+					local canFuseAll = batches > 1
 
-				fuse1Btn.MouseButton1Click:Connect(function()
-					fuse1Btn.Text = "..."
-					local fuseFn = Remotes.getFunction("FusePets")
-					local ok, targetId, batchCount, msg = fuseFn:InvokeServer(activeMode, cand.baseId, false)
-					if ok then
-						showFloatingPopup(msg or "✨ Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
-						openFusionModal(activeMode, true)
-					else
-						showFloatingPopup("⚠️ " .. tostring(msg), Color3.fromRGB(255, 80, 80), 0)
-						openFusionModal(activeMode, true)
-					end
-				end)
+					local fuse1Btn = Instance.new("TextButton")
+					fuse1Btn.Size = if canFuseAll then UDim2.new(0, 72, 0, 38) else UDim2.new(0, 110, 0, 38)
+					fuse1Btn.Position = if canFuseAll then UDim2.new(1, -166, 0, 19) else UDim2.new(1, -122, 0, 19)
+					fuse1Btn.BackgroundColor3 = if activeMode == "Golden" then Color3.fromRGB(220, 175, 20) else Color3.fromRGB(190, 40, 160)
+					fuse1Btn.Text = "FUSE 1x"
+					fuse1Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+					fuse1Btn.Font = Enum.Font.GothamBlack
+					fuse1Btn.TextSize = 11.5
+					fuse1Btn.BorderSizePixel = 0
+					fuse1Btn.Parent = card
 
-				if canFuseAll then
-					local fuseAllBtn = Instance.new("TextButton")
-					fuseAllBtn.Size = UDim2.new(0, 84, 0, 38)
-					fuseAllBtn.Position = UDim2.new(1, -88, 0, 19)
-					fuseAllBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 140)
-					fuseAllBtn.Text = string.format("ALL (%dx)", batches)
-					fuseAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-					fuseAllBtn.Font = Enum.Font.GothamBlack
-					fuseAllBtn.TextSize = 11
-					fuseAllBtn.BorderSizePixel = 0
-					fuseAllBtn.Parent = card
+					local f1Corner = Instance.new("UICorner")
+					f1Corner.CornerRadius = UDim.new(0, 6)
+					f1Corner.Parent = fuse1Btn
 
-					local faCorner = Instance.new("UICorner")
-					faCorner.CornerRadius = UDim.new(0, 6)
-					faCorner.Parent = fuseAllBtn
-
-					fuseAllBtn.MouseButton1Click:Connect(function()
-						fuseAllBtn.Text = "..."
+					fuse1Btn.MouseButton1Click:Connect(function()
+						fuse1Btn.Text = "..."
 						local fuseFn = Remotes.getFunction("FusePets")
-						local ok, targetId, batchCount, msg = fuseFn:InvokeServer(activeMode, cand.baseId, true)
+						local ok, targetId, count, msg = fuseFn:InvokeServer(activeMode, cand.baseId, false)
 						if ok then
-							showFloatingPopup(msg or "✨ Batch Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
-							openFusionModal(activeMode, true)
+							showFloatingPopup(msg or "✨ Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
+							renderCandidates()
 						else
 							showFloatingPopup("⚠️ " .. tostring(msg), Color3.fromRGB(255, 80, 80), 0)
-							openFusionModal(activeMode, true)
+							renderCandidates()
 						end
 					end)
-				end
-			else
-				local lockedBtn = Instance.new("TextLabel")
-				lockedBtn.Size = UDim2.new(0, 110, 0, 38)
-				lockedBtn.Position = UDim2.new(1, -122, 0, 20)
-				lockedBtn.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
-				lockedBtn.Text = string.format("🔒 Need %d More", 3 - cand.ownedCount)
-				lockedBtn.TextColor3 = Color3.fromRGB(130, 135, 150)
-				lockedBtn.Font = Enum.Font.GothamBold
-				lockedBtn.TextSize = 11
-				lockedBtn.BorderSizePixel = 0
-				lockedBtn.Parent = card
 
-				local lCorner = Instance.new("UICorner")
-				lCorner.CornerRadius = UDim.new(0, 6)
-				lCorner.Parent = lockedBtn
+					if canFuseAll then
+						local fuseAllBtn = Instance.new("TextButton")
+						fuseAllBtn.Size = UDim2.new(0, 84, 0, 38)
+						fuseAllBtn.Position = UDim2.new(1, -88, 0, 19)
+						fuseAllBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 140)
+						fuseAllBtn.Text = string.format("ALL (%dx)", batches)
+						fuseAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+						fuseAllBtn.Font = Enum.Font.GothamBlack
+						fuseAllBtn.TextSize = 11
+						fuseAllBtn.BorderSizePixel = 0
+						fuseAllBtn.Parent = card
+
+						local faCorner = Instance.new("UICorner")
+						faCorner.CornerRadius = UDim.new(0, 6)
+						faCorner.Parent = fuseAllBtn
+
+						fuseAllBtn.MouseButton1Click:Connect(function()
+							fuseAllBtn.Text = "..."
+							local fuseFn = Remotes.getFunction("FusePets")
+							local ok, targetId, batchCount, msg = fuseFn:InvokeServer(activeMode, cand.baseId, true)
+							if ok then
+								showFloatingPopup(msg or "✨ Batch Fusion Successful!", if activeMode == "Golden" then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(255, 100, 220), 0)
+								renderCandidates()
+							else
+								showFloatingPopup("⚠️ " .. tostring(msg), Color3.fromRGB(255, 80, 80), 0)
+								renderCandidates()
+							end
+						end)
+					end
+				else
+					local lockedBtn = Instance.new("TextLabel")
+					lockedBtn.Size = UDim2.new(0, 110, 0, 38)
+					lockedBtn.Position = UDim2.new(1, -122, 0, 20)
+					lockedBtn.BackgroundColor3 = Color3.fromRGB(28, 30, 40)
+					lockedBtn.Text = string.format("🔒 Need %d More", 3 - cand.ownedCount)
+					lockedBtn.TextColor3 = Color3.fromRGB(130, 135, 150)
+					lockedBtn.Font = Enum.Font.GothamBold
+					lockedBtn.TextSize = 11
+					lockedBtn.BorderSizePixel = 0
+					lockedBtn.Parent = card
+
+					local lCorner = Instance.new("UICorner")
+					lCorner.CornerRadius = UDim.new(0, 6)
+					lCorner.Parent = lockedBtn
+				end
 			end
 		end
+
+		scroll.CanvasPosition = Vector2.new(0, savedY)
 	end
+
+	renderCandidates()
+
+	activeModalUpdater = renderCandidates
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == renderCandidates then
+			activeModalUpdater = nil
+		end
+	end)
 
 	-- Close Button
 	local closeBtn = Instance.new("TextButton")
@@ -2368,9 +2605,16 @@ local function openVIPModal(isRefresh: boolean?)
 end
 
 local function openEquipmentShopModal(isRefresh: boolean?)
-	if isRefresh ~= true and activeModal and activeModal.Name == "EquipmentShopModal" then
-		closeModal()
-		return
+	if activeModal and activeModal.Name == "EquipmentShopModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
 	end
 
 	closeModal()
@@ -2464,6 +2708,7 @@ local function openEquipmentShopModal(isRefresh: boolean?)
 	sCorner.Parent = scroll
 
 	local function refreshItems()
+		local savedY = scroll.CanvasPosition.Y
 		scroll:ClearAllChildren()
 		local uilist = Instance.new("UIListLayout")
 		uilist.Padding = UDim.new(0, 8)
@@ -2491,6 +2736,10 @@ local function openEquipmentShopModal(isRefresh: boolean?)
 			local isEquipped = (equippedId == item.id)
 
 			local card = Instance.new("Frame")
+			card.Name = "ItemCard_" .. item.id
+			card:SetAttribute("ItemId", item.id)
+			card:SetAttribute("IsOwned", isOwned)
+			card:SetAttribute("IsEquipped", isEquipped)
 			card.Size = UDim2.new(0.96, 0, 0, 66)
 			card.BackgroundColor3 = if isEquipped then Color3.fromRGB(36, 55, 46) else Color3.fromRGB(32, 35, 46)
 			card.BorderSizePixel = 0
@@ -2548,6 +2797,7 @@ local function openEquipmentShopModal(isRefresh: boolean?)
 
 			-- Action Button
 			local actionBtn = Instance.new("TextButton")
+			actionBtn.Name = "ActionBtn"
 			actionBtn.Size = UDim2.new(0.32, 0, 0, 42)
 			actionBtn.Position = UDim2.new(0.65, 0, 0.5, -21)
 			actionBtn.Font = Enum.Font.Antique
@@ -2612,7 +2862,76 @@ local function openEquipmentShopModal(isRefresh: boolean?)
 		end
 
 		scroll.CanvasSize = UDim2.new(0, 0, 0, #items * 76)
+		scroll.CanvasPosition = Vector2.new(0, savedY)
 	end
+
+	-- In-place auto-updater for EquipmentShopModal
+	local function updateEquipmentShop()
+		if not activeModal or activeModal ~= modal then return end
+		if not cachedData then return end
+
+		local items = if currentShopTab == "Shovel" then ShopConfig.SHOVELS else ShopConfig.BACKPACKS
+		local ownedMap = if currentShopTab == "Shovel" then (cachedData.OwnedShovels or {}) else (cachedData.OwnedBackpacks or {})
+		local equippedId = if currentShopTab == "Shovel" then cachedData.EquippedShovel else cachedData.EquippedBackpack
+		local currentCash = cachedData.Cash or 0
+
+		-- Check if any item's owned or equipped state changed
+		local needsFullRefresh = false
+		for _, card in ipairs(scroll:GetChildren()) do
+			if not card:IsA("Frame") then continue end
+			local itemId = card:GetAttribute("ItemId")
+			if not itemId then continue end
+			local wasOwned = card:GetAttribute("IsOwned") == true
+			local isOwned = ownedMap[itemId] == true
+			local wasEquipped = card:GetAttribute("IsEquipped") == true
+			local isEquipped = (equippedId == itemId)
+			if wasOwned ~= isOwned or wasEquipped ~= isEquipped then
+				needsFullRefresh = true
+				break
+			end
+		end
+
+		if needsFullRefresh then
+			refreshItems()
+			return
+		end
+
+		-- Ownership unchanged: update affordance colors and BUY text with zero flicker
+		for _, card in ipairs(scroll:GetChildren()) do
+			if not card:IsA("Frame") then continue end
+			local itemId = card:GetAttribute("ItemId")
+			if not itemId then continue end
+
+			local item = nil
+			for _, it in ipairs(items) do
+				if it.id == itemId then
+					item = it
+					break
+				end
+			end
+			if not item then continue end
+
+			local isOwned = ownedMap[item.id] == true
+			local isEquipped = (equippedId == item.id)
+
+			if not isOwned and not isEquipped then
+				local actionBtn = card:FindFirstChild("ActionBtn") :: TextButton?
+				if actionBtn then
+					local canAfford = currentCash >= item.cost
+					actionBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(0, 180, 100) else Color3.fromRGB(80, 50, 55)
+					actionBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(200, 150, 150)
+					actionBtn.Text = if canAfford then ("$" .. FormatNumber.formatCompact(item.cost) .. " BUY") else ("$" .. FormatNumber.formatCompact(item.cost))
+				end
+			end
+		end
+	end
+
+	activeModalUpdater = updateEquipmentShop
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == updateEquipmentShop then
+			activeModalUpdater = nil
+		end
+	end)
 
 	tabShovelBtn.MouseButton1Click:Connect(function()
 		currentShopTab = "Shovel"
@@ -3186,9 +3505,16 @@ local function openWheelModal(isRefresh: boolean?)
 end
 
 local function openTrailsShopModal(isRefresh: boolean?)
-	if isRefresh ~= true and activeModal and activeModal.Name == "TrailsShopModal" then
-		closeModal()
-		return
+	if activeModal and activeModal.Name == "TrailsShopModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
 	end
 
 	closeModal()
@@ -3244,6 +3570,7 @@ local function openTrailsShopModal(isRefresh: boolean?)
 	sCorner.Parent = scroll
 
 	local function refreshTrails()
+		local savedY = scroll.CanvasPosition.Y
 		scroll:ClearAllChildren()
 		local uilist = Instance.new("UIListLayout")
 		uilist.Padding = UDim.new(0, 8)
@@ -3260,6 +3587,10 @@ local function openTrailsShopModal(isRefresh: boolean?)
 			local isEquipped = (equippedId == trailId)
 
 			local card = Instance.new("Frame")
+			card.Name = "TrailCard_" .. trailId
+			card:SetAttribute("TrailId", trailId)
+			card:SetAttribute("IsOwned", isOwned)
+			card:SetAttribute("IsEquipped", isEquipped)
 			card.Size = UDim2.new(0.96, 0, 0, 78)
 			card.BackgroundColor3 = if isEquipped then Color3.fromRGB(42, 32, 64) else Color3.fromRGB(32, 29, 44)
 			card.BorderSizePixel = 0
@@ -3324,6 +3655,7 @@ local function openTrailsShopModal(isRefresh: boolean?)
 
 			-- Action Button
 			local actionBtn = Instance.new("TextButton")
+			actionBtn.Name = "ActionBtn"
 			actionBtn.Size = UDim2.new(0.30, 0, 0, 42)
 			actionBtn.Position = UDim2.new(0.67, 0, 0.5, -21)
 			actionBtn.Font = Enum.Font.Antique
@@ -3399,7 +3731,66 @@ local function openTrailsShopModal(isRefresh: boolean?)
 		end
 
 		scroll.CanvasSize = UDim2.new(0, 0, 0, #TrailConfig.TRAIL_ORDER * 86)
+		scroll.CanvasPosition = Vector2.new(0, savedY)
 	end
+
+	-- In-place auto-updater for TrailsShopModal
+	local function updateTrailsShop()
+		if not activeModal or activeModal ~= modal then return end
+		if not cachedData then return end
+
+		local ownedTrails = cachedData.OwnedTrails or {}
+		local equippedId = cachedData.EquippedTrail
+		local currentGems = cachedData.Gems or 0
+
+		local needsFullRefresh = false
+		for _, card in ipairs(scroll:GetChildren()) do
+			if not card:IsA("Frame") then continue end
+			local trailId = card:GetAttribute("TrailId")
+			if not trailId then continue end
+			local wasOwned = card:GetAttribute("IsOwned") == true
+			local isOwned = ownedTrails[trailId] == true
+			local wasEquipped = card:GetAttribute("IsEquipped") == true
+			local isEquipped = (equippedId == trailId)
+			if wasOwned ~= isOwned or wasEquipped ~= isEquipped then
+				needsFullRefresh = true
+				break
+			end
+		end
+
+		if needsFullRefresh then
+			refreshTrails()
+			return
+		end
+
+		for _, card in ipairs(scroll:GetChildren()) do
+			if not card:IsA("Frame") then continue end
+			local trailId = card:GetAttribute("TrailId")
+			if not trailId then continue end
+			local trail = TrailConfig.TRAILS[trailId]
+			if not trail then continue end
+
+			local isOwned = ownedTrails[trailId] == true
+			local isEquipped = (equippedId == trailId)
+
+			if not isOwned and not isEquipped then
+				local actionBtn = card:FindFirstChild("ActionBtn") :: TextButton?
+				if actionBtn then
+					local canAfford = currentGems >= trail.cost
+					actionBtn.BackgroundColor3 = if canAfford then Color3.fromRGB(160, 40, 220) else Color3.fromRGB(75, 40, 60)
+					actionBtn.TextColor3 = if canAfford then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(200, 160, 175)
+					actionBtn.Text = "💎 " .. FormatNumber.formatCompact(trail.cost) .. " BUY"
+				end
+			end
+		end
+	end
+
+	activeModalUpdater = updateTrailsShop
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == updateTrailsShop then
+			activeModalUpdater = nil
+		end
+	end)
 
 	-- Close Button
 	local closeBtn = Instance.new("TextButton")
@@ -3427,9 +3818,16 @@ local function openTrailsShopModal(isRefresh: boolean?)
 end
 
 local function openUpgradeTreeModal(isRefresh: boolean?)
-	if isRefresh ~= true and activeModal and activeModal.Name == "UpgradeTreeModal" then
-		closeModal()
-		return
+	if activeModal and activeModal.Name == "UpgradeTreeModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
 	end
 
 	closeModal()
@@ -4094,6 +4492,17 @@ local function openUpgradeTreeModal(isRefresh: boolean?)
 		end
 	end)
 
+	local function updateUpgradeTree()
+		if not activeModal or activeModal ~= modal then return end
+		if not cachedData then return end
+		if gemsBadge then
+			gemsBadge.Text = "💎 " .. FormatNumber.formatCompact(cachedData.Gems or 0)
+		end
+		renderTree()
+	end
+
+	activeModalUpdater = updateUpgradeTree
+
 	-- Listen for canvas size changes to keep wires and nodes perfectly centered
 	local resizeConn = treeCanvas:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		if activeModal == modal then
@@ -4102,6 +4511,9 @@ local function openUpgradeTreeModal(isRefresh: boolean?)
 	end)
 	modal.Destroying:Connect(function()
 		resizeConn:Disconnect()
+		if activeModalUpdater == updateUpgradeTree then
+			activeModalUpdater = nil
+		end
 	end)
 
 	renderTree()
@@ -4221,9 +4633,16 @@ end
 
 -- Mastery Skill Tree Main Dashboard Modal
 openMasteryModal = function(isRefresh: boolean?)
-	if isRefresh ~= true and activeModal and activeModal.Name == "MasteryModal" then
-		closeModal()
-		return
+	if activeModal and activeModal.Name == "MasteryModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
 	end
 
 	closeModal()
@@ -4406,6 +4825,7 @@ openMasteryModal = function(isRefresh: boolean?)
 		lCorner.Parent = lvlPill
 
 		local lvlText = Instance.new("TextLabel")
+		lvlText.Name = "LvlText"
 		lvlText.Size = UDim2.new(1, 0, 1, 0)
 		lvlText.BackgroundTransparency = 1
 		lvlText.Text = string.format("LVL %d", level)
@@ -4452,6 +4872,7 @@ openMasteryModal = function(isRefresh: boolean?)
 
 		-- XP Label
 		local xpLabel = Instance.new("TextLabel")
+		xpLabel.Name = "XpLabel"
 		xpLabel.Size = UDim2.new(1, 0, 1, 0)
 		xpLabel.BackgroundTransparency = 1
 		if level >= MasteryConfig.MAX_LEVEL then
@@ -4478,6 +4899,7 @@ openMasteryModal = function(isRefresh: boolean?)
 		nbCorner.Parent = nextBox
 
 		local nextTitle = Instance.new("TextLabel")
+		nextTitle.Name = "NextTitle"
 		nextTitle.Size = UDim2.new(1, -8, 0, 14)
 		nextTitle.Position = UDim2.new(0, 4, 0, 3)
 		nextTitle.BackgroundTransparency = 1
@@ -4489,6 +4911,7 @@ openMasteryModal = function(isRefresh: boolean?)
 		nextTitle.Parent = nextBox
 
 		local nextDesc = Instance.new("TextLabel")
+		nextDesc.Name = "NextDesc"
 		nextDesc.Size = UDim2.new(1, -8, 0, 14)
 		nextDesc.Position = UDim2.new(0, 4, 0, 18)
 		nextDesc.BackgroundTransparency = 1
@@ -4521,6 +4944,67 @@ openMasteryModal = function(isRefresh: boolean?)
 		end)
 	end
 
+	-- In-place auto-updater for MasteryModal
+	local function updateMasteryModal()
+		if not activeModal or activeModal ~= modal then return end
+		if not cachedData or not cachedData.Mastery then return end
+
+		local currentTotalLevel = 0
+		for _, tId in ipairs(MasteryConfig.TRACK_ORDER) do
+			local xp = cachedData.Mastery[tId] or 0
+			local lvl, _, _, _ = MasteryConfig.getLevelFromXp(xp)
+			currentTotalLevel += lvl
+		end
+		local maxLevel = #MasteryConfig.TRACK_ORDER * MasteryConfig.MAX_LEVEL
+		pillText.Text = string.format("⭐ TOTAL LEVEL: %d / %d", currentTotalLevel, maxLevel)
+
+		for _, trackId in ipairs(MasteryConfig.TRACK_ORDER) do
+			local card = scroll:FindFirstChild("Card_" .. trackId)
+			if not card then continue end
+
+			local totalXp = cachedData.Mastery[trackId] or 0
+			local level, xpIntoLevel, xpNeeded, ratio = MasteryConfig.getLevelFromXp(totalXp)
+			local nextMilestone = MasteryConfig.getNextMilestone(trackId, level)
+
+			local lvlText = card:FindFirstChild("LvlText", true) :: TextLabel?
+			if lvlText then
+				lvlText.Text = string.format("LVL %d", level)
+			end
+
+			local barFill = card:FindFirstChild("BarFill", true) :: Frame?
+			if barFill then
+				barFill.Size = UDim2.new(ratio, 0, 1, 0)
+			end
+
+			local xpLabel = card:FindFirstChild("XpLabel", true) :: TextLabel?
+			if xpLabel then
+				if level >= MasteryConfig.MAX_LEVEL then
+					xpLabel.Text = "⭐ MAX LEVEL 50 ⭐"
+				else
+					xpLabel.Text = string.format("%s / %s XP (%d%%)", FormatNumber.formatCompact(xpIntoLevel), FormatNumber.formatCompact(xpNeeded), math.floor(ratio * 100))
+				end
+			end
+
+			local nextTitle = card:FindFirstChild("NextTitle", true) :: TextLabel?
+			if nextTitle then
+				nextTitle.TextColor3 = if nextMilestone then Color3.fromRGB(255, 215, 80) else Color3.fromRGB(80, 240, 150)
+				nextTitle.Text = if nextMilestone then string.format("NEXT: LVL %d PERK", nextMilestone.level) else "🏆 FULLY MASTERED!"
+			end
+
+			local nextDesc = card:FindFirstChild("NextDesc", true) :: TextLabel?
+			if nextDesc then
+				nextDesc.Text = if nextMilestone then nextMilestone.name else "+100% Boosts Active"
+			end
+		end
+	end
+
+	activeModalUpdater = updateMasteryModal
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == updateMasteryModal then
+			activeModalUpdater = nil
+		end
+	end)
+
 	-- Close Button
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Size = UDim2.new(0, 36, 0, 36)
@@ -4546,7 +5030,16 @@ openMasteryModal = function(isRefresh: boolean?)
 end
 
 -- Detailed 50-Level Milestone Roadmap for a Specific Track
-openTrackMilestonesModal = function(trackId: string)
+openTrackMilestonesModal = function(trackId: string, isRefresh: boolean?)
+	if activeModal and activeModal.Name == "TrackMilestoneModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		end
+	end
+
 	closeModal()
 	if not screenGui or not cachedData then return end
 
@@ -4643,6 +5136,8 @@ openTrackMilestonesModal = function(trackId: string)
 		local isUnlocked = (currentLvl >= ml)
 
 		local row = Instance.new("Frame")
+		row.Name = "MilestoneRow_" .. ml
+		row:SetAttribute("MilestoneLevel", ml)
 		row.Size = UDim2.new(1, -8, 0, 68)
 		row.BackgroundColor3 = if isUnlocked then Color3.fromRGB(28, 36, 32) else Color3.fromRGB(24, 20, 30)
 		row.BorderSizePixel = 0
@@ -4660,6 +5155,7 @@ openTrackMilestonesModal = function(trackId: string)
 
 		-- Status Icon Badge (Checkmark or Lock)
 		local statusIcon = Instance.new("TextLabel")
+		statusIcon.Name = "StatusIcon"
 		statusIcon.Size = UDim2.new(0, 44, 0, 44)
 		statusIcon.Position = UDim2.new(0, 12, 0.5, 0)
 		statusIcon.AnchorPoint = Vector2.new(0, 0.5)
@@ -4670,6 +5166,7 @@ openTrackMilestonesModal = function(trackId: string)
 
 		-- Level & Name
 		local mTitle = Instance.new("TextLabel")
+		mTitle.Name = "MTitle"
 		mTitle.Size = UDim2.new(0.6, 0, 0, 20)
 		mTitle.Position = UDim2.new(0, 64, 0, 10)
 		mTitle.BackgroundTransparency = 1
@@ -4682,6 +5179,7 @@ openTrackMilestonesModal = function(trackId: string)
 
 		-- Description
 		local mDesc = Instance.new("TextLabel")
+		mDesc.Name = "MDesc"
 		mDesc.Size = UDim2.new(0.85, 0, 0, 28)
 		mDesc.Position = UDim2.new(0, 64, 0, 32)
 		mDesc.BackgroundTransparency = 1
@@ -4694,6 +5192,7 @@ openTrackMilestonesModal = function(trackId: string)
 
 		-- Status pill on right
 		local statusPill = Instance.new("Frame")
+		statusPill.Name = "StatusPill"
 		statusPill.Size = UDim2.new(0, 95, 0, 24)
 		statusPill.Position = UDim2.new(1, -107, 0.5, 0)
 		statusPill.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -4714,6 +5213,63 @@ openTrackMilestonesModal = function(trackId: string)
 		spText.TextSize = 10
 		spText.Parent = statusPill
 	end
+
+	-- In-place auto-updater for TrackMilestoneModal
+	local function updateMilestones()
+		if not activeModal or activeModal ~= modal then return end
+		if not cachedData or not cachedData.Mastery then return end
+
+		local currentTotalXp = cachedData.Mastery[trackId] or 0
+		local freshLvl, _, _, _ = MasteryConfig.getLevelFromXp(currentTotalXp)
+
+		sub.Text = string.format("Current Progress: Level %d / %d • %s", freshLvl, MasteryConfig.MAX_LEVEL, trackDef.description)
+
+		for _, row in ipairs(scroll:GetChildren()) do
+			if not row:IsA("Frame") then continue end
+			local ml = row:GetAttribute("MilestoneLevel")
+			if not ml then continue end
+			local mDef = trackDef.milestones[ml]
+			if not mDef then continue end
+
+			local isUnlocked = (freshLvl >= ml)
+			row.BackgroundColor3 = if isUnlocked then Color3.fromRGB(28, 36, 32) else Color3.fromRGB(24, 20, 30)
+			local rStroke = row:FindFirstChildOfClass("UIStroke")
+			if rStroke then
+				rStroke.Color = if isUnlocked then Color3.fromRGB(0, 230, 120) else Color3.fromRGB(60, 50, 75)
+			end
+
+			local statusIcon = row:FindFirstChild("StatusIcon") :: TextLabel?
+			if statusIcon then
+				statusIcon.Text = if isUnlocked then "✅" else "🔒"
+			end
+
+			local mTitle = row:FindFirstChild("MTitle") :: TextLabel?
+			if mTitle then
+				mTitle.TextColor3 = if isUnlocked then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(170, 165, 185)
+			end
+
+			local mDesc = row:FindFirstChild("MDesc") :: TextLabel?
+			if mDesc then
+				mDesc.TextColor3 = if isUnlocked then Color3.fromRGB(0, 240, 150) else Color3.fromRGB(130, 125, 145)
+			end
+
+			local statusPill = row:FindFirstChild("StatusPill") :: Frame?
+			if statusPill then
+				statusPill.BackgroundColor3 = if isUnlocked then Color3.fromRGB(0, 180, 100) else Color3.fromRGB(45, 40, 58)
+				local spText = statusPill:FindFirstChildOfClass("TextLabel")
+				if spText then
+					spText.Text = if isUnlocked then "UNLOCKED" else string.format("LOCKED (%d)", ml)
+				end
+			end
+		end
+	end
+
+	activeModalUpdater = updateMilestones
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == updateMilestones then
+			activeModalUpdater = nil
+		end
+	end)
 
 	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -5413,6 +5969,28 @@ function UIController.buildHUD()
 		end)
 		if okVip and vipRes and vipRes.isVIP ~= nil then
 			UIController.updateVIPDisplay(vipRes.isVIP)
+		end
+	end)
+
+	-- Live leaderstats listener for instantaneous client affordance updates
+	task.spawn(function()
+		local leaderstats = player:WaitForChild("leaderstats", 10)
+		if leaderstats then
+			local function hookVal(statName: string)
+				local valObj = leaderstats:WaitForChild(statName, 5) :: (NumberValue | IntValue)?
+				if valObj then
+					valObj.Changed:Connect(function(newVal)
+						if cachedData then
+							cachedData[statName] = newVal
+							UIController.updateHUD()
+						end
+					end)
+				end
+			end
+			hookVal("Cash")
+			hookVal("Gems")
+			hookVal("Power")
+			hookVal("Rebirths")
 		end
 	end)
 end

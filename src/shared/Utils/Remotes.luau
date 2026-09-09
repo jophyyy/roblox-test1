@@ -26,6 +26,7 @@ local REGISTERED_EVENTS = {
 	"TrainingOreHit",
 	"OpenFusionModal",
 	"MasteryLevelUp",
+	"LootBoxDropped",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -53,6 +54,8 @@ local REGISTERED_FUNCTIONS = {
 	"TrainOnOre",
 	"ClaimIndexMilestone",
 	"FusePets",
+	"OpenLootBox",
+	"DevAddLootBoxes",
 }
 
 local function getRemotesFolder(): Folder

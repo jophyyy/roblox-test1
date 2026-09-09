@@ -9,6 +9,7 @@ local BossService = require(script.Services.BossService)
 local TrailService = require(script.Services.TrailService)
 local PickaxeService = require(script.Services.PickaxeService)
 local MasteryService = require(script.Services.MasteryService)
+local LootBoxService = require(script.Services.LootBoxService)
 
 print("⛏️ [Mining Simulator] Initializing Server Services...")
 
@@ -22,6 +23,7 @@ MiningService.init()
 BossService.init()
 TrailService.init()
 PickaxeService.init()
+LootBoxService.init()
 
 print("✅ [Mining Simulator] Server Services Successfully Initialized!")
 

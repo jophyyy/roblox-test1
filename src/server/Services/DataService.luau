@@ -37,6 +37,7 @@ export type PlayerData = {
 	Mastery: { [string]: number }?,
 	LastWheelSpin: number?,
 	FreeSpins: number?,
+	LootBoxes: { [string]: number }?,
 	LastSaved: number,
 }
 
@@ -83,6 +84,7 @@ local function getDefaultData(): PlayerData
 		},
 		LastWheelSpin = 0,
 		FreeSpins = 1,
+		LootBoxes = {},
 		LastSaved = os.time(),
 	}
 end
@@ -358,6 +360,7 @@ function DataService.load(player: Player)
 	data.LastWheelSpin = data.LastWheelSpin or 0
 	data.FreeSpins = data.FreeSpins or 1
 	data.Power = data.Power or GameConfig.STARTER_POWER
+	data.LootBoxes = data.LootBoxes or {}
 
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
@@ -806,6 +809,47 @@ function DataService.claimIndexMilestone(player: Player, milestoneId: string): (
 
 	print(string.format("📖 [PetIndex] %s claimed %s! (+%d Gems, +%d%% Power)", player.Name, targetMilestone.name, targetMilestone.gemsReward, targetMilestone.powerBoostPct))
 	return true, string.format("Claimed %s! (+%d 💎, +%d%% Power)", targetMilestone.name, targetMilestone.gemsReward, targetMilestone.powerBoostPct)
+end
+
+function DataService.getLootBoxes(player: Player): { [string]: number }
+	local data = playerDataCache[player]
+	if not data then return {} end
+	data.LootBoxes = data.LootBoxes or {}
+	return data.LootBoxes
+end
+
+function DataService.addLootBox(player: Player, boxId: string, amount: number?)
+	local data = playerDataCache[player]
+	if not data then return end
+	data.LootBoxes = data.LootBoxes or {}
+	local qty = amount or 1
+	data.LootBoxes[boxId] = (data.LootBoxes[boxId] or 0) + qty
+	syncToClient(player, data)
+end
+
+function DataService.consumeLootBox(player: Player, boxId: string, amount: number?): boolean
+	local data = playerDataCache[player]
+	if not data or not data.LootBoxes then return false end
+	local qty = amount or 1
+	local current = data.LootBoxes[boxId] or 0
+	if current < qty then return false end
+	data.LootBoxes[boxId] = current - qty
+	if data.LootBoxes[boxId] <= 0 then
+		data.LootBoxes[boxId] = nil
+	end
+	syncToClient(player, data)
+	return true
+end
+
+function DataService.addPet(player: Player, petId: string, count: number?)
+	local data = playerDataCache[player]
+	if not data then return end
+	data.OwnedPets = data.OwnedPets or {}
+	data.PetIndex = data.PetIndex or {}
+	local qty = count or 1
+	data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + qty
+	data.PetIndex[petId] = true
+	syncToClient(player, data)
 end
 
 return DataService

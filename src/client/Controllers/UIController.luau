@@ -18,8 +18,10 @@ local GamepassConfig = require(ReplicatedStorage.Shared.Config.GamepassConfig)
 local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local MasteryConfig = require(ReplicatedStorage.Shared.Config.MasteryConfig)
+local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
+local LootBoxAnimation = require(script.Parent.LootBoxAnimation)
 local MiningClient = require(script.Parent.MiningClient)
 
 local player = Players.LocalPlayer
@@ -647,6 +649,7 @@ end
 local openPetModal: (isRefresh: boolean?) -> ()
 local openPetIndexModal: (filter: string?, isRefresh: boolean?) -> ()
 local openFusionModal: (initialMode: ("Golden" | "Rainbow")?, isRefresh: boolean?) -> ()
+local openLootBoxModal: (isRefresh: boolean?) -> ()
 
 -- Pet Hatching & Inventory Modal
 openPetModal = function(isRefresh: boolean?)
@@ -3817,6 +3820,356 @@ local function openTrailsShopModal(isRefresh: boolean?)
 	}):Play()
 end
 
+openLootBoxModal = function(isRefresh: boolean?)
+	if activeModal and activeModal.Name == "LootBoxModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
+	end
+
+	closeModal()
+	closeDialogue()
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		else
+			return
+		end
+	end
+
+	local modal = createStyledFrame(screenGui, "LootBoxModal", UDim2.new(0, 680, 0, 540), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 16, 26))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local stroke = modal:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = Color3.fromRGB(190, 80, 255)
+		stroke.Thickness = 2
+	end
+
+	-- Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 36)
+	title.Position = UDim2.new(0, 0, 0, 8)
+	title.BackgroundTransparency = 1
+	title.Text = "📦 MYSTERY LOOT VAULT 📦"
+	title.TextColor3 = Color3.fromRGB(220, 150, 255)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 22
+	title.Parent = modal
+
+	-- Subtitle
+	local subtitle = Instance.new("TextLabel")
+	subtitle.Size = UDim2.new(1, 0, 0, 20)
+	subtitle.Position = UDim2.new(0, 0, 0, 42)
+	subtitle.BackgroundTransparency = 1
+	subtitle.Text = "Collect Crates from Ores & Bosses • Open for Cash, Gems, Pets & Power!"
+	subtitle.TextColor3 = Color3.fromRGB(180, 190, 215)
+	subtitle.Font = Enum.Font.GothamMedium
+	subtitle.TextSize = 12
+	subtitle.Parent = modal
+
+	-- Total Crates Pill Banner
+	local pill = Instance.new("Frame")
+	pill.Size = UDim2.new(0.92, 0, 0, 32)
+	pill.Position = UDim2.new(0.04, 0, 0, 66)
+	pill.BackgroundColor3 = Color3.fromRGB(26, 24, 38)
+	pill.BorderSizePixel = 0
+	pill.Parent = modal
+
+	local pillCorner = Instance.new("UICorner")
+	pillCorner.CornerRadius = UDim.new(0, 8)
+	pillCorner.Parent = pill
+
+	local pillText = Instance.new("TextLabel")
+	pillText.Name = "TotalCratesLabel"
+	pillText.Size = UDim2.new(1, -20, 1, 0)
+	pillText.Position = UDim2.new(0, 10, 0, 0)
+	pillText.BackgroundTransparency = 1
+	pillText.Text = "📦 Total Crates Owned: 0"
+	pillText.TextColor3 = Color3.fromRGB(255, 215, 0)
+	pillText.Font = Enum.Font.GothamBlack
+	pillText.TextSize = 12.5
+	pillText.TextXAlignment = Enum.TextXAlignment.Left
+	pillText.Parent = pill
+
+	-- ScrollingFrame for Crates Grid
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(0.92, 0, 0, 420)
+	scroll.Position = UDim2.new(0.04, 0, 0, 106)
+	scroll.BackgroundColor3 = Color3.fromRGB(14, 13, 20)
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 6
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.Parent = modal
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 8)
+	sCorner.Parent = scroll
+
+	local sPad = Instance.new("UIPadding")
+	sPad.PaddingTop = UDim.new(0, 10)
+	sPad.PaddingBottom = UDim.new(0, 10)
+	sPad.PaddingLeft = UDim.new(0, 10)
+	sPad.PaddingRight = UDim.new(0, 10)
+	sPad.Parent = scroll
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.Padding = UDim.new(0, 10)
+	listLayout.Parent = scroll
+
+	type CrateCardRefs = {
+		card: Frame,
+		countPill: TextLabel,
+		openBtn: TextButton,
+	}
+	local cardRefs: { [string]: CrateCardRefs } = {}
+
+	for _, boxId in ipairs(LootBoxConfig.ORDERED_IDS) do
+		local boxDef = LootBoxConfig.BOXES[boxId]
+		if boxDef then
+			local card = Instance.new("Frame")
+			card.Name = "CrateCard_" .. boxId
+			card.Size = UDim2.new(1, 0, 0, 84)
+			card.BackgroundColor3 = Color3.fromRGB(22, 20, 30)
+			card.BorderSizePixel = 0
+			card.Parent = scroll
+
+			local cCorner = Instance.new("UICorner")
+			cCorner.CornerRadius = UDim.new(0, 8)
+			cCorner.Parent = card
+
+			local cStroke = Instance.new("UIStroke")
+			cStroke.Color = boxDef.color
+			cStroke.Thickness = 1.4
+			cStroke.Transparency = 0.35
+			cStroke.Parent = card
+
+			-- Icon Box (Left)
+			local iconBox = Instance.new("Frame")
+			iconBox.Size = UDim2.new(0, 68, 0, 68)
+			iconBox.Position = UDim2.new(0, 8, 0.5, -34)
+			iconBox.BackgroundColor3 = Color3.fromRGB(16, 14, 22)
+			iconBox.BorderSizePixel = 0
+			iconBox.Parent = card
+
+			local ibCorner = Instance.new("UICorner")
+			ibCorner.CornerRadius = UDim.new(0, 8)
+			ibCorner.Parent = iconBox
+
+			local ibStroke = Instance.new("UIStroke")
+			ibStroke.Color = boxDef.accentColor
+			ibStroke.Thickness = 1
+			ibStroke.Transparency = 0.5
+			ibStroke.Parent = iconBox
+
+			local iconLabel = Instance.new("TextLabel")
+			iconLabel.Size = UDim2.new(1, 0, 1, 0)
+			iconLabel.BackgroundTransparency = 1
+			iconLabel.Text = boxDef.icon
+			iconLabel.TextSize = 34
+			iconLabel.Parent = iconBox
+
+			-- Info Section (Middle)
+			local infoCol = Instance.new("Frame")
+			infoCol.Size = UDim2.new(1, -260, 1, -12)
+			infoCol.Position = UDim2.new(0, 86, 0, 6)
+			infoCol.BackgroundTransparency = 1
+			infoCol.Parent = card
+
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Size = UDim2.new(1, 0, 0, 22)
+			nameLabel.Position = UDim2.new(0, 0, 0, 2)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = boxDef.name
+			nameLabel.TextColor3 = boxDef.accentColor
+			nameLabel.Font = Enum.Font.GothamBlack
+			nameLabel.TextSize = 13.5
+			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+			nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+			nameLabel.Parent = infoCol
+
+			-- Tier Pill
+			local tierPill = Instance.new("TextLabel")
+			tierPill.Size = UDim2.new(0, 78, 0, 16)
+			tierPill.Position = UDim2.new(0, 0, 0, 26)
+			tierPill.BackgroundColor3 = LootBoxConfig.TIER_COLORS[boxDef.tier] or Color3.fromRGB(180, 180, 180)
+			tierPill.Text = boxDef.tier:upper()
+			tierPill.TextColor3 = if boxDef.tier == "Mythic" or boxDef.tier == "Common" then Color3.fromRGB(20, 20, 20) else Color3.fromRGB(255, 255, 255)
+			tierPill.Font = Enum.Font.GothamBlack
+			tierPill.TextSize = 9
+			tierPill.BorderSizePixel = 0
+			tierPill.Parent = infoCol
+
+			local tpCorner = Instance.new("UICorner")
+			tpCorner.CornerRadius = UDim.new(0, 4)
+			tpCorner.Parent = tierPill
+
+			local sourceLabel = Instance.new("TextLabel")
+			sourceLabel.Size = UDim2.new(1, -85, 0, 16)
+			sourceLabel.Position = UDim2.new(0, 84, 0, 26)
+			sourceLabel.BackgroundTransparency = 1
+			sourceLabel.Text = "• " .. boxDef.sourceDescription
+			sourceLabel.TextColor3 = Color3.fromRGB(150, 160, 180)
+			sourceLabel.Font = Enum.Font.GothamMedium
+			sourceLabel.TextSize = 10
+			sourceLabel.TextXAlignment = Enum.TextXAlignment.Left
+			sourceLabel.TextTruncate = Enum.TextTruncate.AtEnd
+			sourceLabel.Parent = infoCol
+
+			local lootLabel = Instance.new("TextLabel")
+			lootLabel.Size = UDim2.new(1, 0, 0, 18)
+			lootLabel.Position = UDim2.new(0, 0, 0, 48)
+			lootLabel.BackgroundTransparency = 1
+			lootLabel.Text = "Drops: 💰 Cash • 💎 Gems • 🐾 Pets • ⚡ Power"
+			lootLabel.TextColor3 = Color3.fromRGB(200, 210, 230)
+			lootLabel.Font = Enum.Font.GothamBold
+			lootLabel.TextSize = 10.5
+			lootLabel.TextXAlignment = Enum.TextXAlignment.Left
+			lootLabel.Parent = infoCol
+
+			-- Right Action Area
+			local rightArea = Instance.new("Frame")
+			rightArea.Size = UDim2.new(0, 160, 1, -12)
+			rightArea.Position = UDim2.new(1, -168, 0, 6)
+			rightArea.BackgroundTransparency = 1
+			rightArea.Parent = card
+
+			local countBadge = Instance.new("TextLabel")
+			countBadge.Size = UDim2.new(1, 0, 0, 22)
+			countBadge.Position = UDim2.new(0, 0, 0, 4)
+			countBadge.BackgroundTransparency = 1
+			countBadge.Text = "0 Owned"
+			countBadge.TextColor3 = Color3.fromRGB(140, 150, 170)
+			countBadge.Font = Enum.Font.GothamBlack
+			countBadge.TextSize = 12
+			countBadge.TextXAlignment = Enum.TextXAlignment.Center
+			countBadge.Parent = rightArea
+
+			local openBtn = Instance.new("TextButton")
+			openBtn.Size = UDim2.new(1, 0, 0, 36)
+			openBtn.Position = UDim2.new(0, 0, 1, -38)
+			openBtn.BackgroundColor3 = Color3.fromRGB(45, 48, 60)
+			openBtn.Text = "🔒 0 OWNED"
+			openBtn.TextColor3 = Color3.fromRGB(150, 155, 170)
+			openBtn.Font = Enum.Font.GothamBlack
+			openBtn.TextSize = 12
+			openBtn.BorderSizePixel = 0
+			openBtn.Parent = rightArea
+
+			local obCorner = Instance.new("UICorner")
+			obCorner.CornerRadius = UDim.new(0, 6)
+			obCorner.Parent = openBtn
+
+			cardRefs[boxId] = {
+				card = card,
+				countPill = countBadge,
+				openBtn = openBtn,
+			}
+		end
+	end
+
+	local function updateLootBoxModal()
+		if not activeModal or activeModal.Name ~= "LootBoxModal" or not cachedData then return end
+
+		local boxes = cachedData.LootBoxes or {}
+		local totalCount = 0
+		for _, count in pairs(boxes) do
+			totalCount += count
+		end
+
+		pillText.Text = string.format("📦 Total Crates Owned: %d • Shatter Ores & Slay Bosses to earn more!", totalCount)
+
+		for boxId, refs in pairs(cardRefs) do
+			local boxDef = LootBoxConfig.BOXES[boxId]
+			if boxDef then
+				local count = boxes[boxId] or 0
+				local hasCrate = count > 0
+
+				refs.countPill.Text = if hasCrate then string.format("x%d Owned", count) else "0 Owned"
+				refs.countPill.TextColor3 = if hasCrate then Color3.fromRGB(0, 255, 170) else Color3.fromRGB(130, 135, 150)
+
+				refs.openBtn.Active = hasCrate
+				refs.openBtn.BackgroundColor3 = if hasCrate then boxDef.color else Color3.fromRGB(38, 40, 52)
+				refs.openBtn.TextColor3 = if hasCrate then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(130, 135, 150)
+				refs.openBtn.Text = if hasCrate then "OPEN 1x" else "🔒 0 OWNED"
+
+				-- Connect click handler
+				refs.openBtn.MouseButton1Click:Connect(function()
+					local currentBoxes = if cachedData then (cachedData.LootBoxes or {}) else {}
+					if (currentBoxes[boxId] or 0) <= 0 then return end
+
+					closeModal()
+
+					local openFn = Remotes.getFunction("OpenLootBox")
+					local ok, res = openFn:InvokeServer(boxId)
+					if ok and res and res.box and res.reward then
+						local function onFinished()
+							openLootBoxModal(true)
+						end
+						local function onOpenAnother()
+							local okNext, resNext = openFn:InvokeServer(boxId)
+							if okNext and resNext and resNext.box and resNext.reward then
+								LootBoxAnimation.playOpen(resNext.box, resNext.reward, resNext.remainingCount, onFinished, onOpenAnother)
+							else
+								openLootBoxModal(true)
+							end
+						end
+						LootBoxAnimation.playOpen(res.box, res.reward, res.remainingCount, onFinished, onOpenAnother)
+					else
+						local errMsg = if typeof(res) == "string" then res else "Failed to open crate!"
+						showFloatingPopup("❌ " .. errMsg, Color3.fromRGB(255, 80, 80), 0)
+						openLootBoxModal(true)
+					end
+				end)
+			end
+		end
+	end
+
+	activeModalUpdater = updateLootBoxModal
+	modal.Destroying:Connect(function()
+		if activeModalUpdater == updateLootBoxModal then
+			activeModalUpdater = nil
+		end
+	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 36, 0, 36)
+	closeBtn.Position = UDim2.new(1, -42, 0, 8)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBlack
+	closeBtn.TextSize = 16
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.Parent = closeBtn
+
+	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	updateLootBoxModal()
+
+	TweenService:Create(modal, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	}):Play()
+end
+
 local function openUpgradeTreeModal(isRefresh: boolean?)
 	if activeModal and activeModal.Name == "UpgradeTreeModal" then
 		if isRefresh == true then
@@ -5621,11 +5974,17 @@ function UIController.buildHUD()
 	vipBadgeCorner.Parent = vipBadge
 
 	-- SIDE MENU BUTTONS
-	local sideMenu = Instance.new("Frame")
+	local sideMenu = Instance.new("ScrollingFrame")
 	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 148, 0, 490)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, -245)
+	sideMenu.Size = UDim2.new(0, 154, 0.78, 0)
+	sideMenu.Position = UDim2.new(0, 16, 0.5, 0)
+	sideMenu.AnchorPoint = Vector2.new(0, 0.5)
 	sideMenu.BackgroundTransparency = 1
+	sideMenu.BorderSizePixel = 0
+	sideMenu.ScrollBarThickness = 3
+	sideMenu.ScrollBarImageTransparency = 0.5
+	sideMenu.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	sideMenu.CanvasSize = UDim2.new(0, 0, 0, 0)
 	sideMenu.Parent = screenGui
 
 	local list = Instance.new("UIListLayout")
@@ -5660,6 +6019,7 @@ function UIController.buildHUD()
 	createMenuButton("ShopBtn", "🛒 Shop", Color3.fromRGB(220, 100, 30), openEquipmentShopModal)
 	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
 	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
+	createMenuButton("CratesBtn", "📦 Crates", Color3.fromRGB(180, 50, 240), openLootBoxModal)
 	createMenuButton("MasteryBtn", "📜 Mastery", Color3.fromRGB(255, 170, 0), function()
 		openMasteryModal()
 	end)
@@ -5687,6 +6047,17 @@ function UIController.buildHUD()
 		if ok and success then
 			showFloatingPopup("+$10,000,000!", Color3.fromRGB(255, 215, 0), -35)
 			showFloatingPopup("+50,000 💎!", Color3.fromRGB(0, 255, 220), 35)
+		end
+	end)
+
+	-- DEV TESTING CRATES BUTTON (+5 of every crate variety)
+	createMenuButton("DevCratesBtn", "📦 +Crates (Dev)", Color3.fromRGB(190, 80, 255), function()
+		local devFn = Remotes.getFunction("DevAddLootBoxes")
+		local ok, success, msg = pcall(function()
+			return devFn:InvokeServer()
+		end)
+		if ok and success then
+			showFloatingPopup("📦 +5 OF EVERY CRATE ADDED!", Color3.fromRGB(255, 215, 0), 0)
 		end
 	end)
 
@@ -5950,6 +6321,31 @@ function UIController.buildHUD()
 	local vipStatusEvent = Remotes.getEvent("VIPStatusChanged")
 	vipStatusEvent.OnClientEvent:Connect(function(isVip: boolean)
 		UIController.updateVIPDisplay(isVip)
+	end)
+
+	-- Loot Box Dropped Notification
+	local lootBoxDroppedEvent = Remotes.getEvent("LootBoxDropped")
+	lootBoxDroppedEvent.OnClientEvent:Connect(function(boxId: string, amount: number)
+		local box = LootBoxConfig.getBox(boxId)
+		local boxName = if box then box.name else boxId
+		local boxColor = if box then box.color else Color3.fromRGB(255, 215, 0)
+		local count = amount or 1
+		local text = string.format("📦 FOUND %d× %s!", count, boxName:upper())
+		showFloatingPopup(text, boxColor, 0)
+
+		local chimeSound = Instance.new("Sound")
+		chimeSound.SoundId = "rbxassetid://9069609268"
+		chimeSound.Volume = 0.6
+		chimeSound.Parent = SoundService
+		chimeSound:Play()
+		game:GetService("Debris"):AddItem(chimeSound, 3)
+
+		if cachedData and cachedData.LootBoxes then
+			cachedData.LootBoxes[boxId] = (cachedData.LootBoxes[boxId] or 0) + count
+			if activeModal and activeModal.Name == "LootBoxModal" and activeModalUpdater then
+				activeModalUpdater()
+			end
+		end
 	end)
 
 	-- Initial Data fetch & VIP Status check

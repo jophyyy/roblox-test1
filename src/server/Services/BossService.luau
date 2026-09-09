@@ -1013,6 +1013,29 @@ function BossService.onBossDefeated(killer: Player, state: ActiveBossState)
 		MasteryService.addXP(killer, "BossSlayer", killXP)
 	end
 
+	-- Award Boss Loot Box Drops
+	local boxDropEvent = Remotes.getEvent("LootBoxDropped")
+	if state.def.id == "VoidHarbinger" then
+		local count = math.random(1, 2)
+		DataService.addLootBox(killer, "void_chest", count)
+		boxDropEvent:FireClient(killer, "void_chest", state.def.name)
+
+		if math.random() < 0.35 then
+			DataService.addLootBox(killer, "cyber_chest", 1)
+			boxDropEvent:FireClient(killer, "cyber_chest", state.def.name)
+		end
+	else
+		-- Infernal Magma Golem
+		local count = math.random(1, 2)
+		DataService.addLootBox(killer, "magma_chest", count)
+		boxDropEvent:FireClient(killer, "magma_chest", state.def.name)
+
+		if math.random() < 0.25 then
+			DataService.addLootBox(killer, "cyber_chest", 1)
+			boxDropEvent:FireClient(killer, "cyber_chest", state.def.name)
+		end
+	end
+
 	-- Broadcast defeat celebration event
 	local defeatedEvent = Remotes.getEvent("BossDefeated")
 	defeatedEvent:FireAllClients(killer.Name, cashReward, gemReward, state.def.respawnTime, state.def.name, state.def.id)

@@ -321,7 +321,46 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 		DataService.addCash(player, cashEarned)
 		DataService.addGems(player, gemsEarned)
 
-		print(string.format("⛏️ [Mining] %s shattered %s! (+$%s, +%d 💎)", player.Name, oreDef.name, FormatNumber.formatCompact(cashEarned), gemsEarned))
+		-- Roll for mystery loot box drops based on ore tier / zone
+		local oreZone = ore.zone or oreDef.zone or "Zone1"
+		local droppedBoxId: string? = nil
+		local dropRoll = math.random()
+
+		if oreZone == "Zone3" or oreDef.zone == "Zone3" then
+			if dropRoll < 0.05 then
+				droppedBoxId = "cyber_chest"
+			elseif dropRoll < 0.22 then
+				droppedBoxId = "void_chest"
+			end
+		elseif oreZone == "Zone2" or oreDef.zone == "Zone2" then
+			if dropRoll < 0.04 then
+				droppedBoxId = "cyber_chest"
+			elseif dropRoll < 0.20 then
+				droppedBoxId = "magma_chest"
+			end
+		else
+			-- Zone 1
+			if oreDef.id == "Diamond" or oreDef.id == "CosmicVoid" or oreDef.id == "Gold" then
+				if dropRoll < 0.03 then
+					droppedBoxId = "cyber_chest"
+				elseif dropRoll < 0.22 then
+					droppedBoxId = "gold_chest"
+				end
+			else
+				-- Common Zone 1 ores (Stone, Copper, Iron)
+				if dropRoll < 0.12 then
+					droppedBoxId = "wooden_chest"
+				end
+			end
+		end
+
+		if droppedBoxId then
+			DataService.addLootBox(player, droppedBoxId, 1)
+			local boxDropEvent = Remotes.getEvent("LootBoxDropped")
+			boxDropEvent:FireClient(player, droppedBoxId, oreDef.name)
+		end
+
+		print(string.format("⛏️ [Mining] %s shattered %s! (+$%s, +%d 💎%s)", player.Name, oreDef.name, FormatNumber.formatCompact(cashEarned), gemsEarned, if droppedBoxId then ", +📦 " .. droppedBoxId else ""))
 
 		-- Fire destruction event
 		local destroyedEvent = Remotes.getEvent("OreDestroyed")

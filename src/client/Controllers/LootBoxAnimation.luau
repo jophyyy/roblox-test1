@@ -4,117 +4,411 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+local Debris = game:GetService("Debris")
 
 local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
+local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
+local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 
 local LootBoxAnimation = {}
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui") :: PlayerGui
+local camera = workspace.CurrentCamera
 
 local SOUNDS = {
-	Thud = "rbxassetid://6895079853",
-	Fanfare = "rbxassetid://5153737200",
-	Chime = "rbxassetid://131886985",
+	Thud = "rbxassetid://6895079853",      -- Heavy chest landing thud
+	Click = "rbxassetid://6895079853",     -- Mechanism ratchet click
+	Creak = "rbxassetid://9114223170",     -- Slow authentic chest lid creak
+	Pop = "rbxassetid://6026985055",       -- Whoosh / item pop burst
+	Fanfare = "rbxassetid://5153737200",   -- Victorious fanfare chime
+	Chime = "rbxassetid://131886985",      -- Collect chime
 }
 
-local function playSound(soundId: string, volume: number?, pitch: number?)
+local function playSound(soundId: string, volume: number?, pitch: number?): Sound
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
-	sound.Volume = volume or 0.5
+	sound.Volume = volume or 0.6
 	sound.PlaybackSpeed = pitch or 1.0
 	sound.Parent = SoundService
 	sound:Play()
-	sound.Ended:Connect(function()
-		sound:Destroy()
-	end)
+	Debris:AddItem(sound, 4)
+	return sound
 end
 
--- Builds a stylized 3D Chest model inside the ViewportFrame
-local function buildChestModel(boxDef: LootBoxConfig.LootBoxDef): (Model, Part, Part, Part)
+local function weldParts(part0: BasePart, part1: BasePart)
+	part1.Anchored = false
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = part0
+	weld.Part1 = part1
+	weld.Parent = part0
+end
+
+local function getFXFolder(): Folder
+	local folder = workspace:FindFirstChild("LootBoxWorldFX")
+	if not folder or not folder:IsA("Folder") then
+		folder = Instance.new("Folder")
+		folder.Name = "LootBoxWorldFX"
+		folder.Parent = workspace
+	end
+	return folder :: Folder
+end
+
+-- ====================================================================
+-- 3D PHYSICAL CHEST BUILDER (In-World Workspace)
+-- ====================================================================
+local function buildPhysicalChest(
+	boxDef: LootBoxConfig.LootBoxDef,
+	rootCF: CFrame
+): (Model, BasePart, BasePart, BasePart, BasePart?, PointLight, ParticleEmitter)
 	local model = Instance.new("Model")
-	model.Name = "Chest_" .. boxDef.id
+	model.Name = "PhysicalChest_" .. boxDef.id
 
-	local baseColor = boxDef.color
-	local trimColor = boxDef.accentColor
 	local isNeon = (boxDef.modelType == "Cyber" or boxDef.modelType == "Void" or boxDef.modelType == "Magma")
+	local baseMaterial = if boxDef.modelType == "Wood" then Enum.Material.WoodPlanks
+		elseif boxDef.modelType == "Gold" then Enum.Material.Glass
+		elseif boxDef.modelType == "Magma" then Enum.Material.CrackedLava
+		elseif boxDef.modelType == "Void" then Enum.Material.ForceField
+		else Enum.Material.Glass
 
-	-- 1. Chest Base
+	local trimMaterial = if isNeon then Enum.Material.Neon else Enum.Material.Metal
+
+	-- 1. Chest Base (PrimaryPart, Anchored)
 	local base = Instance.new("Part")
 	base.Name = "ChestBase"
-	base.Size = Vector3.new(3.6, 2.0, 2.6)
-	base.CFrame = CFrame.new(0, 1.0, 0)
-	base.Color = baseColor
-	base.Material = if isNeon then Enum.Material.Glass else Enum.Material.WoodPlanks
+	base.Size = Vector3.new(3.8, 2.0, 2.7)
+	base.CFrame = rootCF
+	base.Color = boxDef.color
+	base.Material = baseMaterial
 	base.Anchored = true
 	base.CanCollide = false
 	base.Parent = model
 
-	-- Base Trim / Straps (Left & Right corner brackets)
-	for _, xOffset in ipairs({ -1.6, 1.6 }) do
+	-- Corner Reinforcement Straps (Left & Right)
+	for _, xOffset in ipairs({ -1.75, 1.75 }) do
 		local band = Instance.new("Part")
 		band.Name = "Band"
-		band.Size = Vector3.new(0.3, 2.06, 2.66)
+		band.Size = Vector3.new(0.32, 2.06, 2.76)
 		band.CFrame = base.CFrame * CFrame.new(xOffset, 0, 0)
-		band.Color = trimColor
-		band.Material = if isNeon then Enum.Material.Neon else Enum.Material.Metal
-		band.Anchored = true
+		band.Color = boxDef.accentColor
+		band.Material = trimMaterial
 		band.CanCollide = false
 		band.Parent = model
+		weldParts(base, band)
 	end
 
+	-- Center Base Band
+	local centerBand = Instance.new("Part")
+	centerBand.Name = "CenterBand"
+	centerBand.Size = Vector3.new(0.32, 2.06, 2.76)
+	centerBand.CFrame = base.CFrame * CFrame.new(0, 0, 0)
+	centerBand.Color = boxDef.accentColor
+	centerBand.Material = trimMaterial
+	centerBand.CanCollide = false
+	centerBand.Parent = model
+	weldParts(base, centerBand)
+
 	-- 2. Chest Lid (Rotates on rear hinge)
-	local hingeOrigin = CFrame.new(0, 2.0, 1.3)
+	local initialHingeCF = rootCF * CFrame.new(0, 1.0, 1.35)
+
 	local lid = Instance.new("Part")
 	lid.Name = "ChestLid"
-	lid.Size = Vector3.new(3.68, 1.1, 2.68)
-	-- Offset center relative to hinge
-	lid.CFrame = hingeOrigin * CFrame.new(0, 0.55, -1.34)
-	lid.Color = baseColor
-	lid.Material = if isNeon then Enum.Material.Glass else Enum.Material.WoodPlanks
+	lid.Size = Vector3.new(3.88, 1.15, 2.78)
+	lid.CFrame = initialHingeCF * CFrame.new(0, 0.575, -1.39)
+	lid.Color = boxDef.color
+	lid.Material = baseMaterial
 	lid.Anchored = true
 	lid.CanCollide = false
 	lid.Parent = model
 
-	-- Lid Top Bevel / Arch
-	local lidTop = Instance.new("Part")
-	lidTop.Name = "LidTop"
-	lidTop.Size = Vector3.new(3.5, 0.4, 2.4)
-	lidTop.CFrame = lid.CFrame * CFrame.new(0, 0.65, 0)
-	lidTop.Color = trimColor
-	lidTop.Material = if isNeon then Enum.Material.Neon else Enum.Material.Metal
-	lidTop.Anchored = true
-	lidTop.CanCollide = false
-	lidTop.Parent = model
+	-- Lid Top Arched Crown (Welded to Lid)
+	local lidCrown = Instance.new("Part")
+	lidCrown.Name = "LidCrown"
+	lidCrown.Size = Vector3.new(3.7, 0.45, 2.5)
+	lidCrown.CFrame = lid.CFrame * CFrame.new(0, 0.7, 0)
+	lidCrown.Color = boxDef.accentColor
+	lidCrown.Material = trimMaterial
+	lidCrown.CanCollide = false
+	lidCrown.Parent = model
+	weldParts(lid, lidCrown)
 
-	-- 3. Front Latch / Lock
+	-- 3. Front Lock Latch
 	local latch = Instance.new("Part")
 	latch.Name = "LockLatch"
-	latch.Size = Vector3.new(0.8, 0.9, 0.3)
-	latch.CFrame = base.CFrame * CFrame.new(0, 0.5, -1.45)
-	latch.Color = trimColor
+	latch.Size = Vector3.new(0.85, 0.95, 0.35)
+	latch.CFrame = base.CFrame * CFrame.new(0, 0.5, -1.5)
+	latch.Color = boxDef.accentColor
 	latch.Material = Enum.Material.Neon
 	latch.Anchored = true
 	latch.CanCollide = false
 	latch.Parent = model
 
-	-- 4. Glowing Internal Core (Light shoots out when open)
-	local coreLight = Instance.new("Part")
-	coreLight.Name = "CoreLight"
-	coreLight.Size = Vector3.new(2.8, 0.8, 1.8)
-	coreLight.CFrame = base.CFrame * CFrame.new(0, 0.4, 0)
-	coreLight.Color = trimColor
-	coreLight.Material = Enum.Material.Neon
-	coreLight.Transparency = 1
-	coreLight.Anchored = true
-	coreLight.CanCollide = false
-	coreLight.Parent = model
+	-- 4. Glowing Internal Core Part + Real PointLight
+	local core = Instance.new("Part")
+	core.Name = "CoreGlow"
+	core.Size = Vector3.new(3.0, 0.8, 2.0)
+	core.CFrame = base.CFrame * CFrame.new(0, 0.4, 0)
+	core.Color = boxDef.accentColor
+	core.Material = Enum.Material.Neon
+	core.Transparency = 1
+	core.CanCollide = false
+	core.Parent = model
+	weldParts(base, core)
+
+	local pointLight = Instance.new("PointLight")
+	pointLight.Name = "ChestPointLight"
+	pointLight.Color = boxDef.accentColor
+	pointLight.Range = 24
+	pointLight.Brightness = 0
+	pointLight.Shadows = true
+	pointLight.Parent = core
+
+	-- Interior Floating Magic Embers
+	local particles = Instance.new("ParticleEmitter")
+	particles.Name = "InternalParticles"
+	particles.Texture = "rbxassetid://244199991"
+	particles.Color = ColorSequence.new(boxDef.accentColor, boxDef.color)
+	particles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(0.5, 0.65),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	particles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.2, 0.1),
+		NumberSequenceKeypoint.new(0.8, 0.3),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	particles.Lifetime = NumberRange.new(1.2, 2.4)
+	particles.Rate = 0
+	particles.Speed = NumberRange.new(2.5, 5.5)
+	particles.SpreadAngle = Vector2.new(25, 25)
+	particles.EmissionDirection = Enum.NormalId.Top
+	particles.Parent = core
 
 	model.PrimaryPart = base
-	return model, base, lid, coreLight
+	return model, base, lid, lidCrown, latch, pointLight, particles
 end
 
+-- ====================================================================
+-- 3D PHYSICAL REWARD PROP BUILDER
+-- ====================================================================
+local function buildPhysicalRewardProp(
+	reward: LootBoxConfig.RewardItem,
+	spawnCF: CFrame
+): Model
+	local model = Instance.new("Model")
+	model.Name = "RewardProp_" .. reward.category
+
+	local rarityColor = LootBoxConfig.TIER_COLORS[reward.rarity] or Color3.fromRGB(255, 215, 0)
+
+	if reward.category == "Cash" then
+		-- 3D Stack of Gleaming Gold Ingots
+		local root = Instance.new("Part")
+		root.Name = "PrimaryPart"
+		root.Size = Vector3.new(2.4, 0.8, 1.4)
+		root.CFrame = spawnCF
+		root.Color = Color3.fromRGB(255, 215, 0)
+		root.Material = Enum.Material.Metal
+		root.Reflectance = 0.45
+		root.Anchored = true
+		root.CanCollide = false
+		root.Parent = model
+		model.PrimaryPart = root
+
+		-- Top stacked gold ingot
+		local topBar = Instance.new("Part")
+		topBar.Name = "TopBar"
+		topBar.Size = Vector3.new(1.8, 0.75, 1.0)
+		topBar.CFrame = root.CFrame * CFrame.new(0, 0.75, 0)
+		topBar.Color = Color3.fromRGB(255, 225, 50)
+		topBar.Material = Enum.Material.Metal
+		topBar.Reflectance = 0.5
+		topBar.CanCollide = false
+		topBar.Parent = model
+		weldParts(root, topBar)
+
+		-- Sparkling Gold Dust Emitter
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Texture = "rbxassetid://244199991"
+		sparks.Color = ColorSequence.new(Color3.fromRGB(255, 230, 80), Color3.fromRGB(255, 180, 0))
+		sparks.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.2),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		sparks.Lifetime = NumberRange.new(0.6, 1.4)
+		sparks.Rate = 22
+		sparks.Speed = NumberRange.new(1.5, 3.5)
+		sparks.Parent = root
+
+	elseif reward.category == "Gems" then
+		-- 3D Faceted Diamond / Radiant Gem Crystal
+		local root = Instance.new("Part")
+		root.Name = "PrimaryPart"
+		root.Size = Vector3.new(1.8, 2.4, 1.8)
+		root.CFrame = spawnCF
+		root.Color = Color3.fromRGB(0, 230, 255)
+		root.Material = Enum.Material.Neon
+		root.Anchored = true
+		root.CanCollide = false
+		root.Parent = model
+		model.PrimaryPart = root
+
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Scale = Vector3.new(1.0, 1.5, 1.0)
+		mesh.Parent = root
+
+		-- Outer Crystal Shards
+		for i = 1, 3 do
+			local angle = (i - 1) * (math.pi * 2 / 3)
+			local shard = Instance.new("Part")
+			shard.Name = "Shard_" .. i
+			shard.Size = Vector3.new(0.6, 1.6, 0.6)
+			shard.CFrame = root.CFrame * CFrame.Angles(0, angle, math.rad(22)) * CFrame.new(0.8, 0, 0)
+			shard.Color = Color3.fromRGB(120, 245, 255)
+			shard.Material = Enum.Material.Glass
+			shard.Transparency = 0.2
+			shard.CanCollide = false
+			shard.Parent = model
+			weldParts(root, shard)
+		end
+
+		local pLight = Instance.new("PointLight")
+		pLight.Color = Color3.fromRGB(0, 230, 255)
+		pLight.Range = 14
+		pLight.Brightness = 2.5
+		pLight.Parent = root
+
+		local gemSparks = Instance.new("ParticleEmitter")
+		gemSparks.Texture = "rbxassetid://244199991"
+		gemSparks.Color = ColorSequence.new(Color3.fromRGB(0, 240, 255), Color3.fromRGB(200, 100, 255))
+		gemSparks.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.35),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		gemSparks.Lifetime = NumberRange.new(0.8, 1.6)
+		gemSparks.Rate = 26
+		gemSparks.Speed = NumberRange.new(2, 4)
+		gemSparks.Parent = root
+
+	elseif reward.category == "Power" then
+		-- 3D Pulsing Energy Plasma Sphere + Orbiting Ring
+		local root = Instance.new("Part")
+		root.Name = "PrimaryPart"
+		root.Shape = Enum.PartType.Ball
+		root.Size = Vector3.new(2.2, 2.2, 2.2)
+		root.CFrame = spawnCF
+		root.Color = Color3.fromRGB(255, 60, 220)
+		root.Material = Enum.Material.Neon
+		root.Anchored = true
+		root.CanCollide = false
+		root.Parent = model
+		model.PrimaryPart = root
+
+		-- Orbiting energy cylinder disc
+		local ring = Instance.new("Part")
+		ring.Name = "EnergyRing"
+		ring.Size = Vector3.new(3.2, 0.15, 3.2)
+		ring.CFrame = root.CFrame * CFrame.Angles(math.rad(45), math.rad(25), 0)
+		ring.Color = Color3.fromRGB(180, 50, 255)
+		ring.Material = Enum.Material.Neon
+		ring.Transparency = 0.3
+		ring.CanCollide = false
+		ring.Parent = model
+		weldParts(root, ring)
+
+		local ringMesh = Instance.new("SpecialMesh")
+		ringMesh.MeshType = Enum.MeshType.Cylinder
+		ringMesh.Scale = Vector3.new(1.0, 1.0, 1.0)
+		ringMesh.Parent = ring
+
+		local pLight = Instance.new("PointLight")
+		pLight.Color = Color3.fromRGB(255, 80, 240)
+		pLight.Range = 16
+		pLight.Brightness = 3.0
+		pLight.Parent = root
+
+	elseif reward.category == "Pet" then
+		-- 3D Stylized Mini Pet Companion
+		local petDef = if reward.petId and PetConfig.PETS then PetConfig.PETS[reward.petId] else nil
+		local petColor = if petDef then petDef.color else rarityColor
+
+		local root = Instance.new("Part")
+		root.Name = "PrimaryPart"
+		root.Size = Vector3.new(2.2, 2.2, 2.2)
+		root.CFrame = spawnCF
+		root.Color = petColor
+		root.Material = Enum.Material.SmoothPlastic
+		root.Anchored = true
+		root.CanCollide = false
+		root.Parent = model
+		model.PrimaryPart = root
+
+		-- Glossy Eyes (Left & Right)
+		local eyePositions = {
+			Vector3.new(-0.5, 0.25, -1.05),
+			Vector3.new(0.5, 0.25, -1.05),
+		}
+		for i, offset in ipairs(eyePositions) do
+			local eye = Instance.new("Part")
+			eye.Name = "Eye_" .. i
+			eye.Size = Vector3.new(0.38, 0.44, 0.15)
+			eye.CFrame = root.CFrame * CFrame.new(offset)
+			eye.Color = Color3.fromRGB(20, 20, 26)
+			eye.Material = Enum.Material.SmoothPlastic
+			eye.CanCollide = false
+			eye.Parent = model
+			weldParts(root, eye)
+
+			local eMesh = Instance.new("SpecialMesh")
+			eMesh.MeshType = Enum.MeshType.Sphere
+			eMesh.Parent = eye
+
+			local glint = Instance.new("Part")
+			glint.Name = "Glint_" .. i
+			glint.Size = Vector3.new(0.14, 0.14, 0.08)
+			glint.CFrame = eye.CFrame * CFrame.new(0.08, 0.1, -0.06)
+			glint.Color = Color3.fromRGB(255, 255, 255)
+			glint.Material = Enum.Material.Neon
+			glint.CanCollide = false
+			glint.Parent = model
+			weldParts(root, glint)
+		end
+
+		-- Cute Nose
+		local nose = Instance.new("Part")
+		nose.Name = "Nose"
+		nose.Size = Vector3.new(0.24, 0.2, 0.16)
+		nose.CFrame = root.CFrame * CFrame.new(0, -0.1, -1.1)
+		nose.Color = Color3.fromRGB(45, 30, 30)
+		nose.Material = Enum.Material.SmoothPlastic
+		nose.CanCollide = false
+		nose.Parent = model
+		weldParts(root, nose)
+
+		-- Halo Aura above head
+		local halo = Instance.new("Part")
+		halo.Name = "HaloAura"
+		halo.Size = Vector3.new(1.8, 0.12, 1.8)
+		halo.CFrame = root.CFrame * CFrame.new(0, 1.6, 0)
+		halo.Color = rarityColor
+		halo.Material = Enum.Material.Neon
+		halo.CanCollide = false
+		halo.Parent = model
+		weldParts(root, halo)
+
+		local hMesh = Instance.new("SpecialMesh")
+		hMesh.MeshType = Enum.MeshType.Cylinder
+		hMesh.Parent = halo
+	end
+
+	return model
+end
+
+-- ====================================================================
+-- MAIN PUBLIC ENTRYPOINT: Physical In-World Unboxing
+-- ====================================================================
 function LootBoxAnimation.playOpen(
 	boxDef: LootBoxConfig.LootBoxDef,
 	reward: LootBoxConfig.RewardItem,
@@ -122,115 +416,101 @@ function LootBoxAnimation.playOpen(
 	onFinished: (() -> ())?,
 	onOpenAnother: (() -> ())?
 )
-	-- Remove any existing animation GUI
-	local existing = playerGui:FindFirstChild("LootBoxOpenGui")
-	if existing then
-		existing:Destroy()
+	local char = player.Character or player.CharacterAdded:Wait()
+	local hrp = char:WaitForChild("HumanoidRootPart") :: BasePart
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+	local origWalkSpeed = if humanoid then humanoid.WalkSpeed else 16
+	local origJumpPower = if humanoid then humanoid.JumpPower else 50
+	if humanoid then
+		humanoid.WalkSpeed = 0
+		humanoid.JumpPower = 0
+	end
+
+	local fxFolder = getFXFolder()
+	-- Clear any leftover FX models
+	for _, child in ipairs(fxFolder:GetChildren()) do
+		child:Destroy()
+	end
+
+	-- 1. Calculate Ground Position Directly in front of Player
+	local rootCF = hrp.CFrame
+	local lookVec = rootCF.LookVector
+	local targetXZ = rootCF.Position + (lookVec * 6.5)
+
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = { char, fxFolder }
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local hit = workspace:Raycast(targetXZ + Vector3.new(0, 6, 0), Vector3.new(0, -20, 0), rayParams)
+	local floorY = if hit then hit.Position.Y else (rootCF.Position.Y - 2.8)
+	local chestBaseY = floorY + 1.0 -- half base height
+	local chestPos = Vector3.new(targetXZ.X, chestBaseY, targetXZ.Z)
+	-- Orient chest to face back directly towards the player
+	local chestFinalCF = CFrame.lookAt(chestPos, Vector3.new(rootCF.Position.X, chestPos.Y, rootCF.Position.Z))
+
+	-- 2. Build Physical Chest in Workspace
+	local chestModel, base, lid, lidCrown, latch, pointLight, particles = buildPhysicalChest(boxDef, chestFinalCF)
+	chestModel.Parent = fxFolder
+
+	-- Helper to update lid rotation cleanly on rear hinge
+	local function setLidAngle(angleDeg: number)
+		local currentHingeCF = base.CFrame * CFrame.new(0, 1.0, 1.35)
+		local rotCF = currentHingeCF * CFrame.Angles(-math.rad(angleDeg), 0, 0)
+		lid.CFrame = rotCF * CFrame.new(0, 0.575, -1.39)
+		lidCrown.CFrame = lid.CFrame * CFrame.new(0, 0.7, 0)
+		if latch and latch.Parent then
+			latch.CFrame = lid.CFrame * CFrame.new(0, -0.5, -1.45)
+		end
+	end
+
+	-- 3. Cinematic Camera Transition (Scriptable Over-the-Shoulder / Focal)
+	local origCameraType = camera.CameraType
+	local origCameraSubject = camera.CameraSubject
+	local origCameraCF = camera.CFrame
+
+	camera.CameraType = Enum.CameraType.Scriptable
+
+	local camPos = rootCF.Position + (rootCF.RightVector * 2.8) + (rootCF.UpVector * 2.4) - (lookVec * 2.4)
+	local camLookTarget = chestPos + Vector3.new(0, 1.8, 0)
+	local cinematicCamCF = CFrame.lookAt(camPos, camLookTarget)
+
+	TweenService:Create(camera, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		CFrame = cinematicCamCF,
+	}):Play()
+
+	-- 4. Screen Overlay HUD (Minimal, Non-obtrusive controls)
+	local existingGui = playerGui:FindFirstChild("LootBoxPhysicalGui")
+	if existingGui then
+		existingGui:Destroy()
 	end
 
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "LootBoxOpenGui"
-	screenGui.DisplayOrder = 160
+	screenGui.Name = "LootBoxPhysicalGui"
+	screenGui.DisplayOrder = 170
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = true
 	screenGui.Parent = playerGui
 
-	-- Darkened Background Vignette
-	local bg = Instance.new("Frame")
-	bg.Size = UDim2.new(1, 0, 1, 0)
-	bg.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
-	bg.BackgroundTransparency = 1
-	bg.BorderSizePixel = 0
-	bg.Parent = screenGui
-
-	TweenService:Create(bg, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		BackgroundTransparency = 0.25,
-	}):Play()
-
-	-- Sunburst / Radial Rays behind Chest
-	local sunburst = Instance.new("Frame")
-	sunburst.Size = UDim2.new(0, 850, 0, 850)
-	sunburst.Position = UDim2.new(0.5, 0, 0.5, -40)
-	sunburst.AnchorPoint = Vector2.new(0.5, 0.5)
-	sunburst.BackgroundTransparency = 1
-	sunburst.Parent = screenGui
-
-	for i = 1, 12 do
-		local ray = Instance.new("Frame")
-		ray.Size = UDim2.new(0, 18, 1, 0)
-		ray.Position = UDim2.new(0.5, -9, 0, 0)
-		ray.BackgroundColor3 = boxDef.color
-		ray.BackgroundTransparency = 0.88
-		ray.BorderSizePixel = 0
-		ray.Rotation = (i - 1) * 30
-		ray.Parent = sunburst
-
-		local rCorner = Instance.new("UICorner")
-		rCorner.CornerRadius = UDim.new(1, 0)
-		rCorner.Parent = ray
-	end
-
-	-- Spin sunburst in background
-	local sunburstRotConn = RunService.RenderStepped:Connect(function(_, step)
-		if sunburst and sunburst.Parent then
-			sunburst.Rotation = (sunburst.Rotation + (step * 22)) % 360
-		end
-	end)
-
-	-- Viewport Frame for 3D Chest Model
-	local viewport = Instance.new("ViewportFrame")
-	viewport.Size = UDim2.new(0, 520, 0, 420)
-	viewport.Position = UDim2.new(0.5, 0, 0.44, 0)
-	viewport.AnchorPoint = Vector2.new(0.5, 0.5)
-	viewport.BackgroundTransparency = 1
-	viewport.BorderSizePixel = 0
-	viewport.LightColor = Color3.fromRGB(255, 255, 255)
-	viewport.LightDirection = Vector3.new(-1, -2, -1).Unit
-	viewport.Ambient = Color3.fromRGB(160, 160, 180)
-	viewport.Parent = screenGui
-
-	-- 3D World Setup
-	local world = Instance.new("WorldModel")
-	world.Parent = viewport
-
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = 48
-	camera.CFrame = CFrame.lookAt(Vector3.new(0, 4.2, -7.5), Vector3.new(0, 1.3, 0))
-	camera.Parent = viewport
-	viewport.CurrentCamera = camera
-
-	local model, base, lid, coreLight = buildChestModel(boxDef)
-	model.Parent = world
-
-	-- White Screen Flash Overlay
-	local flash = Instance.new("Frame")
-	flash.Size = UDim2.new(1, 0, 1, 0)
-	flash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	flash.BackgroundTransparency = 1
-	flash.BorderSizePixel = 0
-	flash.ZIndex = 20
-	flash.Parent = screenGui
-
-	-- Skip / Fast-Forward Button
+	-- Skip / Fast-Forward Button (Top Right)
 	local isSkipped = false
 	local skipBtn = Instance.new("TextButton")
-	skipBtn.Size = UDim2.new(0, 110, 0, 36)
-	skipBtn.Position = UDim2.new(1, -130, 0, 24)
-	skipBtn.BackgroundColor3 = Color3.fromRGB(34, 38, 52)
+	skipBtn.Size = UDim2.new(0, 120, 0, 38)
+	skipBtn.Position = UDim2.new(1, -140, 0, 24)
+	skipBtn.BackgroundColor3 = Color3.fromRGB(24, 28, 40)
 	skipBtn.Text = "⚡ SKIP ❯❯"
-	skipBtn.TextColor3 = Color3.fromRGB(200, 215, 240)
+	skipBtn.TextColor3 = Color3.fromRGB(210, 225, 255)
 	skipBtn.Font = Enum.Font.GothamBlack
 	skipBtn.TextSize = 13
 	skipBtn.BorderSizePixel = 0
-	skipBtn.ZIndex = 25
 	skipBtn.Parent = screenGui
 
 	local skCorner = Instance.new("UICorner")
-	skCorner.CornerRadius = UDim.new(0, 8)
+	skCorner.CornerRadius = UDim.new(0, 9)
 	skCorner.Parent = skipBtn
 
 	local skStroke = Instance.new("UIStroke")
-	skStroke.Color = Color3.fromRGB(80, 95, 125)
+	skStroke.Color = Color3.fromRGB(70, 85, 120)
 	skStroke.Thickness = 1.2
 	skStroke.Parent = skipBtn
 
@@ -239,196 +519,247 @@ function LootBoxAnimation.playOpen(
 		skipBtn.Visible = false
 	end)
 
-	-- Chest Drop & Rumble Sequence
-	local baseTargetCF = CFrame.new(0, 1.0, 0)
-	local lidTargetCF = CFrame.new(0, 2.0, 1.3) * CFrame.new(0, 0.55, -1.34)
+	-- ================================================================
+	-- PHASE 1: CHEST DROP & IMPACT
+	-- ================================================================
+	-- Position chest high initially
+	local dropHeight = 8
+	base.CFrame = chestFinalCF * CFrame.new(0, dropHeight, 0)
+	setLidAngle(0)
 
-	-- Initial high position
-	base.CFrame = baseTargetCF * CFrame.new(0, 14, 0)
-	lid.CFrame = lidTargetCF * CFrame.new(0, 14, 0)
-
-	-- Drop Animation with Elastic / Back easing
 	playSound(SOUNDS.Thud, 0.4, 0.7)
-	local dropTweenInfo = TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-	TweenService:Create(base, dropTweenInfo, { CFrame = baseTargetCF }):Play()
-	local lidDropTween = TweenService:Create(lid, dropTweenInfo, { CFrame = lidTargetCF })
-	lidDropTween:Play()
-	lidDropTween.Completed:Wait()
+	local dropTween = TweenService:Create(base, TweenInfo.new(0.48, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+		CFrame = chestFinalCF,
+	})
+	dropTween:Play()
+
+	-- Keep lid attached during drop
+	local dropConn: RBXScriptConnection? = nil
+	dropConn = RunService.RenderStepped:Connect(function()
+		setLidAngle(0)
+	end)
+
+	dropTween.Completed:Wait()
+	if dropConn then
+		dropConn:Disconnect()
+		dropConn = nil
+	end
+	base.CFrame = chestFinalCF
+	setLidAngle(0)
 
 	playSound(SOUNDS.Thud, 0.8, 1.0)
 
-	-- Shake & Rattle Phase
-	local rattleTime = 1.35
-	local startTime = os.clock()
-	local rumbleConn: RBXScriptConnection? = nil
+	-- ================================================================
+	-- PHASE 2: ANTICIPATION RATTLE & LIGHT SEEP
+	-- ================================================================
+	local rattleDuration = 0.85
+	local rattleStart = os.clock()
 	local lastClickTime = 0
+	local rattleConn: RBXScriptConnection? = nil
 
-	rumbleConn = RunService.RenderStepped:Connect(function()
-		local elapsed = os.clock() - startTime
-		if elapsed >= rattleTime or isSkipped then
-			if rumbleConn then
-				rumbleConn:Disconnect()
-				rumbleConn = nil
+	rattleConn = RunService.RenderStepped:Connect(function()
+		local elapsed = os.clock() - rattleStart
+		if elapsed >= rattleDuration or isSkipped then
+			if rattleConn then
+				rattleConn:Disconnect()
+				rattleConn = nil
 			end
 			return
 		end
 
-		local progress = elapsed / rattleTime
-		local intensity = 0.04 + (progress * 0.22)
-		local speed = 25 + (progress * 45)
+		local progress = elapsed / rattleDuration
+		local intensity = 0.03 + (progress * 0.12)
+		local speed = 28 + (progress * 30)
 
 		local rotOffset = math.sin(elapsed * speed) * intensity
-		local xOffset = math.cos(elapsed * speed * 1.3) * (intensity * 0.7)
+		base.CFrame = chestFinalCF * CFrame.Angles(0, 0, rotOffset)
+		setLidAngle(math.abs(rotOffset * 25))
 
-		base.CFrame = baseTargetCF * CFrame.Angles(0, 0, rotOffset) * CFrame.new(xOffset, 0, 0)
-		lid.CFrame = lidTargetCF * CFrame.Angles(0, 0, rotOffset) * CFrame.new(xOffset, 0, 0)
+		-- Light begins leaking through the seam
+		pointLight.Brightness = progress * 1.5
 
-		-- Soft clicking
-		if os.clock() - lastClickTime >= (0.16 - (progress * 0.10)) then
+		if os.clock() - lastClickTime >= (0.16 - (progress * 0.08)) then
 			lastClickTime = os.clock()
-			playSound(SOUNDS.Thud, 0.25, 2.2 + (progress * 0.5))
+			playSound(SOUNDS.Click, 0.25, 2.0 + (progress * 0.6))
 		end
 	end)
 
 	if not isSkipped then
-		task.wait(rattleTime)
+		task.wait(rattleDuration)
 	end
-	if rumbleConn then
-		rumbleConn:Disconnect()
-		rumbleConn = nil
+	if rattleConn then
+		rattleConn:Disconnect()
+		rattleConn = nil
 	end
 
-	-- Restore level position before pop
-	base.CFrame = baseTargetCF
-	lid.CFrame = lidTargetCF
+	base.CFrame = chestFinalCF
+	setLidAngle(0)
 
-	-- Unlatch & Burst open lid
-	playSound(SOUNDS.Thud, 0.9, 2.0)
+	-- ================================================================
+	-- PHASE 3: SLOW AUTHENTIC CREAKING OPEN
+	-- ================================================================
 	skipBtn.Visible = false
 
-	-- Lid flips back on hinge
-	local hingeCF = CFrame.new(0, 2.0, 1.3)
-	local openLidCF = hingeCF * CFrame.Angles(-math.rad(110), 0, 0) * CFrame.new(0, 0.55, -1.34)
-	TweenService:Create(lid, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		CFrame = openLidCF,
-	}):Play()
+	-- Detach/dissolve latch
+	if latch and latch.Parent then
+		TweenService:Create(latch, TweenInfo.new(0.25), { Transparency = 1 }):Play()
+		Debris:AddItem(latch, 0.3)
+	end
 
-	-- Core light flares up
-	coreLight.Transparency = 0.15
-	TweenService:Create(coreLight, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Size = Vector3.new(3.4, 2.2, 2.4),
-		Transparency = 0.4,
-	}):Play()
+	-- Start authentic creaking audio and emission particles
+	playSound(SOUNDS.Creak, 0.85, 0.95)
+	particles.Rate = 35
 
-	-- White flash
-	flash.BackgroundTransparency = 0.1
-	TweenService:Create(flash, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		BackgroundTransparency = 1,
-	}):Play()
+	local openDuration = if isSkipped then 0.2 else 2.2
+	local openStart = os.clock()
+	local openConn: RBXScriptConnection? = nil
 
-	-- Triumphant Fanfare
-	playSound(SOUNDS.Fanfare, 0.65, 1.0)
+	openConn = RunService.RenderStepped:Connect(function()
+		local elapsed = os.clock() - openStart
+		local rawAlpha = math.clamp(elapsed / openDuration, 0, 1)
+		-- Smooth sine curve for slow, heavy creaking feel
+		local smoothAlpha = math.sin(rawAlpha * math.pi * 0.5)
 
-	-- Build Floating Reward Card
-	local rewardFrame = Instance.new("Frame")
-	rewardFrame.Size = UDim2.new(0, 420, 0, 260)
-	rewardFrame.Position = UDim2.new(0.5, 0, 0.68, 0) -- starts low near chest
-	rewardFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-	rewardFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 32)
-	rewardFrame.BackgroundTransparency = 1
-	rewardFrame.BorderSizePixel = 0
-	rewardFrame.ZIndex = 30
-	rewardFrame.Parent = screenGui
+		local currentAngle = smoothAlpha * 118
+		setLidAngle(currentAngle)
 
-	local rfCorner = Instance.new("UICorner")
-	rfCorner.CornerRadius = UDim.new(0, 16)
-	rfCorner.Parent = rewardFrame
+		-- PointLight ramps up dynamically casting light on player and ground
+		pointLight.Brightness = 1.5 + (smoothAlpha * 3.5)
 
+		if rawAlpha >= 1 or isSkipped then
+			if openConn then
+				openConn:Disconnect()
+				openConn = nil
+			end
+		end
+	end)
+
+	if not isSkipped then
+		task.wait(openDuration)
+	end
+	if openConn then
+		openConn:Disconnect()
+		openConn = nil
+	end
+
+	setLidAngle(118)
+	pointLight.Brightness = 5.0
+
+	-- ================================================================
+	-- PHASE 4: PHYSICAL REWARD POPS OUT!
+	-- ================================================================
+	playSound(SOUNDS.Pop, 0.9, 1.1)
+	playSound(SOUNDS.Fanfare, 0.75, 1.0)
+
+	-- Spawn physical reward inside the open chest
+	local propSpawnCF = chestFinalCF * CFrame.new(0, 0.6, 0)
+	local rewardProp = buildPhysicalRewardProp(reward, propSpawnCF)
+	rewardProp.Parent = fxFolder
+
+	local propRoot = rewardProp.PrimaryPart :: BasePart
+	local apexCF = chestFinalCF * CFrame.new(0, 4.2, 0)
+
+	-- Pop-out upward launch animation with bounce
+	local popTween = TweenService:Create(propRoot, TweenInfo.new(0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		CFrame = apexCF,
+	})
+	popTween:Play()
+
+	-- 3D Overhead Billboard attached to floating reward
 	local rarityColor = LootBoxConfig.TIER_COLORS[reward.rarity] or Color3.fromRGB(255, 215, 0)
 
-	local rfStroke = Instance.new("UIStroke")
-	rfStroke.Color = rarityColor
-	rfStroke.Thickness = 2.5
-	rfStroke.Transparency = 1
-	rfStroke.Parent = rewardFrame
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "RewardBillboard"
+	billboard.Size = UDim2.new(0, 360, 0, 130)
+	billboard.StudsOffset = Vector3.new(0, 2.3, 0)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.Parent = propRoot
 
-	-- Header Banner: "YOU UNLOCKED!"
-	local unlockBanner = Instance.new("TextLabel")
-	unlockBanner.Size = UDim2.new(1, 0, 0, 28)
-	unlockBanner.Position = UDim2.new(0, 0, 0, 14)
-	unlockBanner.BackgroundTransparency = 1
-	unlockBanner.Text = "✨ YOU UNLOCKED! ✨"
-	unlockBanner.TextColor3 = Color3.fromRGB(255, 255, 255)
-	unlockBanner.Font = Enum.Font.GothamBlack
-	unlockBanner.TextSize = 16
-	unlockBanner.TextTransparency = 1
-	unlockBanner.ZIndex = 31
-	unlockBanner.Parent = rewardFrame
+	local bBg = Instance.new("Frame")
+	bBg.Size = UDim2.new(1, 0, 1, 0)
+	bBg.BackgroundColor3 = Color3.fromRGB(15, 16, 24)
+	bBg.BackgroundTransparency = 0.2
+	bBg.BorderSizePixel = 0
+	bBg.Parent = billboard
 
-	-- Rarity Pill Badge
-	local rarityBadge = Instance.new("TextLabel")
-	rarityBadge.Size = UDim2.new(0, 130, 0, 22)
-	rarityBadge.Position = UDim2.new(0.5, 0, 0, 46)
-	rarityBadge.AnchorPoint = Vector2.new(0.5, 0)
-	rarityBadge.BackgroundColor3 = rarityColor
-	rarityBadge.Text = string.format("★ %s ★", reward.rarity:upper())
-	rarityBadge.TextColor3 = if reward.rarity == "Mythic" or reward.rarity == "Common" then Color3.fromRGB(25, 25, 25) else Color3.fromRGB(255, 255, 255)
-	rarityBadge.Font = Enum.Font.GothamBlack
-	rarityBadge.TextSize = 11
-	rarityBadge.BackgroundTransparency = 1
-	rarityBadge.TextTransparency = 1
-	rarityBadge.ZIndex = 31
-	rarityBadge.BorderSizePixel = 0
-	rarityBadge.Parent = rewardFrame
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 14)
+	bCorner.Parent = bBg
 
-	local rbCorner = Instance.new("UICorner")
-	rbCorner.CornerRadius = UDim.new(0, 6)
-	rbCorner.Parent = rarityBadge
+	local bStroke = Instance.new("UIStroke")
+	bStroke.Color = rarityColor
+	bStroke.Thickness = 2.2
+	bStroke.Parent = bBg
 
-	-- Big Glowing Icon
-	local iconLabel = Instance.new("TextLabel")
-	iconLabel.Size = UDim2.new(1, 0, 0, 68)
-	iconLabel.Position = UDim2.new(0, 0, 0, 72)
-	iconLabel.BackgroundTransparency = 1
-	iconLabel.Text = reward.icon
-	iconLabel.TextSize = 58
-	iconLabel.TextTransparency = 1
-	iconLabel.ZIndex = 31
-	iconLabel.Parent = rewardFrame
+	-- Rarity Pill
+	local rarityPill = Instance.new("TextLabel")
+	rarityPill.Size = UDim2.new(0, 120, 0, 20)
+	rarityPill.Position = UDim2.new(0.5, 0, 0, 10)
+	rarityPill.AnchorPoint = Vector2.new(0.5, 0)
+	rarityPill.BackgroundColor3 = rarityColor
+	rarityPill.Text = string.format("★ %s ★", reward.rarity:upper())
+	rarityPill.TextColor3 = if reward.rarity == "Mythic" or reward.rarity == "Common" then Color3.fromRGB(20, 20, 20) else Color3.fromRGB(255, 255, 255)
+	rarityPill.Font = Enum.Font.GothamBlack
+	rarityPill.TextSize = 11
+	rarityPill.BorderSizePixel = 0
+	rarityPill.Parent = bBg
 
-	-- Reward Name Label
-	local nameLabel = Instance.new("TextLabel")
-	nameLabel.Size = UDim2.new(1, -24, 0, 32)
-	nameLabel.Position = UDim2.new(0, 12, 0, 142)
-	nameLabel.BackgroundTransparency = 1
-	nameLabel.Text = reward.name
-	nameLabel.TextColor3 = rarityColor
-	nameLabel.Font = Enum.Font.GothamBlack
-	nameLabel.TextSize = 22
-	nameLabel.TextTransparency = 1
-	nameLabel.ZIndex = 31
-	nameLabel.Parent = rewardFrame
+	local rpCorner = Instance.new("UICorner")
+	rpCorner.CornerRadius = UDim.new(0, 6)
+	rpCorner.Parent = rarityPill
 
-	-- Reward Description Subtitle
-	local descLabel = Instance.new("TextLabel")
-	descLabel.Size = UDim2.new(1, -30, 0, 20)
-	descLabel.Position = UDim2.new(0, 15, 0, 174)
-	descLabel.BackgroundTransparency = 1
-	descLabel.Text = reward.description
-	descLabel.TextColor3 = Color3.fromRGB(180, 190, 210)
-	descLabel.Font = Enum.Font.GothamBold
-	descLabel.TextSize = 12
-	descLabel.TextTransparency = 1
-	descLabel.ZIndex = 31
-	descLabel.Parent = rewardFrame
+	-- Reward Name & Amount
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, -20, 0, 34)
+	titleLabel.Position = UDim2.new(0, 10, 0, 36)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = reward.icon .. "  " .. reward.name
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 20
+	titleLabel.Parent = bBg
 
-	-- Action Buttons Row
-	local btnRow = Instance.new("Frame")
-	btnRow.Size = UDim2.new(1, -30, 0, 42)
-	btnRow.Position = UDim2.new(0, 15, 1, -54)
-	btnRow.BackgroundTransparency = 1
-	btnRow.ZIndex = 31
-	btnRow.Parent = rewardFrame
+	-- Subtitle Description
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Size = UDim2.new(1, -20, 0, 22)
+	subLabel.Position = UDim2.new(0, 10, 0, 72)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Text = reward.description
+	subLabel.TextColor3 = Color3.fromRGB(180, 195, 220)
+	subLabel.Font = Enum.Font.GothamBold
+	subLabel.TextSize = 12
+	subLabel.Parent = bBg
+
+	-- Continuous Floating Bobbing & Spin Loop for the physical reward
+	local hoverConn: RBXScriptConnection? = nil
+	local hoverStart = os.clock()
+
+	hoverConn = RunService.RenderStepped:Connect(function()
+		if not propRoot or not propRoot.Parent then return end
+		local now = os.clock() - hoverStart
+		local bobY = math.sin(now * 3.0) * 0.25
+		local spinAngle = (now * 45) % 360
+
+		propRoot.CFrame = apexCF * CFrame.new(0, bobY, 0) * CFrame.Angles(0, math.rad(spinAngle), 0)
+
+		-- Also keep parts of the reward model aligned
+		for _, part in ipairs(rewardProp:GetChildren()) do
+			if part:IsA("BasePart") and part ~= propRoot then
+				-- They maintain relative offsets
+			end
+		end
+	end)
+
+	-- ================================================================
+	-- PHASE 5: ACTION BUTTONS (Collect / Open Another)
+	-- ================================================================
+	local actionRow = Instance.new("Frame")
+	actionRow.Size = UDim2.new(0, 380, 0, 52)
+	actionRow.Position = UDim2.new(0.5, 0, 1, -80)
+	actionRow.AnchorPoint = Vector2.new(0.5, 0)
+	actionRow.BackgroundTransparency = 1
+	actionRow.Parent = screenGui
 
 	local hasMore = (remainingCount > 0)
 
@@ -436,22 +767,24 @@ function LootBoxAnimation.playOpen(
 	local collectBtn = Instance.new("TextButton")
 	collectBtn.Size = if hasMore then UDim2.new(0.48, 0, 1, 0) else UDim2.new(1, 0, 1, 0)
 	collectBtn.Position = UDim2.new(0, 0, 0, 0)
-	collectBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 120)
+	collectBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 115)
 	collectBtn.Text = "✓ COLLECT"
 	collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	collectBtn.Font = Enum.Font.GothamBlack
-	collectBtn.TextSize = 14
-	collectBtn.BackgroundTransparency = 1
-	collectBtn.TextTransparency = 1
-	collectBtn.ZIndex = 32
+	collectBtn.TextSize = 15
 	collectBtn.BorderSizePixel = 0
-	collectBtn.Parent = btnRow
+	collectBtn.Parent = actionRow
 
 	local cbCorner = Instance.new("UICorner")
-	cbCorner.CornerRadius = UDim.new(0, 8)
+	cbCorner.CornerRadius = UDim.new(0, 10)
 	cbCorner.Parent = collectBtn
 
-	-- Open Another Button (if player has more of this crate)
+	local cbStroke = Instance.new("UIStroke")
+	cbStroke.Color = Color3.fromRGB(120, 255, 180)
+	cbStroke.Thickness = 1.5
+	cbStroke.Parent = collectBtn
+
+	-- Open Another Button
 	local openMoreBtn: TextButton? = nil
 	if hasMore then
 		openMoreBtn = Instance.new("TextButton")
@@ -461,60 +794,107 @@ function LootBoxAnimation.playOpen(
 		openMoreBtn.Text = string.format("OPEN ANOTHER (%d)", remainingCount)
 		openMoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 		openMoreBtn.Font = Enum.Font.GothamBlack
-		openMoreBtn.TextSize = 12
-		openMoreBtn.BackgroundTransparency = 1
-		openMoreBtn.TextTransparency = 1
-		openMoreBtn.ZIndex = 32
+		openMoreBtn.TextSize = 13
 		openMoreBtn.BorderSizePixel = 0
-		openMoreBtn.Parent = btnRow
+		openMoreBtn.Parent = actionRow
 
 		local omCorner = Instance.new("UICorner")
-		omCorner.CornerRadius = UDim.new(0, 8)
+		omCorner.CornerRadius = UDim.new(0, 10)
 		omCorner.Parent = openMoreBtn
+
+		local omStroke = Instance.new("UIStroke")
+		omStroke.Color = boxDef.accentColor
+		omStroke.Thickness = 1.5
+		omStroke.Parent = openMoreBtn
 	end
 
-	-- Rise and Fade In Tween for Reward Card
-	local revealTween = TweenService:Create(rewardFrame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 0.48, 0),
-		BackgroundTransparency = 0.05,
-	})
-	revealTween:Play()
+	-- Slide in action row
+	actionRow.Position = UDim2.new(0.5, 0, 1, 20)
+	TweenService:Create(actionRow, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 1, -85),
+	}):Play()
 
-	TweenService:Create(rfStroke, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0 }):Play()
-	TweenService:Create(unlockBanner, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
-	TweenService:Create(rarityBadge, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0, TextTransparency = 0 }):Play()
-	TweenService:Create(iconLabel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
-	TweenService:Create(nameLabel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
-	TweenService:Create(descLabel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
-	TweenService:Create(collectBtn, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0, TextTransparency = 0 }):Play()
-	if openMoreBtn then
-		TweenService:Create(openMoreBtn, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0, TextTransparency = 0 }):Play()
-	end
+	-- Clean Collection Animation Handler
+	local isClosing = false
+	local function doCollect(onDone: () -> ())
+		if isClosing then return end
+		isClosing = true
 
-	-- Clean exit handler
-	local function closeAnimation()
-		if sunburstRotConn then
-			sunburstRotConn:Disconnect()
-			sunburstRotConn = nil
+		if hoverConn then
+			hoverConn:Disconnect()
+			hoverConn = nil
 		end
+
+		playSound(SOUNDS.Chime, 0.7, 1.2)
+
+		-- Hide billboard and UI buttons
+		billboard.Enabled = false
 		screenGui:Destroy()
-		if onFinished then
-			onFinished()
+
+		-- Tween reward prop into player's torso (vacuum absorption arc)
+		local targetAbsorptionCF = hrp.CFrame * CFrame.new(0, 0.5, 0)
+		local absorbTween = TweenService:Create(propRoot, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+			CFrame = targetAbsorptionCF,
+		})
+		absorbTween:Play()
+
+		-- Fade out chest model
+		for _, part in ipairs(chestModel:GetDescendants()) do
+			if part:IsA("BasePart") then
+				TweenService:Create(part, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+			elseif part:IsA("PointLight") then
+				TweenService:Create(part, TweenInfo.new(0.35), { Brightness = 0 }):Play()
+			end
 		end
+
+		absorbTween.Completed:Wait()
+
+		-- Restore camera and humanoid controls
+		camera.CameraType = origCameraType or Enum.CameraType.Custom
+		if origCameraSubject then
+			camera.CameraSubject = origCameraSubject
+		elseif humanoid then
+			camera.CameraSubject = humanoid
+		end
+
+		if humanoid then
+			humanoid.WalkSpeed = origWalkSpeed
+			humanoid.JumpPower = origJumpPower
+		end
+
+		-- Clean up workspace models
+		rewardProp:Destroy()
+		chestModel:Destroy()
+
+		onDone()
 	end
 
-	collectBtn.MouseButton1Click:Connect(closeAnimation)
+	collectBtn.MouseButton1Click:Connect(function()
+		doCollect(function()
+			if onFinished then
+				onFinished()
+			end
+		end)
+	end)
 
 	if openMoreBtn and onOpenAnother then
 		openMoreBtn.MouseButton1Click:Connect(function()
-			if sunburstRotConn then
-				sunburstRotConn:Disconnect()
-				sunburstRotConn = nil
-			end
-			screenGui:Destroy()
-			onOpenAnother()
+			doCollect(function()
+				onOpenAnother()
+			end)
 		end)
 	end
+
+	-- Auto-collect failsafe after 14 seconds if left open
+	task.delay(14, function()
+		if not isClosing then
+			doCollect(function()
+				if onFinished then
+					onFinished()
+				end
+			end)
+		end
+	end)
 end
 
 return LootBoxAnimation

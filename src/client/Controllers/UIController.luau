@@ -5862,115 +5862,189 @@ function UIController.buildHUD()
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = playerGui
 
-	-- TOP BAR CONTAINER
-	local topBar = createStyledFrame(screenGui, "TopBar", UDim2.new(0, 780, 0, 56), UDim2.new(0.5, -390, 0, 16), Color3.fromRGB(18, 20, 26))
+	-- BOTTOM RIGHT STATS CONTAINER
+	local statsHUD = createStyledFrame(
+		screenGui,
+		"BottomRightStatsHUD",
+		UDim2.new(0, 220, 0, 156),
+		UDim2.new(1, -16, 1, -16),
+		Color3.fromRGB(16, 18, 26)
+	)
+	statsHUD.AnchorPoint = Vector2.new(1, 1)
 
-	-- Power Container
-	local powerBox = Instance.new("Frame")
-	powerBox.Size = UDim2.new(0, 155, 1, 0)
-	powerBox.Position = UDim2.new(0, 12, 0, 0)
-	powerBox.BackgroundTransparency = 1
-	powerBox.Parent = topBar
+	local statsPadding = Instance.new("UIPadding")
+	statsPadding.PaddingTop = UDim.new(0, 8)
+	statsPadding.PaddingBottom = UDim.new(0, 8)
+	statsPadding.PaddingLeft = UDim.new(0, 10)
+	statsPadding.PaddingRight = UDim.new(0, 10)
+	statsPadding.Parent = statsHUD
 
-	local powerIcon = Instance.new("TextLabel")
-	powerIcon.Size = UDim2.new(0, 32, 1, 0)
-	powerIcon.BackgroundTransparency = 1
-	powerIcon.Text = "⚡"
-	powerIcon.TextSize = 22
-	powerIcon.Parent = powerBox
+	local statsLayout = Instance.new("UIListLayout")
+	statsLayout.Padding = UDim.new(0, 5)
+	statsLayout.FillDirection = Enum.FillDirection.Vertical
+	statsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	statsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	statsLayout.Parent = statsHUD
 
-	powerLabel = Instance.new("TextLabel")
-	powerLabel.Size = UDim2.new(1, -34, 1, 0)
-	powerLabel.Position = UDim2.new(0, 34, 0, 0)
-	powerLabel.BackgroundTransparency = 1
-	powerLabel.Text = "10 Power"
-	powerLabel.TextColor3 = Color3.fromRGB(255, 215, 35)
-	powerLabel.Font = Enum.Font.GothamBlack
-	powerLabel.TextSize = 18
-	powerLabel.TextXAlignment = Enum.TextXAlignment.Left
-	powerLabel.Parent = powerBox
-
-	-- Cash Container
+	-- Cash Container (Row 1)
 	local cashBox = Instance.new("Frame")
-	cashBox.Size = UDim2.new(0, 155, 1, 0)
-	cashBox.Position = UDim2.new(0, 175, 0, 0)
-	cashBox.BackgroundTransparency = 1
-	cashBox.Parent = topBar
+	cashBox.Name = "CashBox"
+	cashBox.Size = UDim2.new(1, 0, 0, 32)
+	cashBox.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	cashBox.BorderSizePixel = 0
+	cashBox.LayoutOrder = 1
+	cashBox.Parent = statsHUD
+
+	local cashCorner = Instance.new("UICorner")
+	cashCorner.CornerRadius = UDim.new(0, 8)
+	cashCorner.Parent = cashBox
+
+	local cashStroke = Instance.new("UIStroke")
+	cashStroke.Color = Color3.fromRGB(0, 255, 170)
+	cashStroke.Transparency = 0.75
+	cashStroke.Thickness = 1
+	cashStroke.Parent = cashBox
 
 	local cashIcon = Instance.new("TextLabel")
-	cashIcon.Size = UDim2.new(0, 32, 1, 0)
+	cashIcon.Size = UDim2.new(0, 28, 1, 0)
+	cashIcon.Position = UDim2.new(0, 4, 0, 0)
 	cashIcon.BackgroundTransparency = 1
 	cashIcon.Text = "💰"
-	cashIcon.TextSize = 22
+	cashIcon.TextSize = 18
 	cashIcon.Parent = cashBox
 
 	cashLabel = Instance.new("TextLabel")
-	cashLabel.Size = UDim2.new(1, -34, 1, 0)
-	cashLabel.Position = UDim2.new(0, 34, 0, 0)
+	cashLabel.Size = UDim2.new(1, -36, 1, 0)
+	cashLabel.Position = UDim2.new(0, 32, 0, 0)
 	cashLabel.BackgroundTransparency = 1
 	cashLabel.Text = "$0"
 	cashLabel.TextColor3 = Color3.fromRGB(0, 255, 170)
 	cashLabel.Font = Enum.Font.GothamBlack
-	cashLabel.TextSize = 18
+	cashLabel.TextSize = 16
 	cashLabel.TextXAlignment = Enum.TextXAlignment.Left
 	cashLabel.Parent = cashBox
 
-	-- Gems Container
+	-- Gems Container (Row 2)
 	local gemsBox = Instance.new("Frame")
-	gemsBox.Size = UDim2.new(0, 130, 1, 0)
-	gemsBox.Position = UDim2.new(0, 338, 0, 0)
-	gemsBox.BackgroundTransparency = 1
-	gemsBox.Parent = topBar
+	gemsBox.Name = "GemsBox"
+	gemsBox.Size = UDim2.new(1, 0, 0, 32)
+	gemsBox.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	gemsBox.BorderSizePixel = 0
+	gemsBox.LayoutOrder = 2
+	gemsBox.Parent = statsHUD
+
+	local gemsCorner = Instance.new("UICorner")
+	gemsCorner.CornerRadius = UDim.new(0, 8)
+	gemsCorner.Parent = gemsBox
+
+	local gemsStroke = Instance.new("UIStroke")
+	gemsStroke.Color = Color3.fromRGB(0, 210, 255)
+	gemsStroke.Transparency = 0.75
+	gemsStroke.Thickness = 1
+	gemsStroke.Parent = gemsBox
 
 	local gemsIcon = Instance.new("TextLabel")
-	gemsIcon.Size = UDim2.new(0, 32, 1, 0)
+	gemsIcon.Size = UDim2.new(0, 28, 1, 0)
+	gemsIcon.Position = UDim2.new(0, 4, 0, 0)
 	gemsIcon.BackgroundTransparency = 1
 	gemsIcon.Text = "💎"
-	gemsIcon.TextSize = 22
+	gemsIcon.TextSize = 18
 	gemsIcon.Parent = gemsBox
 
 	gemsLabel = Instance.new("TextLabel")
-	gemsLabel.Size = UDim2.new(1, -34, 1, 0)
-	gemsLabel.Position = UDim2.new(0, 34, 0, 0)
+	gemsLabel.Size = UDim2.new(1, -36, 1, 0)
+	gemsLabel.Position = UDim2.new(0, 32, 0, 0)
 	gemsLabel.BackgroundTransparency = 1
 	gemsLabel.Text = "0"
 	gemsLabel.TextColor3 = Color3.fromRGB(0, 210, 255)
 	gemsLabel.Font = Enum.Font.GothamBlack
-	gemsLabel.TextSize = 18
+	gemsLabel.TextSize = 16
 	gemsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	gemsLabel.Parent = gemsBox
 
+	-- Power Container (Row 3)
+	local powerBox = Instance.new("Frame")
+	powerBox.Name = "PowerBox"
+	powerBox.Size = UDim2.new(1, 0, 0, 32)
+	powerBox.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	powerBox.BorderSizePixel = 0
+	powerBox.LayoutOrder = 3
+	powerBox.Parent = statsHUD
+
+	local powerCorner = Instance.new("UICorner")
+	powerCorner.CornerRadius = UDim.new(0, 8)
+	powerCorner.Parent = powerBox
+
+	local powerStroke = Instance.new("UIStroke")
+	powerStroke.Color = Color3.fromRGB(255, 215, 35)
+	powerStroke.Transparency = 0.75
+	powerStroke.Thickness = 1
+	powerStroke.Parent = powerBox
+
+	local powerIcon = Instance.new("TextLabel")
+	powerIcon.Size = UDim2.new(0, 28, 1, 0)
+	powerIcon.Position = UDim2.new(0, 4, 0, 0)
+	powerIcon.BackgroundTransparency = 1
+	powerIcon.Text = "⚡"
+	powerIcon.TextSize = 18
+	powerIcon.Parent = powerBox
+
+	powerLabel = Instance.new("TextLabel")
+	powerLabel.Size = UDim2.new(1, -36, 1, 0)
+	powerLabel.Position = UDim2.new(0, 32, 0, 0)
+	powerLabel.BackgroundTransparency = 1
+	powerLabel.Text = "10 Power"
+	powerLabel.TextColor3 = Color3.fromRGB(255, 215, 35)
+	powerLabel.Font = Enum.Font.GothamBlack
+	powerLabel.TextSize = 16
+	powerLabel.TextXAlignment = Enum.TextXAlignment.Left
+	powerLabel.Parent = powerBox
+
+	-- Badges Row (Row 4)
+	local badgeRow = Instance.new("Frame")
+	badgeRow.Name = "BadgeRow"
+	badgeRow.Size = UDim2.new(1, 0, 0, 26)
+	badgeRow.BackgroundTransparency = 1
+	badgeRow.LayoutOrder = 4
+	badgeRow.Parent = statsHUD
+
+	local badgeLayout = Instance.new("UIListLayout")
+	badgeLayout.Padding = UDim.new(0, 5)
+	badgeLayout.FillDirection = Enum.FillDirection.Horizontal
+	badgeLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	badgeLayout.Parent = badgeRow
+
 	-- Multiplier Badge
 	multiplierBadge = Instance.new("TextLabel")
-	multiplierBadge.Size = UDim2.new(0, 135, 0.7, 0)
-	multiplierBadge.Position = UDim2.new(0, 480, 0.15, 0)
+	multiplierBadge.Size = if isLocalPlayerVIP then UDim2.new(0.5, -3, 1, 0) else UDim2.new(1, 0, 1, 0)
 	multiplierBadge.BackgroundColor3 = Color3.fromRGB(35, 42, 60)
 	multiplierBadge.Text = "⚡ 1.0x Boost"
 	multiplierBadge.TextColor3 = Color3.fromRGB(255, 215, 0)
 	multiplierBadge.Font = Enum.Font.GothamBold
-	multiplierBadge.TextSize = 13
+	multiplierBadge.TextSize = 11
 	multiplierBadge.BorderSizePixel = 0
-	multiplierBadge.Parent = topBar
+	multiplierBadge.LayoutOrder = 1
+	multiplierBadge.Parent = badgeRow
 
 	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(0, 8)
+	badgeCorner.CornerRadius = UDim.new(0, 6)
 	badgeCorner.Parent = multiplierBadge
 
 	-- VIP Badge
 	vipBadge = Instance.new("TextLabel")
-	vipBadge.Size = UDim2.new(0, 135, 0.7, 0)
-	vipBadge.Position = UDim2.new(0, 628, 0.15, 0)
+	vipBadge.Size = UDim2.new(0.5, -2, 1, 0)
 	vipBadge.BackgroundColor3 = Color3.fromRGB(85, 60, 15)
 	vipBadge.Text = "👑 VIP 2X"
 	vipBadge.TextColor3 = Color3.fromRGB(255, 215, 60)
 	vipBadge.Font = Enum.Font.GothamBlack
-	vipBadge.TextSize = 12
+	vipBadge.TextSize = 11
 	vipBadge.BorderSizePixel = 0
 	vipBadge.Visible = isLocalPlayerVIP
-	vipBadge.Parent = topBar
+	vipBadge.LayoutOrder = 2
+	vipBadge.Parent = badgeRow
 
 	local vipBadgeCorner = Instance.new("UICorner")
-	vipBadgeCorner.CornerRadius = UDim.new(0, 8)
+	vipBadgeCorner.CornerRadius = UDim.new(0, 6)
 	vipBadgeCorner.Parent = vipBadge
 
 	-- SIDE MENU BUTTONS
@@ -6395,6 +6469,9 @@ function UIController.updateVIPDisplay(isVip: boolean)
 	isLocalPlayerVIP = isVip
 	if vipBadge then
 		vipBadge.Visible = isVip
+	end
+	if multiplierBadge then
+		multiplierBadge.Size = if isVip then UDim2.new(0.5, -3, 1, 0) else UDim2.new(1, 0, 1, 0)
 	end
 end
 

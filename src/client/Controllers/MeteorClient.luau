@@ -6,6 +6,7 @@ local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
 
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
@@ -21,7 +22,8 @@ local alertBanner: Frame
 local alertTitle: TextLabel
 local alertSubtitle: TextLabel
 local alertTimer: TextLabel
-local activeShowcaseFrame: Frame? = nil
+local activeShowcaseFrame: Instance? = nil
+local activeRestoreCallback: (() -> ())? = nil
 
 -- Right-Side Timer Widget References
 local timerWidget: Frame
@@ -40,6 +42,19 @@ local currentZoneIcon: string? = nil
 -- Active visual instances
 local activeBeaconFolder: Folder? = nil
 local activeCountdownThread: thread? = nil
+
+-- Cleans up any active jackpot showcase and restores any suppressed HUD layers
+local function cleanupJackpotShowcase()
+	if activeRestoreCallback then
+		local cb = activeRestoreCallback
+		activeRestoreCallback = nil
+		pcall(cb)
+	end
+	if activeShowcaseFrame and activeShowcaseFrame.Parent then
+		activeShowcaseFrame:Destroy()
+	end
+	activeShowcaseFrame = nil
+end
 
 -- Audio effects
 local function playSound(soundId: string, speed: number, volume: number)
@@ -833,17 +848,78 @@ end
 -- The 3D model pops up in the center, spins and hovers, plays its unique sound,
 -- then slides to its slot on the left as the next item pops in!
 local function playSequentialAwardsAnimation(data: any)
-	if activeShowcaseFrame then
-		activeShowcaseFrame:Destroy()
-		activeShowcaseFrame = nil
+	cleanupJackpotShowcase()
+
+	local pGui = player:WaitForChild("PlayerGui")
+
+	-- 1. Create a dedicated topmost ScreenGui for the showcase animation
+	local showcaseGui = Instance.new("ScreenGui")
+	showcaseGui.Name = "MeteorJackpotGui"
+	showcaseGui.ResetOnSpawn = false
+	showcaseGui.DisplayOrder = 150 -- Higher than all standard game HUDs
+	showcaseGui.IgnoreGuiInset = true
+	showcaseGui.Parent = pGui
+	activeShowcaseFrame = showcaseGui
+
+	-- 2. Hide all other ScreenGuis on the screen (SideMenu, stats HUD, boss timers, etc.)
+	local hiddenGuis: { [ScreenGui]: boolean } = {}
+	for _, child in ipairs(pGui:GetChildren()) do
+		if child:IsA("ScreenGui") and child ~= showcaseGui then
+			hiddenGuis[child] = child.Enabled
+			child.Enabled = false
+		end
 	end
 
-	local gui = screenGui
-	if not gui or not gui.Parent then
-		local pGui = player:WaitForChild("PlayerGui")
-		gui = pGui:FindFirstChild("MeteorEventHUDGui") :: ScreenGui?
+	-- Also suppress any new ScreenGuis created during the animation
+	local pGuiChildConn: RBXScriptConnection? = nil
+	pGuiChildConn = pGui.ChildAdded:Connect(function(child)
+		if child:IsA("ScreenGui") and child ~= showcaseGui then
+			hiddenGuis[child] = child.Enabled
+			child.Enabled = false
+		end
+	end)
+
+	-- Explicitly hide the right-side timer widget as well
+	if timerWidget and timerWidget.Parent then
+		timerWidget.Visible = false
 	end
-	if not gui then return end
+
+	-- Hide Roblox CoreGui side & top bars (Playerlist, Chat, etc.)
+	pcall(function()
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+	end)
+
+	local hasRestored = false
+	local function restoreHiddenUI()
+		if hasRestored then return end
+		hasRestored = true
+
+		if pGuiChildConn then
+			pGuiChildConn:Disconnect()
+			pGuiChildConn = nil
+		end
+
+		for guiObj, wasEnabled in pairs(hiddenGuis) do
+			if guiObj and guiObj.Parent then
+				guiObj.Enabled = wasEnabled
+			end
+		end
+		table.clear(hiddenGuis)
+
+		if timerWidget and timerWidget.Parent then
+			timerWidget.Visible = true
+		end
+
+		pcall(function()
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+		end)
+	end
+
+	activeRestoreCallback = restoreHiddenUI
+	showcaseGui.Destroying:Connect(function()
+		restoreHiddenUI()
+	end)
 
 	-- Master transparent full-screen showcase canvas (NO borders, NO enclosing card box)
 	local showcase = Instance.new("Frame")
@@ -853,8 +929,7 @@ local function playSequentialAwardsAnimation(data: any)
 	showcase.BackgroundTransparency = 1
 	showcase.BorderSizePixel = 0
 	showcase.ClipsDescendants = false
-	showcase.Parent = gui
-	activeShowcaseFrame = showcase
+	showcase.Parent = showcaseGui
 
 	-- Responsive scale for smaller devices & mobile
 	local masterScale = Instance.new("UIScale")
@@ -862,11 +937,10 @@ local function playSequentialAwardsAnimation(data: any)
 	local function updateScale()
 		if camera and camera.ViewportSize.X > 0 then
 			local vpW = camera.ViewportSize.X
-			if vpW < 780 then
-				masterScale.Scale = math.clamp(vpW / 780, 0.55, 1.0)
-			else
-				masterScale.Scale = 1.0
-			end
+			local vpH = camera.ViewportSize.Y
+			local scaleW = if vpW < 1040 then (vpW / 1040) else 1.0
+			local scaleH = if vpH < 700 then (vpH / 700) else 1.0
+			masterScale.Scale = math.clamp(math.min(scaleW, scaleH), 0.40, 1.0)
 		end
 	end
 	updateScale()
@@ -889,14 +963,14 @@ local function playSequentialAwardsAnimation(data: any)
 	-- Floating Overhead Title (NO card box around it)
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "FloatingTitle"
-	titleLabel.Size = UDim2.new(1, 0, 0, 36)
-	titleLabel.Position = UDim2.new(0.5, 0, 0.16, 0)
+	titleLabel.Size = UDim2.new(1, 0, 0, 42)
+	titleLabel.Position = UDim2.new(0.5, 0, 0.13, 0)
 	titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "☄️ METEOR SHATTERED! JACKPOT GRANTED! ☄️"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 220, 60)
+	titleLabel.TextColor3 = Color3.fromRGB(255, 225, 60)
 	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 24
+	titleLabel.TextSize = 28
 	titleLabel.TextStrokeTransparency = 0.12
 	titleLabel.TextStrokeColor3 = Color3.fromRGB(15, 10, 25)
 	titleLabel.ZIndex = 15
@@ -904,14 +978,14 @@ local function playSequentialAwardsAnimation(data: any)
 
 	local subTitleLabel = Instance.new("TextLabel")
 	subTitleLabel.Name = "FloatingSubtitle"
-	subTitleLabel.Size = UDim2.new(1, 0, 0, 20)
-	subTitleLabel.Position = UDim2.new(0.5, 0, 0.205, 0)
+	subTitleLabel.Size = UDim2.new(1, 0, 0, 24)
+	subTitleLabel.Position = UDim2.new(0.5, 0, 0.18, 0)
 	subTitleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 	subTitleLabel.BackgroundTransparency = 1
 	subTitleLabel.Text = "JACKPOT REWARDS UNLOCKED"
-	subTitleLabel.TextColor3 = Color3.fromRGB(195, 190, 230)
+	subTitleLabel.TextColor3 = Color3.fromRGB(195, 190, 235)
 	subTitleLabel.Font = Enum.Font.GothamBold
-	subTitleLabel.TextSize = 13
+	subTitleLabel.TextSize = 15
 	subTitleLabel.TextStrokeTransparency = 0.25
 	subTitleLabel.TextStrokeColor3 = Color3.fromRGB(15, 10, 25)
 	subTitleLabel.ZIndex = 15
@@ -966,17 +1040,17 @@ local function playSequentialAwardsAnimation(data: any)
 		},
 	}
 
-	-- Layout calculation for 4 side-by-side floating 3D slots
+	-- Layout calculation for 4 side-by-side floating 2X LARGER 3D slots
 	-- Symmetrical layout configurations for k active items on screen:
-	-- k=1: 1 item centered in the middle (0), scale 1.15
-	-- k=2: 2 items split symmetrically (-115, +115), scale 1.05
-	-- k=3: 3 items split into 1/3s (-195, 0, +195), scale 0.95
-	-- k=4: 4 items split into 4 balanced slots (-260, -87, +87, +260), scale 0.86
+	-- k=1: 1 item centered in the middle (0), scale 1.28
+	-- k=2: 2 items split symmetrically (-165, +165), scale 1.15
+	-- k=3: 3 items split into 1/3s (-275, 0, +275), scale 1.02
+	-- k=4: 4 items split into 4 balanced slots (-380, -127, +127, +380), scale 0.90
 	local LAYOUT_CONFIGS = {
-		[1] = { scale = 1.15, positions = { 0 } },
-		[2] = { scale = 1.05, positions = { -115, 115 } },
-		[3] = { scale = 0.95, positions = { -195, 0, 195 } },
-		[4] = { scale = 0.86, positions = { -260, -87, 87, 260 } },
+		[1] = { scale = 1.28, positions = { 0 } },
+		[2] = { scale = 1.15, positions = { -165, 165 } },
+		[3] = { scale = 1.02, positions = { -275, 0, 275 } },
+		[4] = { scale = 0.90, positions = { -380, -127, 127, 380 } },
 	}
 	local centerScreenY = 0.48
 
@@ -1013,6 +1087,7 @@ local function playSequentialAwardsAnimation(data: any)
 		if not showcase or not showcase.Parent then
 			if rotConn then rotConn:Disconnect() end
 			if vpConn then vpConn:Disconnect() end
+			cleanupJackpotShowcase()
 			return
 		end
 
@@ -1047,13 +1122,14 @@ local function playSequentialAwardsAnimation(data: any)
 		if not showcase or not showcase.Parent then
 			if rotConn then rotConn:Disconnect() end
 			if vpConn then vpConn:Disconnect() end
+			cleanupJackpotShowcase()
 			return
 		end
 
-		-- 2. Create the new item directly at its assigned symmetrical slot position
+		-- 2. Create the new item directly at its assigned symmetrical slot position (2X larger proportions)
 		local slotHolder = Instance.new("Frame")
 		slotHolder.Name = "RewardSlot_" .. award.id
-		slotHolder.Size = UDim2.new(0, 165, 0, 215)
+		slotHolder.Size = UDim2.new(0, 260, 0, 315)
 		slotHolder.Position = UDim2.new(0.5, newSlotX, centerScreenY, 0)
 		slotHolder.AnchorPoint = Vector2.new(0.5, 0.5)
 		slotHolder.BackgroundTransparency = 1
@@ -1068,8 +1144,8 @@ local function playSequentialAwardsAnimation(data: any)
 		-- Rotating Sunburst Rays (Starts hidden during black silhouette phase)
 		local rayContainer = Instance.new("Frame")
 		rayContainer.Name = "SunburstContainer"
-		rayContainer.Size = UDim2.new(0, 195, 0, 195)
-		rayContainer.Position = UDim2.new(0.5, 0, 0, 72)
+		rayContainer.Size = UDim2.new(0, 340, 0, 340)
+		rayContainer.Position = UDim2.new(0.5, 0, 0, 120)
 		rayContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 		rayContainer.BackgroundTransparency = 1
 		rayContainer.ZIndex = 8
@@ -1077,7 +1153,7 @@ local function playSequentialAwardsAnimation(data: any)
 
 		for r = 0, 7 do
 			local ray = Instance.new("Frame")
-			ray.Size = UDim2.new(0, 26, 0, 190)
+			ray.Size = UDim2.new(0, 36, 0, 320)
 			ray.Position = UDim2.new(0.5, 0, 0.5, 0)
 			ray.AnchorPoint = Vector2.new(0.5, 0.5)
 			ray.Rotation = r * 45
@@ -1092,10 +1168,10 @@ local function playSequentialAwardsAnimation(data: any)
 			rCorner.Parent = ray
 		end
 
-		-- Transparent ViewportFrame for physical 3D Model
+		-- Transparent ViewportFrame for physical 3D Model (2X larger view)
 		local viewport = Instance.new("ViewportFrame")
 		viewport.Name = "PropViewport"
-		viewport.Size = UDim2.new(1, 0, 0, 140)
+		viewport.Size = UDim2.new(1, 0, 0, 240)
 		viewport.Position = UDim2.new(0.5, 0, 0, 0)
 		viewport.AnchorPoint = Vector2.new(0.5, 0)
 		viewport.BackgroundTransparency = 1
@@ -1110,8 +1186,8 @@ local function playSequentialAwardsAnimation(data: any)
 		worldModel.Parent = viewport
 
 		local vCamera = Instance.new("Camera")
-		vCamera.FieldOfView = 48
-		vCamera.CFrame = CFrame.lookAt(Vector3.new(0, 0.2, 5.8), Vector3.new(0, 0.2, 0))
+		vCamera.FieldOfView = 46
+		vCamera.CFrame = CFrame.lookAt(Vector3.new(0, 0.2, 4.5), Vector3.new(0, 0.2, 0))
 		vCamera.Parent = viewport
 		viewport.CurrentCamera = vCamera
 
@@ -1143,14 +1219,14 @@ local function playSequentialAwardsAnimation(data: any)
 		-- Floating Labels (starts with mystery question marks)
 		local titleLbl = Instance.new("TextLabel")
 		titleLbl.Name = "Title"
-		titleLbl.Size = UDim2.new(1, 30, 0, 16)
-		titleLbl.Position = UDim2.new(0.5, 0, 0, 148)
+		titleLbl.Size = UDim2.new(1, 40, 0, 20)
+		titleLbl.Position = UDim2.new(0.5, 0, 0, 246)
 		titleLbl.AnchorPoint = Vector2.new(0.5, 0)
 		titleLbl.BackgroundTransparency = 1
 		titleLbl.Text = "???"
 		titleLbl.TextColor3 = Color3.fromRGB(160, 165, 185)
 		titleLbl.Font = Enum.Font.GothamBlack
-		titleLbl.TextSize = 11
+		titleLbl.TextSize = 14
 		titleLbl.TextStrokeTransparency = 0.2
 		titleLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
 		titleLbl.ZIndex = 12
@@ -1158,14 +1234,14 @@ local function playSequentialAwardsAnimation(data: any)
 
 		local valLbl = Instance.new("TextLabel")
 		valLbl.Name = "Value"
-		valLbl.Size = UDim2.new(1, 30, 0, 24)
-		valLbl.Position = UDim2.new(0.5, 0, 0, 166)
+		valLbl.Size = UDim2.new(1, 40, 0, 32)
+		valLbl.Position = UDim2.new(0.5, 0, 0, 268)
 		valLbl.AnchorPoint = Vector2.new(0.5, 0)
 		valLbl.BackgroundTransparency = 1
 		valLbl.Text = "MYSTERY REWARD"
 		valLbl.TextColor3 = Color3.fromRGB(135, 140, 160)
 		valLbl.Font = Enum.Font.GothamBlack
-		valLbl.TextSize = 13
+		valLbl.TextSize = 16
 		valLbl.TextStrokeTransparency = 0.25
 		valLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
 		valLbl.ZIndex = 12
@@ -1208,6 +1284,7 @@ local function playSequentialAwardsAnimation(data: any)
 		if not showcase or not showcase.Parent then
 			if rotConn then rotConn:Disconnect() end
 			if vpConn then vpConn:Disconnect() end
+			cleanupJackpotShowcase()
 			return
 		end
 
@@ -1217,8 +1294,8 @@ local function playSequentialAwardsAnimation(data: any)
 		-- Localized circular radiant flash burst around the item
 		local flashBurst = Instance.new("Frame")
 		flashBurst.Name = "RevealFlashBurst"
-		flashBurst.Size = UDim2.new(0, 110, 0, 110)
-		flashBurst.Position = UDim2.new(0.5, 0, 0, 70)
+		flashBurst.Size = UDim2.new(0, 160, 0, 160)
+		flashBurst.Position = UDim2.new(0.5, 0, 0, 120)
 		flashBurst.AnchorPoint = Vector2.new(0.5, 0.5)
 		flashBurst.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		flashBurst.BackgroundTransparency = 0.12
@@ -1231,7 +1308,7 @@ local function playSequentialAwardsAnimation(data: any)
 		fbCorner.Parent = flashBurst
 
 		TweenService:Create(flashBurst, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 250, 0, 250),
+			Size = UDim2.new(0, 380, 0, 380),
 			BackgroundTransparency = 1,
 		}):Play()
 		task.delay(0.38, function() flashBurst:Destroy() end)
@@ -1257,7 +1334,7 @@ local function playSequentialAwardsAnimation(data: any)
 		titleLbl.TextColor3 = Color3.fromRGB(210, 215, 235)
 		valLbl.Text = award.value
 		valLbl.TextColor3 = award.valueColor
-		valLbl.TextSize = 17
+		valLbl.TextSize = 22
 
 		-- Unique sound for this item
 		playSound(award.soundId, award.soundSpeed, award.soundVolume)
@@ -1268,7 +1345,7 @@ local function playSequentialAwardsAnimation(data: any)
 		end
 
 		-- Emit outward glowing sparks directly from this slot
-		emitSparks2D(slotHolder, 28, 145, award.sparkColor)
+		emitSparks2D(slotHolder, 32, 210, award.sparkColor)
 
 		-- Big physical pop scale-bounce overshoot
 		local popTween = TweenService:Create(slotScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
@@ -1285,7 +1362,7 @@ local function playSequentialAwardsAnimation(data: any)
 		-- PHASE 3: HOVER & SETTLE IN PLACE
 		-- =====================================================================
 		local hoverUp = TweenService:Create(slotHolder, TweenInfo.new(0.24, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, newSlotX, centerScreenY, -8),
+			Position = UDim2.new(0.5, newSlotX, centerScreenY, -12),
 		})
 		hoverUp:Play()
 		hoverUp.Completed:Wait()
@@ -1304,6 +1381,7 @@ local function playSequentialAwardsAnimation(data: any)
 	if not showcase or not showcase.Parent then
 		if rotConn then rotConn:Disconnect() end
 		if vpConn then vpConn:Disconnect() end
+		cleanupJackpotShowcase()
 		return
 	end
 
@@ -1311,13 +1389,13 @@ local function playSequentialAwardsAnimation(data: any)
 	playSound("rbxassetid://5153737200", 1.0, 1.0)
 
 	-- Screen burst sparks
-	emitSparks2D(showcase, 36, 400, Color3.fromRGB(255, 220, 90))
+	emitSparks2D(showcase, 48, 500, Color3.fromRGB(255, 220, 90))
 
 	-- Bottom Confirmation Pill (Clean floating badge)
 	local claimPill = Instance.new("Frame")
 	claimPill.Name = "ClaimPill"
-	claimPill.Size = UDim2.new(0, 340, 0, 30)
-	claimPill.Position = UDim2.new(0.5, 0, centerScreenY + 0.22, 0)
+	claimPill.Size = UDim2.new(0, 420, 0, 36)
+	claimPill.Position = UDim2.new(0.5, 0, centerScreenY + 0.25, 0)
 	claimPill.AnchorPoint = Vector2.new(0.5, 0.5)
 	claimPill.BackgroundColor3 = Color3.fromRGB(25, 70, 40)
 	claimPill.BackgroundTransparency = 1
@@ -1341,7 +1419,7 @@ local function playSequentialAwardsAnimation(data: any)
 	pLabel.Text = "✨ ALL REWARDS CLAIMED & DEPOSITED ✨"
 	pLabel.TextColor3 = Color3.fromRGB(150, 255, 180)
 	pLabel.Font = Enum.Font.GothamBlack
-	pLabel.TextSize = 12
+	pLabel.TextSize = 14
 	pLabel.TextStrokeTransparency = 0.3
 	pLabel.TextTransparency = 1
 	pLabel.ZIndex = 16
@@ -1388,12 +1466,7 @@ local function playSequentialAwardsAnimation(data: any)
 		end
 
 		task.wait(0.48)
-		if showcase and showcase.Parent then
-			showcase:Destroy()
-		end
-		if activeShowcaseFrame == showcase then
-			activeShowcaseFrame = nil
-		end
+		cleanupJackpotShowcase()
 	end
 end
 
@@ -1409,11 +1482,8 @@ function MeteorClient.init()
 	announceEvent.OnClientEvent:Connect(function(data)
 		print(string.format("☄️ [MeteorClient] Meteor Strike Announced in %s! %ds until crash", data.zoneName, data.countdown))
 
-		-- Clear any active reward showcase
-		if activeShowcaseFrame then
-			activeShowcaseFrame:Destroy()
-			activeShowcaseFrame = nil
-		end
+		-- Clear any active reward showcase and restore HUD
+		cleanupJackpotShowcase()
 
 		-- Update state
 		currentServerState = "COUNTDOWN"
@@ -1535,10 +1605,7 @@ function MeteorClient.init()
 		else
 			-- Cooled down / failed
 			print("💨 [MeteorClient] Meteor cooled down and dissipated")
-			if activeShowcaseFrame then
-				activeShowcaseFrame:Destroy()
-				activeShowcaseFrame = nil
-			end
+			cleanupJackpotShowcase()
 			local activeFolder = Workspace:FindFirstChild("ActiveMeteorEvent")
 			if activeFolder then activeFolder:Destroy() end
 		end

@@ -548,9 +548,290 @@ local function playMeteorShatterFX(centerPos: Vector3)
 	end
 end
 
--- Plays dynamic sequential jackpot awards showcase animation
--- Each reward pops up in the center with scale-bounce & audio, hovers in the spotlight,
--- then slides smoothly into its assigned slot on the left/tray before the next one appears.
+-- =========================================================================
+-- 3D PHYSICAL REWARD PROP BUILDERS (Stud Design & Authenticity)
+-- =========================================================================
+
+-- 1. 3D Dollar Sign & Gold Ingot Stacks with Studs
+local function build3DCashModel(): Model
+	local model = Instance.new("Model")
+	model.Name = "Cash3DProp"
+
+	-- Base Stack of 3 Gold Ingots with studs
+	local baseBar1 = Instance.new("Part")
+	baseBar1.Name = "PrimaryPart"
+	baseBar1.Size = Vector3.new(2.4, 0.55, 1.2)
+	baseBar1.CFrame = CFrame.new(0, -0.95, 0)
+	baseBar1.Color = Color3.fromRGB(255, 205, 30)
+	baseBar1.Material = Enum.Material.Metal
+	baseBar1.TopSurface = Enum.SurfaceType.Studs
+	baseBar1.Anchored = true
+	baseBar1.CanCollide = false
+	baseBar1.Parent = model
+	model.PrimaryPart = baseBar1
+
+	local baseBar2 = Instance.new("Part")
+	baseBar2.Name = "GoldBar2"
+	baseBar2.Size = Vector3.new(1.8, 0.5, 0.9)
+	baseBar2.CFrame = CFrame.new(0, -0.45, 0)
+	baseBar2.Color = Color3.fromRGB(255, 220, 60)
+	baseBar2.Material = Enum.Material.Metal
+	baseBar2.TopSurface = Enum.SurfaceType.Studs
+	baseBar2.Anchored = true
+	baseBar2.CanCollide = false
+	baseBar2.Parent = model
+
+	-- Floating 3D Green & Gold Dollar Sign ($) with Studs
+	local spine = Instance.new("Part")
+	spine.Name = "DollarSpine"
+	spine.Size = Vector3.new(0.24, 2.0, 0.3)
+	spine.CFrame = CFrame.new(0, 0.65, 0)
+	spine.Color = Color3.fromRGB(60, 235, 100)
+	spine.Material = Enum.Material.Neon
+	spine.TopSurface = Enum.SurfaceType.Studs
+	spine.Anchored = true
+	spine.CanCollide = false
+	spine.Parent = model
+
+	local sParts = {
+		{ size = Vector3.new(1.2, 0.24, 0.3), pos = Vector3.new(0, 1.45, 0) },
+		{ size = Vector3.new(0.24, 0.45, 0.3), pos = Vector3.new(-0.5, 1.25, 0) },
+		{ size = Vector3.new(1.2, 0.24, 0.3), pos = Vector3.new(0, 0.65, 0) },
+		{ size = Vector3.new(0.24, 0.45, 0.3), pos = Vector3.new(0.5, 0.45, 0) },
+		{ size = Vector3.new(1.2, 0.24, 0.3), pos = Vector3.new(0, 0.05, 0) },
+	}
+	for i, cfg in ipairs(sParts) do
+		local p = Instance.new("Part")
+		p.Name = "S_Part_" .. i
+		p.Size = cfg.size
+		p.CFrame = CFrame.new(cfg.pos)
+		p.Color = Color3.fromRGB(46, 204, 113)
+		p.Material = Enum.Material.SmoothPlastic
+		p.TopSurface = Enum.SurfaceType.Studs
+		p.Anchored = true
+		p.CanCollide = false
+		p.Parent = model
+	end
+
+	return model
+end
+
+-- 2. 3D Faceted Radiant Diamond Gem Crystal with Studs
+local function build3DGemModel(): Model
+	local model = Instance.new("Model")
+	model.Name = "Gem3DProp"
+
+	-- Main Diamond Core
+	local core = Instance.new("Part")
+	core.Name = "PrimaryPart"
+	core.Size = Vector3.new(1.6, 2.2, 1.6)
+	core.CFrame = CFrame.new(0, 0, 0)
+	core.Color = Color3.fromRGB(0, 225, 255)
+	core.Material = Enum.Material.Neon
+	core.Anchored = true
+	core.CanCollide = false
+	core.Parent = model
+	model.PrimaryPart = core
+
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Scale = Vector3.new(1.0, 1.35, 1.0)
+	mesh.Parent = core
+
+	-- Faceted Orbiting Crystal Shards with Studs
+	for i = 1, 4 do
+		local angle = (i - 1) * (math.pi / 2)
+		local shard = Instance.new("Part")
+		shard.Name = "Shard_" .. i
+		shard.Size = Vector3.new(0.48, 1.7, 0.48)
+		shard.CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(0, angle, math.rad(24)) * CFrame.new(0.85, 0, 0)
+		shard.Color = Color3.fromRGB(135, 245, 255)
+		shard.Material = Enum.Material.Glass
+		shard.Transparency = 0.15
+		shard.TopSurface = Enum.SurfaceType.Studs
+		shard.Anchored = true
+		shard.CanCollide = false
+		shard.Parent = model
+	end
+
+	return model
+end
+
+-- 3. 3D Pulsing Cosmic Plasma Orb & Lightning Bolts with Studs
+local function build3DPowerModel(): Model
+	local model = Instance.new("Model")
+	model.Name = "Power3DProp"
+
+	local core = Instance.new("Part")
+	core.Name = "PrimaryPart"
+	core.Shape = Enum.PartType.Ball
+	core.Size = Vector3.new(1.8, 1.8, 1.8)
+	core.CFrame = CFrame.new(0, 0, 0)
+	core.Color = Color3.fromRGB(225, 65, 255)
+	core.Material = Enum.Material.Neon
+	core.Anchored = true
+	core.CanCollide = false
+	core.Parent = model
+	model.PrimaryPart = core
+
+	-- Tilted Orbiting Energy Disc
+	local ring = Instance.new("Part")
+	ring.Name = "EnergyRing"
+	ring.Size = Vector3.new(2.8, 0.12, 2.8)
+	ring.CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(math.rad(38), math.rad(20), 0)
+	ring.Color = Color3.fromRGB(160, 45, 240)
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.25
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.Parent = model
+
+	local ringMesh = Instance.new("SpecialMesh")
+	ringMesh.MeshType = Enum.MeshType.Cylinder
+	ringMesh.Parent = ring
+
+	-- 3D Zig-zag Lightning Bolts with Studs
+	local boltParts = {
+		{ size = Vector3.new(0.28, 0.95, 0.28), cf = CFrame.new(-0.25, 0.7, 0.9) * CFrame.Angles(0, 0, math.rad(-30)) },
+		{ size = Vector3.new(0.28, 0.95, 0.28), cf = CFrame.new(0.25, 0.05, 0.9) * CFrame.Angles(0, 0, math.rad(30)) },
+		{ size = Vector3.new(0.28, 0.95, 0.28), cf = CFrame.new(-0.1, -0.6, 0.9) * CFrame.Angles(0, 0, math.rad(-35)) },
+	}
+	for i, cfg in ipairs(boltParts) do
+		local bolt = Instance.new("Part")
+		bolt.Name = "Bolt_" .. i
+		bolt.Size = cfg.size
+		bolt.CFrame = cfg.cf
+		bolt.Color = Color3.fromRGB(255, 240, 80)
+		bolt.Material = Enum.Material.Neon
+		bolt.TopSurface = Enum.SurfaceType.Studs
+		bolt.Anchored = true
+		bolt.CanCollide = false
+		bolt.Parent = model
+	end
+
+	return model
+end
+
+-- 4. 3D Mystery Loot Crate / Chest with Studs & Glowing Interior
+local function build3DCrateModel(): Model
+	local model = Instance.new("Model")
+	model.Name = "Crate3DProp"
+
+	-- Main Chest Body with Studs
+	local body = Instance.new("Part")
+	body.Name = "PrimaryPart"
+	body.Size = Vector3.new(2.3, 1.4, 1.7)
+	body.CFrame = CFrame.new(0, -0.3, 0)
+	body.Color = Color3.fromRGB(150, 75, 20)
+	body.Material = Enum.Material.WoodPlanks
+	body.TopSurface = Enum.SurfaceType.Studs
+	body.Anchored = true
+	body.CanCollide = false
+	body.Parent = model
+	model.PrimaryPart = body
+
+	-- Gold Reinforced Metal Straps with Studs
+	for _, xOff in ipairs({ -1.0, 1.0 }) do
+		local band = Instance.new("Part")
+		band.Name = "Band"
+		band.Size = Vector3.new(0.22, 1.44, 1.74)
+		band.CFrame = CFrame.new(xOff, -0.3, 0)
+		band.Color = Color3.fromRGB(255, 205, 40)
+		band.Material = Enum.Material.Metal
+		band.TopSurface = Enum.SurfaceType.Studs
+		band.Anchored = true
+		band.CanCollide = false
+		band.Parent = model
+	end
+
+	-- Ajar Tilted Chest Lid with Studs
+	local lid = Instance.new("Part")
+	lid.Name = "ChestLid"
+	lid.Size = Vector3.new(2.38, 0.6, 1.78)
+	lid.CFrame = CFrame.new(0, 0.65, 0.1) * CFrame.Angles(math.rad(-22), 0, 0)
+	lid.Color = Color3.fromRGB(170, 85, 25)
+	lid.Material = Enum.Material.WoodPlanks
+	lid.TopSurface = Enum.SurfaceType.Studs
+	lid.Anchored = true
+	lid.CanCollide = false
+	lid.Parent = model
+
+	local lidTrim = Instance.new("Part")
+	lidTrim.Name = "LidTrim"
+	lidTrim.Size = Vector3.new(2.42, 0.22, 1.82)
+	lidTrim.CFrame = lid.CFrame * CFrame.new(0, 0.25, 0)
+	lidTrim.Color = Color3.fromRGB(255, 210, 50)
+	lidTrim.Material = Enum.Material.Metal
+	lidTrim.TopSurface = Enum.SurfaceType.Studs
+	lidTrim.Anchored = true
+	lidTrim.CanCollide = false
+	lidTrim.Parent = model
+
+	-- Glowing Golden Treasure Beam from inside
+	local glow = Instance.new("Part")
+	glow.Name = "GlowInside"
+	glow.Size = Vector3.new(1.8, 0.5, 1.2)
+	glow.CFrame = CFrame.new(0, 0.35, -0.1)
+	glow.Color = Color3.fromRGB(255, 220, 80)
+	glow.Material = Enum.Material.Neon
+	glow.Anchored = true
+	glow.CanCollide = false
+	glow.Parent = model
+
+	-- Front Gold Lock Latch
+	local lock = Instance.new("Part")
+	lock.Name = "Lock"
+	lock.Size = Vector3.new(0.5, 0.55, 0.2)
+	lock.CFrame = CFrame.new(0, 0.25, -0.92)
+	lock.Color = Color3.fromRGB(255, 215, 0)
+	lock.Material = Enum.Material.Neon
+	lock.Anchored = true
+	lock.CanCollide = false
+	lock.Parent = model
+
+	return model
+end
+
+-- Emits small 2D glowing spark particles bursting radially outward
+local function emitSparks2D(parent: GuiObject, count: number, maxDist: number, color: Color3)
+	for i = 1, count do
+		local spark = Instance.new("Frame")
+		spark.Size = UDim2.new(0, 10, 0, 10)
+		spark.Position = UDim2.new(0.5, 0, 0.38, 0)
+		spark.AnchorPoint = Vector2.new(0.5, 0.5)
+		spark.BackgroundColor3 = color
+		spark.BorderSizePixel = 0
+		spark.ZIndex = 12
+		spark.Parent = parent
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(1, 0)
+		corner.Parent = spark
+
+		local angle = (i / count) * math.pi * 2 + (math.random() - 0.5) * 0.4
+		local dist = math.random(maxDist * 0.45, maxDist)
+		local endX = math.cos(angle) * dist
+		local endY = math.sin(angle) * dist
+
+		local tween = TweenService:Create(spark, TweenInfo.new(0.48, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, endX, 0.38, endY),
+			Size = UDim2.new(0, 2, 0, 2),
+			BackgroundTransparency = 1,
+		})
+		tween:Play()
+		task.delay(0.5, function()
+			spark:Destroy()
+		end)
+	end
+end
+
+-- =========================================================================
+-- PHYSICAL 3D SEQUENTIAL REWARD SHOWCASE ANIMATION
+-- =========================================================================
+-- Each reward is a real 3D physical model (with studs & materials) inside a transparent
+-- ViewportFrame with a rotating spark sunburst behind it (NO border box / card around it).
+-- The 3D model pops up in the center, spins and hovers, plays its unique sound,
+-- then slides to its slot on the left as the next item pops in!
 local function playSequentialAwardsAnimation(data: any)
 	if activeShowcaseFrame then
 		activeShowcaseFrame:Destroy()
@@ -564,308 +845,348 @@ local function playSequentialAwardsAnimation(data: any)
 	end
 	if not gui then return end
 
-	-- 1. Main Showcase Modal Frame
+	-- Master transparent full-screen showcase canvas (NO borders, NO enclosing card box)
 	local showcase = Instance.new("Frame")
-	showcase.Name = "MeteorJackpotShowcase"
-	showcase.Size = UDim2.new(0, 680, 0, 250)
-	showcase.Position = UDim2.new(0.5, 0, 0.42, 0)
-	showcase.AnchorPoint = Vector2.new(0.5, 0.5)
-	showcase.BackgroundColor3 = Color3.fromRGB(16, 13, 24)
-	showcase.BackgroundTransparency = 0.15
+	showcase.Name = "MeteorPhysicalShowcase"
+	showcase.Size = UDim2.new(1, 0, 1, 0)
+	showcase.Position = UDim2.new(0, 0, 0, 0)
+	showcase.BackgroundTransparency = 1
 	showcase.BorderSizePixel = 0
 	showcase.ClipsDescendants = false
 	showcase.Parent = gui
 	activeShowcaseFrame = showcase
 
-	-- Responsive scale for mobile & smaller viewports
-	local uiScale = Instance.new("UIScale")
-	uiScale.Parent = showcase
+	-- Responsive scale for smaller devices & mobile
+	local masterScale = Instance.new("UIScale")
+	masterScale.Parent = showcase
 	local function updateScale()
 		if camera and camera.ViewportSize.X > 0 then
 			local vpW = camera.ViewportSize.X
-			if vpW < 720 then
-				uiScale.Scale = math.clamp(vpW / 720, 0.52, 1.0)
+			if vpW < 780 then
+				masterScale.Scale = math.clamp(vpW / 780, 0.55, 1.0)
 			else
-				uiScale.Scale = 1.0
+				masterScale.Scale = 1.0
 			end
 		end
 	end
 	updateScale()
-
 	local vpConn = camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
 
-	local sCorner = Instance.new("UICorner")
-	sCorner.CornerRadius = UDim.new(0, 18)
-	sCorner.Parent = showcase
+	-- Subtle cinematic dark backdrop vignette (fades in softly to make 3D models pop)
+	local backdrop = Instance.new("Frame")
+	backdrop.Name = "CinematicBackdrop"
+	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.BackgroundColor3 = Color3.fromRGB(8, 6, 14)
+	backdrop.BackgroundTransparency = 1
+	backdrop.BorderSizePixel = 0
+	backdrop.ZIndex = 1
+	backdrop.Parent = showcase
 
-	local sStroke = Instance.new("UIStroke")
-	sStroke.Thickness = 2.5
-	sStroke.Color = Color3.fromRGB(255, 195, 55)
-	sStroke.Transparency = 0.15
-	sStroke.Parent = showcase
-
-	local sGrad = Instance.new("UIGradient")
-	sGrad.Rotation = 90
-	sGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(36, 26, 52)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(14, 11, 20)),
-	})
-	sGrad.Parent = showcase
-
-	-- Header Title
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Name = "ShowcaseTitle"
-	titleLabel.Size = UDim2.new(1, 0, 0, 32)
-	titleLabel.Position = UDim2.new(0.5, 0, 0, 14)
-	titleLabel.AnchorPoint = Vector2.new(0.5, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "☄️ METEOR SHATTERED! ☄️"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 60)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 22
-	titleLabel.TextStrokeTransparency = 0.15
-	titleLabel.Parent = showcase
-
-	local subtitleLabel = Instance.new("TextLabel")
-	subtitleLabel.Name = "ShowcaseSubtitle"
-	subtitleLabel.Size = UDim2.new(1, 0, 0, 18)
-	subtitleLabel.Position = UDim2.new(0.5, 0, 0, 48)
-	subtitleLabel.AnchorPoint = Vector2.new(0.5, 0)
-	subtitleLabel.BackgroundTransparency = 1
-	subtitleLabel.Text = "JACKPOT REWARDS UNLOCKED"
-	subtitleLabel.TextColor3 = Color3.fromRGB(195, 190, 230)
-	subtitleLabel.Font = Enum.Font.GothamBold
-	subtitleLabel.TextSize = 12
-	subtitleLabel.TextStrokeTransparency = 0.35
-	subtitleLabel.Parent = showcase
-
-	-- Entrance tween
-	showcase.Position = UDim2.new(0.5, 0, 0.38, 0)
-	TweenService:Create(showcase, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 0.42, 0),
+	TweenService:Create(backdrop, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.72,
 	}):Play()
 
-	-- 2. Define Award Cards
-	local awards = {
+	-- Floating Overhead Title (NO card box around it)
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "FloatingTitle"
+	titleLabel.Size = UDim2.new(1, 0, 0, 36)
+	titleLabel.Position = UDim2.new(0.5, 0, 0.16, 0)
+	titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "☄️ METEOR SHATTERED! JACKPOT GRANTED! ☄️"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 220, 60)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 24
+	titleLabel.TextStrokeTransparency = 0.12
+	titleLabel.TextStrokeColor3 = Color3.fromRGB(15, 10, 25)
+	titleLabel.ZIndex = 15
+	titleLabel.Parent = showcase
+
+	local subTitleLabel = Instance.new("TextLabel")
+	subTitleLabel.Name = "FloatingSubtitle"
+	subTitleLabel.Size = UDim2.new(1, 0, 0, 20)
+	subTitleLabel.Position = UDim2.new(0.5, 0, 0.205, 0)
+	subTitleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	subTitleLabel.BackgroundTransparency = 1
+	subTitleLabel.Text = "JACKPOT REWARDS UNLOCKED"
+	subTitleLabel.TextColor3 = Color3.fromRGB(195, 190, 230)
+	subTitleLabel.Font = Enum.Font.GothamBold
+	subTitleLabel.TextSize = 13
+	subTitleLabel.TextStrokeTransparency = 0.25
+	subTitleLabel.TextStrokeColor3 = Color3.fromRGB(15, 10, 25)
+	subTitleLabel.ZIndex = 15
+	subTitleLabel.Parent = showcase
+
+	-- Reward Item Definitions with 3D Builders and Unique Audio
+	local awardDefs = {
 		{
 			id = "cash",
 			title = "CASH JACKPOT",
-			value = string.format("+$%s", FormatNumber.formatCompact(data.jackpotCash or 25_000_000)),
-			icon = "💰",
-			colorTop = Color3.fromRGB(46, 204, 113),
-			strokeColor = Color3.fromRGB(80, 230, 130),
-			valueColor = Color3.fromRGB(125, 255, 165),
-			soundId = "rbxassetid://9117970732",
+			value = string.format("+$%s", FormatNumber.formatComma(data.jackpotCash or 25_000_000)),
+			valueColor = Color3.fromRGB(110, 255, 150),
+			sparkColor = Color3.fromRGB(255, 225, 70),
+			builder = build3DCashModel,
+			soundId = "rbxassetid://9117970732", -- Crisp gold ring & coin sound
 			soundSpeed = 1.0,
+			soundVolume = 0.9,
 		},
 		{
 			id = "gems",
 			title = "DIAMOND CACHE",
 			value = string.format("+%s Gems", FormatNumber.formatComma(data.jackpotGems or 15_000)),
-			icon = "💎",
-			colorTop = Color3.fromRGB(0, 195, 255),
-			strokeColor = Color3.fromRGB(80, 220, 255),
-			valueColor = Color3.fromRGB(160, 240, 255),
-			soundId = "rbxassetid://9114223170",
-			soundSpeed = 1.25,
+			valueColor = Color3.fromRGB(120, 240, 255),
+			sparkColor = Color3.fromRGB(0, 230, 255),
+			builder = build3DGemModel,
+			soundId = "rbxassetid://9114223170", -- High crystalline diamond ping
+			soundSpeed = 1.32,
+			soundVolume = 0.95,
 		},
 		{
 			id = "power",
 			title = "COSMIC POWER",
 			value = string.format("+%s Power", FormatNumber.formatComma(data.jackpotPower or 5_000)),
-			icon = "⚡",
-			colorTop = Color3.fromRGB(210, 80, 255),
-			strokeColor = Color3.fromRGB(230, 120, 255),
-			valueColor = Color3.fromRGB(245, 180, 255),
-			soundId = "rbxassetid://9114223849",
-			soundSpeed = 1.15,
+			valueColor = Color3.fromRGB(245, 160, 255),
+			sparkColor = Color3.fromRGB(220, 70, 255),
+			builder = build3DPowerModel,
+			soundId = "rbxassetid://9114223849", -- High-voltage electric surge zap
+			soundSpeed = 1.25,
+			soundVolume = 0.9,
 		},
 		{
 			id = "crates",
 			title = "RARE CRATES",
 			value = string.format("+%d Mystery Crates", data.cratesCount or 3),
-			icon = "🎁",
-			colorTop = Color3.fromRGB(255, 175, 40),
-			strokeColor = Color3.fromRGB(255, 205, 75),
-			valueColor = Color3.fromRGB(255, 235, 140),
-			soundId = "rbxassetid://5153737200",
+			valueColor = Color3.fromRGB(255, 215, 100),
+			sparkColor = Color3.fromRGB(255, 165, 40),
+			builder = build3DCrateModel,
+			soundId = "rbxassetid://6895079853", -- Heavy chest ratchet click & unlock
 			soundSpeed = 1.2,
+			soundVolume = 0.85,
+			extraSoundId = "rbxassetid://5153737200", -- Rare fanfare pop
 		},
 	}
 
-	-- Calculate horizontal tray positioning
-	local cardCount = #awards
-	local cardWidth = 142
-	local cardHeight = 118
-	local gap = 14
-	local step = cardWidth + gap -- 156
-	local totalSpan = (cardCount - 1) * step -- 468
-	local startX = -totalSpan / 2 -- -234
-	local cardCenterY = 138
+	-- Layout calculation for 4 side-by-side floating 3D slots
+	local slotCount = #awardDefs
+	local slotStep = 180
+	local totalSpan = (slotCount - 1) * slotStep -- 540 px
+	local startX = -totalSpan / 2 -- -270 px
+	local centerScreenY = 0.48
 
-	local spawnedCards = {}
+	type ActiveSlot = {
+		holder: Frame,
+		scale: UIScale,
+		model: Model,
+		rayContainer: Frame,
+		targetX: number,
+	}
+	local activeSlots: { ActiveSlot } = {}
 
-	-- 3. Animate each card one-by-one: Pop up in center -> Hover -> Slide to left/slot
-	for index, award in ipairs(awards) do
+	-- Continuous 3D Spinning & Bobbing RenderStepped Connection
+	local rotAngle = 0
+	local rotConn: RBXScriptConnection? = nil
+	rotConn = RunService.RenderStepped:Connect(function(dt)
+		rotAngle += dt * 2.5
+		local bob = math.sin(rotAngle * 2.2) * 0.12
+		for _, slot in ipairs(activeSlots) do
+			if slot.model and slot.model.PrimaryPart then
+				slot.model:PivotTo(CFrame.new(0, bob, 0) * CFrame.Angles(0, rotAngle, 0))
+			end
+			if slot.rayContainer and slot.rayContainer.Parent then
+				slot.rayContainer.Rotation += dt * 22
+			end
+		end
+	end)
+
+	-- Sequential presentation loop
+	for index, award in ipairs(awardDefs) do
 		if not showcase or not showcase.Parent then
+			if rotConn then rotConn:Disconnect() end
 			if vpConn then vpConn:Disconnect() end
 			return
 		end
 
-		local targetSlotX = startX + (index - 1) * step
+		local targetSlotX = startX + (index - 1) * slotStep
 
-		-- Create Card frame
-		local card = Instance.new("Frame")
-		card.Name = "AwardCard_" .. award.id
-		card.AnchorPoint = Vector2.new(0.5, 0.5)
-		-- Dead center in showcase
-		card.Position = UDim2.new(0.5, 0, 0, cardCenterY)
-		card.Size = UDim2.new(0, 0, 0, 0)
-		card.BackgroundColor3 = Color3.fromRGB(24, 20, 34)
-		card.BorderSizePixel = 0
-		card.ZIndex = 10 + index
-		card.Parent = showcase
+		-- 1. Create transparent Slot Holder (NO box, NO frame background!)
+		local slotHolder = Instance.new("Frame")
+		slotHolder.Name = "RewardSlot_" .. award.id
+		slotHolder.Size = UDim2.new(0, 165, 0, 215)
+		slotHolder.Position = UDim2.new(0.5, 0, centerScreenY, 0) -- Starts at Dead Center
+		slotHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+		slotHolder.BackgroundTransparency = 1
+		slotHolder.BorderSizePixel = 0
+		slotHolder.ZIndex = 10 + index
+		slotHolder.Parent = showcase
 
-		local cardCorner = Instance.new("UICorner")
-		cardCorner.CornerRadius = UDim.new(0, 14)
-		cardCorner.Parent = card
+		local slotScale = Instance.new("UIScale")
+		slotScale.Scale = 0 -- Starts scaled down for pop-up
+		slotScale.Parent = slotHolder
 
-		local cardStroke = Instance.new("UIStroke")
-		cardStroke.Name = "CardStroke"
-		cardStroke.Thickness = 2.2
-		cardStroke.Color = award.strokeColor
-		cardStroke.Parent = card
+		-- 2. Rotating Golden/Colored Sunburst Rays behind the 3D Model
+		local rayContainer = Instance.new("Frame")
+		rayContainer.Name = "SunburstContainer"
+		rayContainer.Size = UDim2.new(0, 195, 0, 195)
+		rayContainer.Position = UDim2.new(0.5, 0, 0, 72)
+		rayContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+		rayContainer.BackgroundTransparency = 1
+		rayContainer.ZIndex = 4
+		rayContainer.Parent = slotHolder
 
-		local cardGrad = Instance.new("UIGradient")
-		cardGrad.Rotation = 90
-		cardGrad.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(38, 30, 52)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(18, 15, 26)),
-		})
-		cardGrad.Parent = card
+		for r = 0, 7 do
+			local ray = Instance.new("Frame")
+			ray.Size = UDim2.new(0, 26, 0, 190)
+			ray.Position = UDim2.new(0.5, 0, 0.5, 0)
+			ray.AnchorPoint = Vector2.new(0.5, 0.5)
+			ray.Rotation = r * 45
+			ray.BackgroundColor3 = award.sparkColor
+			ray.BackgroundTransparency = 0.90
+			ray.BorderSizePixel = 0
+			ray.ZIndex = 4
+			ray.Parent = rayContainer
 
-		-- Top accent stripe
-		local accentBar = Instance.new("Frame")
-		accentBar.Name = "TopAccent"
-		accentBar.Size = UDim2.new(1, -12, 0, 3)
-		accentBar.Position = UDim2.new(0.5, 0, 0, 6)
-		accentBar.AnchorPoint = Vector2.new(0.5, 0)
-		accentBar.BackgroundColor3 = award.colorTop
-		accentBar.BorderSizePixel = 0
-		accentBar.Parent = card
-		local aCorner = Instance.new("UICorner")
-		aCorner.CornerRadius = UDim.new(1, 0)
-		aCorner.Parent = accentBar
+			local rCorner = Instance.new("UICorner")
+			rCorner.CornerRadius = UDim.new(0.5, 0)
+			rCorner.Parent = ray
+		end
 
-		-- Icon Label
-		local iconLabel = Instance.new("TextLabel")
-		iconLabel.Name = "Icon"
-		iconLabel.Size = UDim2.new(0, 42, 0, 38)
-		iconLabel.Position = UDim2.new(0.5, 0, 0, 14)
-		iconLabel.AnchorPoint = Vector2.new(0.5, 0)
-		iconLabel.BackgroundTransparency = 1
-		iconLabel.Text = award.icon
-		iconLabel.TextSize = 28
-		iconLabel.Parent = card
+		-- 3. Transparent ViewportFrame for physical 3D Model
+		local viewport = Instance.new("ViewportFrame")
+		viewport.Name = "PropViewport"
+		viewport.Size = UDim2.new(1, 0, 0, 140)
+		viewport.Position = UDim2.new(0.5, 0, 0, 0)
+		viewport.AnchorPoint = Vector2.new(0.5, 0)
+		viewport.BackgroundTransparency = 1
+		viewport.BorderSizePixel = 0
+		viewport.LightColor = Color3.fromRGB(255, 255, 255)
+		viewport.LightDirection = Vector3.new(0.6, -1, -1.2)
+		viewport.Ambient = Color3.fromRGB(155, 155, 185)
+		viewport.ZIndex = 6
+		viewport.Parent = slotHolder
 
-		-- Title Label
-		local itemTitle = Instance.new("TextLabel")
-		itemTitle.Name = "Title"
-		itemTitle.Size = UDim2.new(1, -10, 0, 14)
-		itemTitle.Position = UDim2.new(0.5, 0, 0, 56)
-		itemTitle.AnchorPoint = Vector2.new(0.5, 0)
-		itemTitle.BackgroundTransparency = 1
-		itemTitle.Text = award.title
-		itemTitle.TextColor3 = Color3.fromRGB(185, 190, 210)
-		itemTitle.Font = Enum.Font.GothamBlack
-		itemTitle.TextSize = 10
-		itemTitle.TextStrokeTransparency = 0.3
-		itemTitle.Parent = card
+		local worldModel = Instance.new("WorldModel")
+		worldModel.Parent = viewport
 
-		-- Value Label
-		local itemValue = Instance.new("TextLabel")
-		itemValue.Name = "Value"
-		itemValue.Size = UDim2.new(1, -10, 0, 22)
-		itemValue.Position = UDim2.new(0.5, 0, 0, 74)
-		itemValue.AnchorPoint = Vector2.new(0.5, 0)
-		itemValue.BackgroundTransparency = 1
-		itemValue.Text = award.value
-		itemValue.TextColor3 = award.valueColor
-		itemValue.Font = Enum.Font.GothamBlack
-		itemValue.TextSize = 13
-		itemValue.TextStrokeTransparency = 0.2
-		itemValue.Parent = card
+		local vCamera = Instance.new("Camera")
+		vCamera.FieldOfView = 48
+		vCamera.CFrame = CFrame.lookAt(Vector3.new(0, 0.2, 5.8), Vector3.new(0, 0.2, 0))
+		vCamera.Parent = viewport
+		viewport.CurrentCamera = vCamera
 
-		table.insert(spawnedCards, card)
+		-- Build the physical 3D model with studs & place inside viewport
+		local model3D = award.builder()
+		model3D.Parent = worldModel
 
-		-- PHASE A: Pop up in the center with scale bounce & sound
-		playSound(award.soundId, award.soundSpeed, 0.85)
+		-- 4. Floating Labels below 3D Model (NO box / card around them)
+		local titleLbl = Instance.new("TextLabel")
+		titleLbl.Name = "Title"
+		titleLbl.Size = UDim2.new(1, 30, 0, 16)
+		titleLbl.Position = UDim2.new(0.5, 0, 0, 148)
+		titleLbl.AnchorPoint = Vector2.new(0.5, 0)
+		titleLbl.BackgroundTransparency = 1
+		titleLbl.Text = award.title
+		titleLbl.TextColor3 = Color3.fromRGB(210, 215, 235)
+		titleLbl.Font = Enum.Font.GothamBlack
+		titleLbl.TextSize = 11
+		titleLbl.TextStrokeTransparency = 0.2
+		titleLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
+		titleLbl.ZIndex = 8
+		titleLbl.Parent = slotHolder
 
-		local popTween = TweenService:Create(card, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 158, 0, 130),
+		local valLbl = Instance.new("TextLabel")
+		valLbl.Name = "Value"
+		valLbl.Size = UDim2.new(1, 30, 0, 24)
+		valLbl.Position = UDim2.new(0.5, 0, 0, 166)
+		valLbl.AnchorPoint = Vector2.new(0.5, 0)
+		valLbl.BackgroundTransparency = 1
+		valLbl.Text = award.value
+		valLbl.TextColor3 = award.valueColor
+		valLbl.Font = Enum.Font.GothamBlack
+		valLbl.TextSize = 17
+		valLbl.TextStrokeTransparency = 0.15
+		valLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
+		valLbl.ZIndex = 8
+		valLbl.Parent = slotHolder
+
+		local activeSlotRecord: ActiveSlot = {
+			holder = slotHolder,
+			scale = slotScale,
+			model = model3D,
+			rayContainer = rayContainer,
+			targetX = targetSlotX,
+		}
+		table.insert(activeSlots, activeSlotRecord)
+
+		-- =====================================================================
+		-- PHASE A: POP UP in the Center with Scale-Bounce & Unique Sound
+		-- =====================================================================
+		playSound(award.soundId, award.soundSpeed, award.soundVolume)
+		if award.extraSoundId then
+			task.delay(0.15, function()
+				playSound(award.extraSoundId, 1.15, 0.8)
+			end)
+		end
+
+		-- Emit outward glowing sparks from center
+		emitSparks2D(slotHolder, 22, 135, award.sparkColor)
+
+		local popTween = TweenService:Create(slotScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Scale = 1.32,
 		})
 		popTween:Play()
 		popTween.Completed:Wait()
 
-		TweenService:Create(card, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, cardWidth, 0, cardHeight),
+		TweenService:Create(slotScale, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Scale = 1.0,
 		}):Play()
 
-		-- PHASE B: Hover in place in the spotlight
-		local hoverTween = TweenService:Create(card, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-			Position = UDim2.new(0.5, 0, 0, cardCenterY - 8),
+		-- =====================================================================
+		-- PHASE B: HOVER in the Spotlight while spinning in 3D
+		-- =====================================================================
+		local hoverTween = TweenService:Create(slotHolder, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+			Position = UDim2.new(0.5, 0, centerScreenY, -10),
 		})
 		hoverTween:Play()
 		hoverTween.Completed:Wait()
 
-		-- PHASE C: Slide smoothly to the left (to its assigned slot)
-		playSound("rbxassetid://9114223170", 1.8, 0.4)
+		-- =====================================================================
+		-- PHASE C: SLIDE to the Left (into assigned slot tray position)
+		-- =====================================================================
+		playSound("rbxassetid://9114223170", 1.85, 0.35)
 
-		local slideTween = TweenService:Create(card, TweenInfo.new(0.36, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, targetSlotX, 0, cardCenterY),
+		local slideTween = TweenService:Create(slotHolder, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, targetSlotX, centerScreenY, 0),
 		})
 		slideTween:Play()
 		slideTween.Completed:Wait()
 
-		-- Pause before next award pops up
-		task.wait(0.12)
+		-- Short settle pause before next reward pops into the center
+		task.wait(0.14)
 	end
 
-	-- 4. Grand Finale fanfare once all cards have settled
+	-- 5. Grand Finale: All 4 3D models spinning together!
 	if not showcase or not showcase.Parent then
+		if rotConn then rotConn:Disconnect() end
 		if vpConn then vpConn:Disconnect() end
 		return
 	end
 
-	playSound("rbxassetid://5153737200", 1.0, 0.95)
+	-- Victorious Fanfare Sound
+	playSound("rbxassetid://5153737200", 1.0, 1.0)
 
-	-- Celebratory pulse on all card strokes
-	for _, card in ipairs(spawnedCards) do
-		local strk = card:FindFirstChild("CardStroke") :: UIStroke?
-		if strk then
-			local origThick = strk.Thickness
-			TweenService:Create(strk, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Thickness = 4.0,
-			}):Play()
-			task.delay(0.25, function()
-				if strk and strk.Parent then
-					TweenService:Create(strk, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-						Thickness = origThick,
-					}):Play()
-				end
-			end)
-		end
-	end
+	-- Screen burst sparks
+	emitSparks2D(showcase, 36, 400, Color3.fromRGB(255, 220, 90))
 
-	-- Display confirmation pill at bottom of showcase
+	-- Bottom Confirmation Pill (Clean floating badge)
 	local claimPill = Instance.new("Frame")
 	claimPill.Name = "ClaimPill"
-	claimPill.Size = UDim2.new(0, 320, 0, 26)
-	claimPill.Position = UDim2.new(0.5, 0, 0, cardCenterY + 74)
+	claimPill.Size = UDim2.new(0, 340, 0, 30)
+	claimPill.Position = UDim2.new(0.5, 0, centerScreenY + 0.22, 0)
 	claimPill.AnchorPoint = Vector2.new(0.5, 0.5)
-	claimPill.BackgroundColor3 = Color3.fromRGB(30, 75, 45)
+	claimPill.BackgroundColor3 = Color3.fromRGB(25, 70, 40)
 	claimPill.BackgroundTransparency = 1
 	claimPill.BorderSizePixel = 0
+	claimPill.ZIndex = 15
 	claimPill.Parent = showcase
 
 	local pCorner = Instance.new("UICorner")
@@ -884,42 +1205,42 @@ local function playSequentialAwardsAnimation(data: any)
 	pLabel.Text = "✨ ALL REWARDS CLAIMED & DEPOSITED ✨"
 	pLabel.TextColor3 = Color3.fromRGB(150, 255, 180)
 	pLabel.Font = Enum.Font.GothamBlack
-	pLabel.TextSize = 11
+	pLabel.TextSize = 12
 	pLabel.TextStrokeTransparency = 0.3
 	pLabel.TextTransparency = 1
+	pLabel.ZIndex = 16
 	pLabel.Parent = claimPill
 
 	TweenService:Create(claimPill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		BackgroundTransparency = 0.25,
+		BackgroundTransparency = 0.2,
 	}):Play()
 	TweenService:Create(pStroke, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Transparency = 0.2,
+		Transparency = 0.15,
 	}):Play()
 	TweenService:Create(pLabel, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		TextTransparency = 0,
 	}):Play()
 
-	-- 5. Hold showcase for 5 seconds, then smoothly glide up & fade out
+	-- 6. Hold showcase for 5.0 seconds so player can watch the 4 3D models spin, then fade out
 	task.wait(5.0)
 
+	if rotConn then
+		rotConn:Disconnect()
+		rotConn = nil
+	end
 	if vpConn then
 		vpConn:Disconnect()
 		vpConn = nil
 	end
 
 	if showcase and showcase.Parent then
-		TweenService:Create(showcase, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Position = UDim2.new(0.5, 0, 0.34, 0),
-			BackgroundTransparency = 1,
-		}):Play()
-
 		for _, c in ipairs(showcase:GetDescendants()) do
 			if c:IsA("TextLabel") then
 				TweenService:Create(c, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 					TextTransparency = 1,
 					TextStrokeTransparency = 1,
 				}):Play()
-			elseif c:IsA("Frame") then
+			elseif c:IsA("Frame") or c:IsA("ViewportFrame") then
 				TweenService:Create(c, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 					BackgroundTransparency = 1,
 				}):Play()

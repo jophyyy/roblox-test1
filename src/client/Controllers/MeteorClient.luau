@@ -886,6 +886,16 @@ local function playSequentialAwardsAnimation(data: any)
 		BackgroundTransparency = 0.72,
 	}):Play()
 
+	-- Full-screen Blackout Curtain for dramatic suspense before each item reveal
+	local blackoutCurtain = Instance.new("Frame")
+	blackoutCurtain.Name = "RevealBlackoutCurtain"
+	blackoutCurtain.Size = UDim2.new(1, 0, 1, 0)
+	blackoutCurtain.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	blackoutCurtain.BackgroundTransparency = 1
+	blackoutCurtain.BorderSizePixel = 0
+	blackoutCurtain.ZIndex = 20
+	blackoutCurtain.Parent = showcase
+
 	-- Floating Overhead Title (NO card box around it)
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "FloatingTitle"
@@ -1008,7 +1018,27 @@ local function playSequentialAwardsAnimation(data: any)
 
 		local targetSlotX = startX + (index - 1) * slotStep
 
-		-- 1. Create transparent Slot Holder (NO box, NO frame background!)
+		-- =====================================================================
+		-- SUSPENSE BLACKOUT: Screen cuts to black before each item is revealed
+		-- =====================================================================
+		playSound("rbxassetid://9114223849", 0.55, 0.45) -- Tension bass drop / deep whoosh
+
+		local blackTween = TweenService:Create(blackoutCurtain, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 0,
+		})
+		blackTween:Play()
+		blackTween.Completed:Wait()
+
+		-- Suspense pause in pitch blackness before the dramatic reveal
+		task.wait(0.25)
+
+		if not showcase or not showcase.Parent then
+			if rotConn then rotConn:Disconnect() end
+			if vpConn then vpConn:Disconnect() end
+			return
+		end
+
+		-- 1. Create transparent Slot Holder at center (emerges on top of blackout during reveal)
 		local slotHolder = Instance.new("Frame")
 		slotHolder.Name = "RewardSlot_" .. award.id
 		slotHolder.Size = UDim2.new(0, 165, 0, 215)
@@ -1016,7 +1046,7 @@ local function playSequentialAwardsAnimation(data: any)
 		slotHolder.AnchorPoint = Vector2.new(0.5, 0.5)
 		slotHolder.BackgroundTransparency = 1
 		slotHolder.BorderSizePixel = 0
-		slotHolder.ZIndex = 10 + index
+		slotHolder.ZIndex = 25
 		slotHolder.Parent = showcase
 
 		local slotScale = Instance.new("UIScale")
@@ -1030,7 +1060,7 @@ local function playSequentialAwardsAnimation(data: any)
 		rayContainer.Position = UDim2.new(0.5, 0, 0, 72)
 		rayContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 		rayContainer.BackgroundTransparency = 1
-		rayContainer.ZIndex = 4
+		rayContainer.ZIndex = 26
 		rayContainer.Parent = slotHolder
 
 		for r = 0, 7 do
@@ -1042,7 +1072,7 @@ local function playSequentialAwardsAnimation(data: any)
 			ray.BackgroundColor3 = award.sparkColor
 			ray.BackgroundTransparency = 0.90
 			ray.BorderSizePixel = 0
-			ray.ZIndex = 4
+			ray.ZIndex = 26
 			ray.Parent = rayContainer
 
 			local rCorner = Instance.new("UICorner")
@@ -1061,7 +1091,7 @@ local function playSequentialAwardsAnimation(data: any)
 		viewport.LightColor = Color3.fromRGB(255, 255, 255)
 		viewport.LightDirection = Vector3.new(0.6, -1, -1.2)
 		viewport.Ambient = Color3.fromRGB(155, 155, 185)
-		viewport.ZIndex = 6
+		viewport.ZIndex = 28
 		viewport.Parent = slotHolder
 
 		local worldModel = Instance.new("WorldModel")
@@ -1090,7 +1120,7 @@ local function playSequentialAwardsAnimation(data: any)
 		titleLbl.TextSize = 11
 		titleLbl.TextStrokeTransparency = 0.2
 		titleLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
-		titleLbl.ZIndex = 8
+		titleLbl.ZIndex = 29
 		titleLbl.Parent = slotHolder
 
 		local valLbl = Instance.new("TextLabel")
@@ -1105,7 +1135,7 @@ local function playSequentialAwardsAnimation(data: any)
 		valLbl.TextSize = 17
 		valLbl.TextStrokeTransparency = 0.15
 		valLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
-		valLbl.ZIndex = 8
+		valLbl.ZIndex = 29
 		valLbl.Parent = slotHolder
 
 		local activeSlotRecord: ActiveSlot = {
@@ -1118,8 +1148,31 @@ local function playSequentialAwardsAnimation(data: any)
 		table.insert(activeSlots, activeSlotRecord)
 
 		-- =====================================================================
-		-- PHASE A: POP UP in the Center with Scale-Bounce & Unique Sound
+		-- PHASE A: REVEAL FLASH & POP OUT in Center with Scale-Bounce & Unique Sound
 		-- =====================================================================
+		-- Radiant white flash
+		local flash = Instance.new("Frame")
+		flash.Name = "RevealFlash"
+		flash.Size = UDim2.new(1, 0, 1, 0)
+		flash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		flash.BackgroundTransparency = 0.12
+		flash.BorderSizePixel = 0
+		flash.ZIndex = 35
+		flash.Parent = showcase
+
+		TweenService:Create(flash, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 1,
+		}):Play()
+		task.delay(0.38, function()
+			flash:Destroy()
+		end)
+
+		-- Fade blackout curtain away
+		TweenService:Create(blackoutCurtain, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 1,
+		}):Play()
+
+		-- Play item's unique sound
 		playSound(award.soundId, award.soundSpeed, award.soundVolume)
 		if award.extraSoundId then
 			task.delay(0.15, function()
@@ -1128,10 +1181,10 @@ local function playSequentialAwardsAnimation(data: any)
 		end
 
 		-- Emit outward glowing sparks from center
-		emitSparks2D(slotHolder, 22, 135, award.sparkColor)
+		emitSparks2D(slotHolder, 28, 145, award.sparkColor)
 
 		local popTween = TweenService:Create(slotScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Scale = 1.32,
+			Scale = 1.38,
 		})
 		popTween:Play()
 		popTween.Completed:Wait()
@@ -1160,8 +1213,15 @@ local function playSequentialAwardsAnimation(data: any)
 		slideTween:Play()
 		slideTween.Completed:Wait()
 
-		-- Short settle pause before next reward pops into the center
-		task.wait(0.14)
+		-- Lower slot ZIndex so next blackout covers it properly
+		slotHolder.ZIndex = 12
+		rayContainer.ZIndex = 11
+		viewport.ZIndex = 13
+		titleLbl.ZIndex = 14
+		valLbl.ZIndex = 14
+
+		-- Short settle pause before next reward goes black and pops in
+		task.wait(0.15)
 	end
 
 	-- 5. Grand Finale: All 4 3D models spinning together!

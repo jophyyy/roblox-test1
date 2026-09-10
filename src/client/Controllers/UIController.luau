@@ -6157,6 +6157,19 @@ function UIController.buildHUD()
 		showFloatingPopup("📜 +5,000 Mastery XP (All Tracks)!", Color3.fromRGB(255, 180, 40), 0)
 	end)
 
+	-- DEV TESTING METEOR EVENT BUTTON (Instantly summons a Celestial Meteor Strike)
+	createMenuButton("DevMeteorBtn", "☄️ Meteor (Dev)", Color3.fromRGB(255, 60, 20), function()
+		local devMeteorFn = Remotes.getFunction("DevTriggerMeteor")
+		local ok, success, msg = pcall(function()
+			return devMeteorFn:InvokeServer()
+		end)
+		if ok and success then
+			showFloatingPopup("☄️ METEOR STRIKE SUMMONED!", Color3.fromRGB(255, 100, 30), 0)
+		else
+			showFloatingPopup("⚠️ " .. tostring(msg or "Already active"), Color3.fromRGB(255, 80, 80), 0)
+		end
+	end)
+
 	-- DEV TESTING REBIRTH CHEAT BUTTON (+1 on Left Click, +5 on Right Click)
 	local devRebirthBtn = createMenuButton("DevRebirthBtn", "🔄 +Rebirth (Dev)", Color3.fromRGB(190, 40, 115), function()
 		local devRebirthFn = Remotes.getFunction("DevAddRebirth")

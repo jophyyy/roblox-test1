@@ -1203,6 +1203,97 @@ function TownBuildingBuilder.buildVIPPavilion(parent: Instance): Model
 		end
 	end)
 
+	-- =========================================================================
+	-- PHYSICAL DEV METEOR SUMMONER CONSOLE
+	-- =========================================================================
+	local meteorConsoleCF = bCF * CFrame.new(0, 0.4, 12.0)
+	createStudPart(buildingModel, "MeteorConsoleBase", Vector3.new(4.0, 0.6, 4.0), meteorConsoleCF * CFrame.new(0, 0.3, 0), marbleGrey)
+	createStudPart(buildingModel, "MeteorConsoleCol", Vector3.new(2.2, 3.2, 2.2), meteorConsoleCF * CFrame.new(0, 2.2, 0), Color3.fromRGB(36, 32, 40))
+
+	-- Glowing Fiery Meteor Core Sphere
+	local meteorOrb = Instance.new("Part")
+	meteorOrb.Name = "DevMeteorOrb"
+	meteorOrb.Size = Vector3.new(2.4, 2.4, 2.4)
+	meteorOrb.Shape = Enum.PartType.Ball
+	meteorOrb.CFrame = meteorConsoleCF * CFrame.new(0, 4.8, 0)
+	meteorOrb.Color = Color3.fromRGB(255, 80, 15)
+	meteorOrb.Material = Enum.Material.Neon
+	meteorOrb.Anchored = true
+	meteorOrb.CanCollide = false
+	meteorOrb.Parent = buildingModel
+
+	local mLight = Instance.new("PointLight")
+	mLight.Color = Color3.fromRGB(255, 120, 30)
+	mLight.Brightness = 3.0
+	mLight.Range = 16
+	mLight.Parent = meteorOrb
+
+	local mAtt = Instance.new("Attachment")
+	mAtt.Parent = meteorOrb
+
+	local mSparks = Instance.new("ParticleEmitter")
+	mSparks.Name = "OrbFlames"
+	mSparks.Color = ColorSequence.new(Color3.fromRGB(255, 200, 60))
+	mSparks.Size = NumberSequence.new(0.35, 0.05)
+	mSparks.Rate = 12
+	mSparks.Speed = NumberRange.new(1.0, 2.5)
+	mSparks.Parent = mAtt
+
+	local mGui = Instance.new("BillboardGui")
+	mGui.Name = "MeteorConsoleGui"
+	mGui.Size = UDim2.new(0, 240, 0, 56)
+	mGui.StudsOffset = Vector3.new(0, 2.6, 0)
+	mGui.AlwaysOnTop = false
+	mGui.MaxDistance = 50
+
+	local mTitle = Instance.new("TextLabel")
+	mTitle.Size = UDim2.new(1, 0, 0.5, 0)
+	mTitle.BackgroundTransparency = 1
+	mTitle.Text = "☄️ DEV METEOR CONSOLE ☄️"
+	mTitle.TextColor3 = Color3.fromRGB(255, 110, 40)
+	mTitle.Font = Enum.Font.GothamBlack
+	mTitle.TextSize = 14
+	mTitle.TextStrokeTransparency = 0.2
+	mTitle.Parent = mGui
+
+	local mSub = Instance.new("TextLabel")
+	mSub.Size = UDim2.new(1, 0, 0.5, 0)
+	mSub.Position = UDim2.new(0, 0, 0.5, 0)
+	mSub.BackgroundTransparency = 1
+	mSub.Text = "[E] Summon Meteor Event"
+	mSub.TextColor3 = Color3.fromRGB(255, 255, 255)
+	mSub.Font = Enum.Font.GothamBold
+	mSub.TextSize = 12
+	mSub.TextStrokeTransparency = 0.2
+	mSub.Parent = mGui
+	mGui.Parent = meteorOrb
+
+	local mPrompt = Instance.new("ProximityPrompt")
+	mPrompt.Name = "SummonMeteorPrompt"
+	mPrompt.ActionText = "Summon Meteor"
+	mPrompt.ObjectText = "Dev World Event"
+	mPrompt.KeyboardKeyCode = Enum.KeyCode.E
+	mPrompt.HoldDuration = 0
+	mPrompt.MaxActivationDistance = 14
+	mPrompt.RequiresLineOfSight = false
+	mPrompt.ClickablePrompt = true
+	mPrompt.Parent = meteorOrb
+
+	local lastSummonTime: { [Player]: number } = {}
+	mPrompt.Triggered:Connect(function(player)
+		local now = os.clock()
+		if lastSummonTime[player] and (now - lastSummonTime[player]) < 1.0 then return end
+		lastSummonTime[player] = now
+
+		print(string.format("☄️ [TownBuildingBuilder] Dev Meteor Summoner triggered by %s!", player.Name))
+		local ok, MeteorService = pcall(function()
+			return require(script.Parent.MeteorService)
+		end)
+		if ok and MeteorService then
+			MeteorService.startCountdown()
+		end
+	end)
+
 	buildingModel.Parent = parent
 	return buildingModel
 end

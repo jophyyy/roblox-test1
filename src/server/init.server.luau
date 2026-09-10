@@ -10,6 +10,7 @@ local TrailService = require(script.Services.TrailService)
 local PickaxeService = require(script.Services.PickaxeService)
 local MasteryService = require(script.Services.MasteryService)
 local LootBoxService = require(script.Services.LootBoxService)
+local MeteorService = require(script.Services.MeteorService)
 
 print("⛏️ [Mining Simulator] Initializing Server Services...")
 
@@ -25,6 +26,7 @@ local services = {
 	{ name = "TrailService", fn = TrailService.init },
 	{ name = "PickaxeService", fn = PickaxeService.init },
 	{ name = "LootBoxService", fn = LootBoxService.init },
+	{ name = "MeteorService", fn = MeteorService.init },
 }
 
 for _, s in ipairs(services) do

@@ -27,6 +27,10 @@ local REGISTERED_EVENTS = {
 	"OpenFusionModal",
 	"MasteryLevelUp",
 	"LootBoxDropped",
+	"MeteorEventAnnounced",
+	"MeteorCrashed",
+	"MeteorDamaged",
+	"MeteorDestroyed",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -56,6 +60,8 @@ local REGISTERED_FUNCTIONS = {
 	"FusePets",
 	"OpenLootBox",
 	"DevAddLootBoxes",
+	"HitMeteor",
+	"DevTriggerMeteor",
 }
 
 local function getRemotesFolder(): Folder

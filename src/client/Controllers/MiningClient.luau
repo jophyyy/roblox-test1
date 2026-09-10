@@ -186,6 +186,23 @@ function MiningClient.performSwing()
 	-- Sound (Crisp Pickaxe Swoosh / Impact)
 	AudioController.playSound("rbxassetid://9114223170", 0.5, 1.0 + (math.random() * 0.2 - 0.1))
 
+	-- Target Detection: Priority 0 - Active Celestial Meteor Monolith
+	local activeMeteor = Workspace:FindFirstChild("ActiveMeteorEvent")
+	if activeMeteor and rootPart then
+		local mModel = activeMeteor:FindFirstChild("CelestialMeteorMonolith")
+		if mModel and mModel:IsA("Model") and mModel.PrimaryPart then
+			local distToMeteor = (mModel.PrimaryPart.Position - rootPart.Position).Magnitude
+			local isTargeting = (mouse.Target and mouse.Target:IsDescendantOf(mModel) and distToMeteor <= 35)
+			if isTargeting or distToMeteor <= 28 then
+				task.spawn(function()
+					local hitMeteorFn = Remotes.getFunction("HitMeteor")
+					hitMeteorFn:InvokeServer()
+				end)
+				return
+			end
+		end
+	end
+
 	-- Target Detection: Priority 1 - Boss (if clicking on Boss or within melee reach of Boss)
 	local targetBossId: string? = nil
 	local bossFolder = Workspace:FindFirstChild("BossFolder")

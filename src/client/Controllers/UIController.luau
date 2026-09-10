@@ -6092,6 +6092,7 @@ function UIController.buildHUD()
 		btn.Font = Enum.Font.GothamBold
 		btn.TextSize = 14
 		btn.BorderSizePixel = 0
+		btn.AutoButtonColor = true
 		btn.Parent = sideMenu
 
 		local corner = Instance.new("UICorner")
@@ -6103,7 +6104,7 @@ function UIController.buildHUD()
 		stroke.Transparency = 0.8
 		stroke.Parent = btn
 
-		btn.MouseButton1Click:Connect(onClick)
+		btn.Activated:Connect(onClick)
 		return btn
 	end
 
@@ -6173,30 +6174,43 @@ function UIController.buildHUD()
 	end)
 
 	-- DEV TESTING 3D MODEL SHOWROOM BUTTON (Instantly teleports player to model exhibition platform)
-	createMenuButton("DevShowroomBtn", "🧪 Showroom (Dev)", Color3.fromRGB(0, 200, 240), function()
+	local function triggerShowroomTeleport()
 		local char = player.Character
-		if char and char:FindFirstChild("HumanoidRootPart") then
-			local root = char.HumanoidRootPart :: BasePart
+		local root = if char then char:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+		local isCurrentlyAtShowroom = false
+		if root then
+			local dist = (root.Position - Vector3.new(500, 60, 0)).Magnitude
+			isCurrentlyAtShowroom = (dist < 140)
+		end
+
+		local target = if isCurrentlyAtShowroom then "Town" else "Showroom"
+		local targetPos = if target == "Showroom" then Vector3.new(500, 64, -55) else Vector3.new(0, 5, 0)
+
+		if char and root then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum and hum.Sit then
+				hum.Sit = false
+			end
 			root.AssemblyLinearVelocity = Vector3.zero
 			root.AssemblyAngularVelocity = Vector3.zero
+			char:PivotTo(CFrame.new(targetPos))
 
-			local dist = (root.Position - Vector3.new(500, 60, 0)).Magnitude
-			if dist < 140 then
-				char:PivotTo(CFrame.new(0, 4, 0))
-				showFloatingPopup("🏡 TELEPORTED TO TOWN SPAWN!", Color3.fromRGB(80, 255, 140), 0)
-			else
-				char:PivotTo(CFrame.new(500, 63, -55))
+			if target == "Showroom" then
 				showFloatingPopup("🧪 TELEPORTED TO 3D MODEL SHOWROOM!", Color3.fromRGB(0, 240, 255), 0)
+			else
+				showFloatingPopup("🏡 TELEPORTED TO TOWN SPAWN!", Color3.fromRGB(80, 255, 140), 0)
 			end
 		end
 
 		task.spawn(function()
 			pcall(function()
 				local devShowroomFn = Remotes.getFunction("DevTeleportToShowroom")
-				devShowroomFn:InvokeServer()
+				devShowroomFn:InvokeServer(target)
 			end)
 		end)
-	end)
+	end
+
+	createMenuButton("DevShowroomBtn", "🧪 Showroom (Dev)", Color3.fromRGB(0, 200, 240), triggerShowroomTeleport)
 
 	-- DEV TESTING METEOR EVENT BUTTON (Instantly summons a Celestial Meteor Strike)
 	createMenuButton("DevMeteorBtn", "☄️ Meteor (Dev)", Color3.fromRGB(255, 60, 20), function()
@@ -6383,6 +6397,8 @@ function UIController.buildHUD()
 			elseif not activeModal and not activeDialogue then
 				openMasteryModal()
 			end
+		elseif input.KeyCode == Enum.KeyCode.F6 then
+			triggerShowroomTeleport()
 		end
 	end)
 

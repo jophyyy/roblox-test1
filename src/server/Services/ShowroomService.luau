@@ -17,8 +17,10 @@ local PickaxeModelBuilder = require(ReplicatedStorage.Shared.Utils.PickaxeModelB
 local ShowroomService = {}
 
 local SHOWROOM_CENTER = Vector3.new(500, 60, 0)
-local SHOWROOM_ARRIVAL = Vector3.new(500, 62, -55)
-local TOWN_SPAWN = Vector3.new(0, 4, 0)
+local SHOWROOM_ARRIVAL = Vector3.new(500, 64, -55)
+local TOWN_SPAWN = Vector3.new(0, 5, 0)
+
+local lastArrivalTimes: { [Player]: number } = {}
 
 local function createPart(
 	parent: Instance,
@@ -173,13 +175,13 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	archSub.TextStrokeTransparency = 0.3
 	archSub.Parent = archBb
 
-	-- Teleport Arrival Landing Pad
-	createPart(showroomFolder, "ArrivalPad", Vector3.new(10, 0.4, 10), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -1.8, 0)), Color3.fromRGB(0, 180, 255), Enum.Material.Neon, true)
-	createPart(showroomFolder, "ArrivalRing", Vector3.new(12, 0.2, 12), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -1.9, 0)), Color3.fromRGB(255, 215, 0), Enum.Material.Neon, false)
+	-- Teleport Arrival Landing Pad (Y top = 60.4, player spawns at Y = 64)
+	createPart(showroomFolder, "ArrivalPad", Vector3.new(12, 0.4, 12), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -3.8, 0)), Color3.fromRGB(0, 180, 255), Enum.Material.Neon, true)
+	createPart(showroomFolder, "ArrivalRing", Vector3.new(14, 0.2, 14), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -3.9, 0)), Color3.fromRGB(255, 215, 0), Enum.Material.Neon, false)
 
-	-- Physical Return Teleport Pad (to Town Spawn)
-	local returnPos = SHOWROOM_ARRIVAL + Vector3.new(0, 0, 14)
-	local returnPad = createPart(showroomFolder, "ReturnPad", Vector3.new(8, 0.4, 8), CFrame.new(returnPos + Vector3.new(0, -1.8, 0)), Color3.fromRGB(0, 230, 120), Enum.Material.Neon, true)
+	-- Physical Return Teleport Pad (to Town Spawn) - Positioned 18 studs south of arrival pad
+	local returnPos = SHOWROOM_ARRIVAL + Vector3.new(0, -3.8, 18)
+	local returnPad = createPart(showroomFolder, "ReturnPad", Vector3.new(8, 0.4, 8), CFrame.new(returnPos), Color3.fromRGB(0, 230, 120), Enum.Material.Neon, true)
 
 	local returnBb = Instance.new("BillboardGui")
 	returnBb.Size = UDim2.new(0, 160, 0, 40)
@@ -205,20 +207,32 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	prompt.HoldDuration = 0
 	prompt.Parent = returnPad
 	prompt.Triggered:Connect(function(player)
-		local char = player.Character
-		if char and char:FindFirstChild("HumanoidRootPart") then
-			char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-			char.HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-			char:PivotTo(CFrame.new(TOWN_SPAWN))
-		end
+		ShowroomService.teleportPlayer(player, "Town")
 	end)
 
+	local lastReturnPadTouch: { [Player]: number } = {}
 	returnPad.Touched:Connect(function(hit)
 		local player = Players:GetPlayerFromCharacter(hit.Parent)
 		if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			player.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
-			player.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
-			player.Character:PivotTo(CFrame.new(TOWN_SPAWN))
+			local now = os.clock()
+			if now - (lastArrivalTimes[player] or 0) < 3.0 then
+				return -- Prevent accidental immediate return on arrival
+			end
+			if now - (lastReturnPadTouch[player] or 0) < 2.0 then
+				return -- Debounce return pad touches
+			end
+			lastReturnPadTouch[player] = now
+			ShowroomService.teleportPlayer(player, "Town")
+		end
+	end)
+
+	-- Catch-All Safety Net Barrier beneath Showroom (Catches falling players and teleports back to platform)
+	local safetyNet = createPart(showroomFolder, "SafetyNet", Vector3.new(380, 2, 340), CFrame.new(islandCenter + Vector3.new(0, -18, 0)), Color3.fromRGB(0, 0, 0), Enum.Material.SmoothPlastic, true)
+	safetyNet.Transparency = 1
+	safetyNet.Touched:Connect(function(hit)
+		local player = Players:GetPlayerFromCharacter(hit.Parent)
+		if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			ShowroomService.teleportPlayer(player, "Showroom")
 		end
 	end)
 end
@@ -597,29 +611,64 @@ end
 -- =========================================================================
 -- PUBLIC TELEPORT HANDLER
 -- =========================================================================
-function ShowroomService.teleportPlayer(player: Player): boolean
-	local char = player.Character or player.CharacterAdded:Wait()
-	if not char then return false end
-	local root = char:WaitForChild("HumanoidRootPart", 3) :: BasePart?
-	if not root then return false end
+function ShowroomService.teleportPlayer(player: Player, requestedTarget: string?): (boolean, string)
+	local char = player.Character
+	if not char then
+		local ok, c = pcall(function()
+			return player.CharacterAdded:Wait()
+		end)
+		char = if ok then c else nil
+	end
+	if not char then return false, "NoCharacter" end
+
+	local root = char:WaitForChild("HumanoidRootPart", 4) :: BasePart?
+	if not root then return false, "NoRootPart" end
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
 
 	local distToShowroom = (root.Position - SHOWROOM_CENTER).Magnitude
 	local targetCF: CFrame
-	local isGoingToShowroom = false
+	local destinationName: string
 
-	if distToShowroom < 140 then
-		targetCF = CFrame.new(TOWN_SPAWN)
-		isGoingToShowroom = false
-	else
+	if requestedTarget == "Showroom" then
 		targetCF = CFrame.new(SHOWROOM_ARRIVAL)
-		isGoingToShowroom = true
+		destinationName = "Showroom"
+	elseif requestedTarget == "Town" then
+		targetCF = CFrame.new(TOWN_SPAWN)
+		destinationName = "Town"
+	else
+		-- Auto-toggle fallback only when no explicit destination is requested
+		if distToShowroom < 140 then
+			targetCF = CFrame.new(TOWN_SPAWN)
+			destinationName = "Town"
+		else
+			targetCF = CFrame.new(SHOWROOM_ARRIVAL)
+			destinationName = "Showroom"
+		end
 	end
 
+	-- Stream around destination first if streaming is enabled to prevent falling through unstreamed parts
+	if destinationName == "Showroom" and Workspace.StreamingEnabled then
+		pcall(function()
+			player:RequestStreamAroundAsync(targetCF.Position)
+		end)
+	end
+
+	-- Unseat humanoid if seated
+	if humanoid and humanoid.Sit then
+		humanoid.Sit = false
+	end
+
+	-- Zero out momentum so player doesn't fly off pad
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.AssemblyAngularVelocity = Vector3.zero
 	char:PivotTo(targetCF)
 
-	return isGoingToShowroom
+	if destinationName == "Showroom" then
+		lastArrivalTimes[player] = os.clock()
+	end
+
+	print(string.format("🚀 [ShowroomService] Teleported %s to %s at %s", player.Name, destinationName, tostring(targetCF.Position)))
+	return true, destinationName
 end
 
 function ShowroomService.init()
@@ -627,11 +676,28 @@ function ShowroomService.init()
 
 	-- 1. Register and bind RemoteFunction FIRST so player teleports work immediately
 	local tpFn = Remotes.getFunction("DevTeleportToShowroom")
-	tpFn.OnServerInvoke = function(player: Player)
-		return ShowroomService.teleportPlayer(player)
+	tpFn.OnServerInvoke = function(player: Player, requestedTarget: any)
+		local targetStr = if typeof(requestedTarget) == "string" then requestedTarget else nil
+		return ShowroomService.teleportPlayer(player, targetStr)
 	end
 
-	-- 2. Build or rebuild Showroom Platform in Workspace
+	-- 2. Bind chat commands for easy testing (/showroom, /dev, /town)
+	local function hookPlayerChat(player: Player)
+		player.Chatted:Connect(function(msg: string)
+			local lower = string.lower(msg)
+			if lower == "/showroom" or lower == "/devshowroom" or lower == "/tp showroom" or lower == "/dev" then
+				ShowroomService.teleportPlayer(player, "Showroom")
+			elseif lower == "/town" or lower == "/spawn" or lower == "/tp town" then
+				ShowroomService.teleportPlayer(player, "Town")
+			end
+		end)
+	end
+	for _, p in ipairs(Players:GetPlayers()) do
+		hookPlayerChat(p)
+	end
+	Players.PlayerAdded:Connect(hookPlayerChat)
+
+	-- 3. Build or rebuild Showroom Platform in Workspace
 	local existing = Workspace:FindFirstChild("DevShowroom")
 	if existing then
 		existing:Destroy()

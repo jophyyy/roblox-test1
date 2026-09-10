@@ -886,16 +886,6 @@ local function playSequentialAwardsAnimation(data: any)
 		BackgroundTransparency = 0.72,
 	}):Play()
 
-	-- Full-screen Blackout Curtain for dramatic suspense before each item reveal
-	local blackoutCurtain = Instance.new("Frame")
-	blackoutCurtain.Name = "RevealBlackoutCurtain"
-	blackoutCurtain.Size = UDim2.new(1, 0, 1, 0)
-	blackoutCurtain.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	blackoutCurtain.BackgroundTransparency = 1
-	blackoutCurtain.BorderSizePixel = 0
-	blackoutCurtain.ZIndex = 20
-	blackoutCurtain.Parent = showcase
-
 	-- Floating Overhead Title (NO card box around it)
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "FloatingTitle"
@@ -1018,49 +1008,29 @@ local function playSequentialAwardsAnimation(data: any)
 
 		local targetSlotX = startX + (index - 1) * slotStep
 
-		-- =====================================================================
-		-- SUSPENSE BLACKOUT: Screen cuts to black before each item is revealed
-		-- =====================================================================
-		playSound("rbxassetid://9114223849", 0.55, 0.45) -- Tension bass drop / deep whoosh
-
-		local blackTween = TweenService:Create(blackoutCurtain, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			BackgroundTransparency = 0,
-		})
-		blackTween:Play()
-		blackTween.Completed:Wait()
-
-		-- Suspense pause in pitch blackness before the dramatic reveal
-		task.wait(0.25)
-
-		if not showcase or not showcase.Parent then
-			if rotConn then rotConn:Disconnect() end
-			if vpConn then vpConn:Disconnect() end
-			return
-		end
-
-		-- 1. Create transparent Slot Holder at center (emerges on top of blackout during reveal)
+		-- 1. Create transparent Slot Holder at Center
 		local slotHolder = Instance.new("Frame")
 		slotHolder.Name = "RewardSlot_" .. award.id
 		slotHolder.Size = UDim2.new(0, 165, 0, 215)
-		slotHolder.Position = UDim2.new(0.5, 0, centerScreenY, 0) -- Starts at Dead Center
+		slotHolder.Position = UDim2.new(0.5, 0, centerScreenY, 0) -- Dead Center
 		slotHolder.AnchorPoint = Vector2.new(0.5, 0.5)
 		slotHolder.BackgroundTransparency = 1
 		slotHolder.BorderSizePixel = 0
-		slotHolder.ZIndex = 25
+		slotHolder.ZIndex = 15
 		slotHolder.Parent = showcase
 
 		local slotScale = Instance.new("UIScale")
-		slotScale.Scale = 0 -- Starts scaled down for pop-up
+		slotScale.Scale = 0 -- Starts at 0 for pop-up
 		slotScale.Parent = slotHolder
 
-		-- 2. Rotating Golden/Colored Sunburst Rays behind the 3D Model
+		-- 2. Rotating Sunburst Rays (Starts hidden during black silhouette phase)
 		local rayContainer = Instance.new("Frame")
 		rayContainer.Name = "SunburstContainer"
 		rayContainer.Size = UDim2.new(0, 195, 0, 195)
 		rayContainer.Position = UDim2.new(0.5, 0, 0, 72)
 		rayContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 		rayContainer.BackgroundTransparency = 1
-		rayContainer.ZIndex = 26
+		rayContainer.ZIndex = 8
 		rayContainer.Parent = slotHolder
 
 		for r = 0, 7 do
@@ -1070,9 +1040,9 @@ local function playSequentialAwardsAnimation(data: any)
 			ray.AnchorPoint = Vector2.new(0.5, 0.5)
 			ray.Rotation = r * 45
 			ray.BackgroundColor3 = award.sparkColor
-			ray.BackgroundTransparency = 0.90
+			ray.BackgroundTransparency = 1 -- Hidden until revealed!
 			ray.BorderSizePixel = 0
-			ray.ZIndex = 26
+			ray.ZIndex = 8
 			ray.Parent = rayContainer
 
 			local rCorner = Instance.new("UICorner")
@@ -1088,10 +1058,10 @@ local function playSequentialAwardsAnimation(data: any)
 		viewport.AnchorPoint = Vector2.new(0.5, 0)
 		viewport.BackgroundTransparency = 1
 		viewport.BorderSizePixel = 0
-		viewport.LightColor = Color3.fromRGB(255, 255, 255)
+		viewport.LightColor = Color3.fromRGB(35, 30, 48) -- Dim mystery shadow lighting
 		viewport.LightDirection = Vector3.new(0.6, -1, -1.2)
-		viewport.Ambient = Color3.fromRGB(155, 155, 185)
-		viewport.ZIndex = 28
+		viewport.Ambient = Color3.fromRGB(20, 18, 28)
+		viewport.ZIndex = 10
 		viewport.Parent = slotHolder
 
 		local worldModel = Instance.new("WorldModel")
@@ -1103,24 +1073,45 @@ local function playSequentialAwardsAnimation(data: any)
 		vCamera.Parent = viewport
 		viewport.CurrentCamera = vCamera
 
-		-- Build the physical 3D model with studs & place inside viewport
+		-- Build the physical 3D model & record original properties
 		local model3D = award.builder()
 		model3D.Parent = worldModel
 
-		-- 4. Floating Labels below 3D Model (NO box / card around them)
+		type PartBackup = {
+			part: BasePart,
+			color: Color3,
+			material: Enum.Material,
+			transparency: number,
+		}
+		local originalParts: { PartBackup } = {}
+		for _, desc in ipairs(model3D:GetDescendants()) do
+			if desc:IsA("BasePart") then
+				table.insert(originalParts, {
+					part = desc,
+					color = desc.Color,
+					material = desc.Material,
+					transparency = desc.Transparency,
+				})
+				-- Make it completely black as a mystery silhouette!
+				desc.Color = Color3.fromRGB(15, 12, 22)
+				desc.Material = Enum.Material.SmoothPlastic
+			end
+		end
+
+		-- 4. Floating Labels (starts with mystery question marks)
 		local titleLbl = Instance.new("TextLabel")
 		titleLbl.Name = "Title"
 		titleLbl.Size = UDim2.new(1, 30, 0, 16)
 		titleLbl.Position = UDim2.new(0.5, 0, 0, 148)
 		titleLbl.AnchorPoint = Vector2.new(0.5, 0)
 		titleLbl.BackgroundTransparency = 1
-		titleLbl.Text = award.title
-		titleLbl.TextColor3 = Color3.fromRGB(210, 215, 235)
+		titleLbl.Text = "???"
+		titleLbl.TextColor3 = Color3.fromRGB(160, 165, 185)
 		titleLbl.Font = Enum.Font.GothamBlack
 		titleLbl.TextSize = 11
 		titleLbl.TextStrokeTransparency = 0.2
 		titleLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
-		titleLbl.ZIndex = 29
+		titleLbl.ZIndex = 12
 		titleLbl.Parent = slotHolder
 
 		local valLbl = Instance.new("TextLabel")
@@ -1129,13 +1120,13 @@ local function playSequentialAwardsAnimation(data: any)
 		valLbl.Position = UDim2.new(0.5, 0, 0, 166)
 		valLbl.AnchorPoint = Vector2.new(0.5, 0)
 		valLbl.BackgroundTransparency = 1
-		valLbl.Text = award.value
-		valLbl.TextColor3 = award.valueColor
+		valLbl.Text = "MYSTERY REWARD"
+		valLbl.TextColor3 = Color3.fromRGB(135, 140, 160)
 		valLbl.Font = Enum.Font.GothamBlack
-		valLbl.TextSize = 17
-		valLbl.TextStrokeTransparency = 0.15
+		valLbl.TextSize = 13
+		valLbl.TextStrokeTransparency = 0.25
 		valLbl.TextStrokeColor3 = Color3.fromRGB(10, 8, 16)
-		valLbl.ZIndex = 29
+		valLbl.ZIndex = 12
 		valLbl.Parent = slotHolder
 
 		local activeSlotRecord: ActiveSlot = {
@@ -1148,31 +1139,85 @@ local function playSequentialAwardsAnimation(data: any)
 		table.insert(activeSlots, activeSlotRecord)
 
 		-- =====================================================================
-		-- PHASE A: REVEAL FLASH & POP OUT in Center with Scale-Bounce & Unique Sound
+		-- PHASE 1: BLACK SILHOUETTE ENTRANCE & SUSPENSE WOBBLE
 		-- =====================================================================
-		-- Radiant white flash
-		local flash = Instance.new("Frame")
-		flash.Name = "RevealFlash"
-		flash.Size = UDim2.new(1, 0, 1, 0)
-		flash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		flash.BackgroundTransparency = 0.12
-		flash.BorderSizePixel = 0
-		flash.ZIndex = 35
-		flash.Parent = showcase
+		-- Pops into center as a pitch black spinning silhouette
+		playSound("rbxassetid://6895079853", 1.5, 0.65) -- Mystery thud / click
 
-		TweenService:Create(flash, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			BackgroundTransparency = 1,
-		}):Play()
-		task.delay(0.38, function()
-			flash:Destroy()
-		end)
+		local silhouettePop = TweenService:Create(slotScale, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Scale = 1.15,
+		})
+		silhouettePop:Play()
+		silhouettePop.Completed:Wait()
 
-		-- Fade blackout curtain away
-		TweenService:Create(blackoutCurtain, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			BackgroundTransparency = 1,
+		TweenService:Create(slotScale, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Scale = 1.0,
 		}):Play()
 
-		-- Play item's unique sound
+		-- Suspense anticipation wobble while spinning in pitch black
+		local wobbleStart = os.clock()
+		while (os.clock() - wobbleStart) < 0.32 do
+			local wobble = math.sin((os.clock() - wobbleStart) * 32) * 5.5
+			slotHolder.Rotation = wobble
+			RunService.RenderStepped:Wait()
+		end
+		slotHolder.Rotation = 0
+
+		if not showcase or not showcase.Parent then
+			if rotConn then rotConn:Disconnect() end
+			if vpConn then vpConn:Disconnect() end
+			return
+		end
+
+		-- =====================================================================
+		-- PHASE 2: PHYSICAL REVEAL POP! (Flash, Color Restore, Scale Bounce, Audio)
+		-- =====================================================================
+		-- Localized circular radiant flash burst around the item
+		local flashBurst = Instance.new("Frame")
+		flashBurst.Name = "RevealFlashBurst"
+		flashBurst.Size = UDim2.new(0, 110, 0, 110)
+		flashBurst.Position = UDim2.new(0.5, 0, 0, 70)
+		flashBurst.AnchorPoint = Vector2.new(0.5, 0.5)
+		flashBurst.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		flashBurst.BackgroundTransparency = 0.12
+		flashBurst.BorderSizePixel = 0
+		flashBurst.ZIndex = 18
+		flashBurst.Parent = slotHolder
+
+		local fbCorner = Instance.new("UICorner")
+		fbCorner.CornerRadius = UDim.new(1, 0)
+		fbCorner.Parent = flashBurst
+
+		TweenService:Create(flashBurst, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 250, 0, 250),
+			BackgroundTransparency = 1,
+		}):Play()
+		task.delay(0.38, function() flashBurst:Destroy() end)
+
+		-- Restore full physical 3D colors, materials, and brilliant lighting
+		for _, item in ipairs(originalParts) do
+			item.part.Color = item.color
+			item.part.Material = item.material
+			item.part.Transparency = item.transparency
+		end
+		viewport.LightColor = Color3.fromRGB(255, 255, 255)
+		viewport.Ambient = Color3.fromRGB(155, 155, 185)
+
+		-- Fade in the radiant rotating sunburst rays
+		for _, r in ipairs(rayContainer:GetChildren()) do
+			if r:IsA("Frame") then
+				TweenService:Create(r, TweenInfo.new(0.25), { BackgroundTransparency = 0.90 }):Play()
+			end
+		end
+
+		-- Reveal true reward title and amount
+		titleLbl.Text = award.title
+		titleLbl.TextColor3 = Color3.fromRGB(210, 215, 235)
+		valLbl.Text = award.value
+		valLbl.TextColor3 = award.valueColor
+		valLbl.TextSize = 17
+
+		-- Unique sound for this item
 		playSound(award.soundId, award.soundSpeed, award.soundVolume)
 		if award.extraSoundId then
 			task.delay(0.15, function()
@@ -1183,8 +1228,9 @@ local function playSequentialAwardsAnimation(data: any)
 		-- Emit outward glowing sparks from center
 		emitSparks2D(slotHolder, 28, 145, award.sparkColor)
 
+		-- Big physical pop scale-bounce overshoot
 		local popTween = TweenService:Create(slotScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Scale = 1.38,
+			Scale = 1.40,
 		})
 		popTween:Play()
 		popTween.Completed:Wait()
@@ -1194,7 +1240,7 @@ local function playSequentialAwardsAnimation(data: any)
 		}):Play()
 
 		-- =====================================================================
-		-- PHASE B: HOVER in the Spotlight while spinning in 3D
+		-- PHASE 3: HOVER in the Spotlight while spinning in full color
 		-- =====================================================================
 		local hoverTween = TweenService:Create(slotHolder, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
 			Position = UDim2.new(0.5, 0, centerScreenY, -10),
@@ -1203,7 +1249,7 @@ local function playSequentialAwardsAnimation(data: any)
 		hoverTween.Completed:Wait()
 
 		-- =====================================================================
-		-- PHASE C: SLIDE to the Left (into assigned slot tray position)
+		-- PHASE 4: SLIDE to the Left (into assigned slot tray position)
 		-- =====================================================================
 		playSound("rbxassetid://9114223170", 1.85, 0.35)
 
@@ -1213,15 +1259,8 @@ local function playSequentialAwardsAnimation(data: any)
 		slideTween:Play()
 		slideTween.Completed:Wait()
 
-		-- Lower slot ZIndex so next blackout covers it properly
-		slotHolder.ZIndex = 12
-		rayContainer.ZIndex = 11
-		viewport.ZIndex = 13
-		titleLbl.ZIndex = 14
-		valLbl.ZIndex = 14
-
-		-- Short settle pause before next reward goes black and pops in
-		task.wait(0.15)
+		-- Short settle pause before next reward appears as black silhouette
+		task.wait(0.14)
 	end
 
 	-- 5. Grand Finale: All 4 3D models spinning together!

@@ -34,6 +34,8 @@ local REGISTERED_EVENTS = {
 	"MeteorTimerSync",
 	"TutorialProgressSync",
 	"TutorialStepCompleted",
+	"OpenLeaderboardModal",
+	"LeaderboardSync",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -69,6 +71,7 @@ local REGISTERED_FUNCTIONS = {
 	"SkipTutorial",
 	"DevTeleportToShowroom",
 	"RedeemCode",
+	"GetLeaderboardData",
 }
 
 local function getRemotesFolder(): Folder

@@ -20,6 +20,7 @@ local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local MasteryConfig = require(ReplicatedStorage.Shared.Config.MasteryConfig)
 local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
 local CodeConfig = require(ReplicatedStorage.Shared.Config.CodeConfig)
+local LeaderboardConfig = require(ReplicatedStorage.Shared.Config.LeaderboardConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
@@ -2989,6 +2990,373 @@ local function openCodesModal(isRefresh: boolean?)
 			doRedeem()
 		end
 	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeBtn.Position = UDim2.new(1, -40, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.BorderSizePixel = 0
+	closeBtn.AutoButtonColor = true
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 8)
+	closeCorner.Parent = closeBtn
+	closeBtn.Activated:Connect(closeModal)
+
+	local tween = TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	})
+	tween:Play()
+end
+
+local function openLeaderboardModal(initialCategory: string?)
+	if activeModal and activeModal.Name == "LeaderboardModal" then
+		closeModal()
+		return
+	end
+
+	closeModal()
+	closeDialogue()
+
+	local selectedCategory: LeaderboardConfig.LeaderboardCategory = (initialCategory or "Cash") :: any
+	if not LeaderboardConfig.CATEGORIES[selectedCategory] then
+		selectedCategory = "Cash"
+	end
+
+	local modal = createStyledFrame(screenGui, "LeaderboardModal", UDim2.new(0, 560, 0, 560), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 20, 28))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local modalStroke = modal:FindFirstChildOfClass("UIStroke")
+	if modalStroke then
+		modalStroke.Color = Color3.fromRGB(255, 215, 60)
+		modalStroke.Thickness = 2.0
+	end
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 36)
+	title.Position = UDim2.new(0, 0, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "🏆 HALL OF CHAMPIONS 🏆"
+	title.TextColor3 = Color3.fromRGB(255, 220, 70)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 22
+	title.TextStrokeTransparency = 0.2
+	title.Parent = modal
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 18)
+	subTitle.Position = UDim2.new(0, 0, 0, 46)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Global Top Miners • Live Rankings"
+	subTitle.TextColor3 = Color3.fromRGB(180, 205, 230)
+	subTitle.Font = Enum.Font.GothamBold
+	subTitle.TextSize = 12
+	subTitle.TextStrokeTransparency = 0.3
+	subTitle.Parent = modal
+
+	-- Category Tabs Bar
+	local tabsRow = Instance.new("Frame")
+	tabsRow.Name = "CategoryTabs"
+	tabsRow.Size = UDim2.new(1, -36, 0, 38)
+	tabsRow.Position = UDim2.new(0.5, 0, 0, 72)
+	tabsRow.AnchorPoint = Vector2.new(0.5, 0)
+	tabsRow.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	tabsRow.BorderSizePixel = 0
+	tabsRow.Parent = modal
+
+	local tabsCorner = Instance.new("UICorner")
+	tabsCorner.CornerRadius = UDim.new(0, 10)
+	tabsCorner.Parent = tabsRow
+
+	local tabList = Instance.new("UIListLayout")
+	tabList.FillDirection = Enum.FillDirection.Horizontal
+	tabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	tabList.Padding = UDim.new(0, 6)
+	tabList.Parent = tabsRow
+
+	-- Scrollable List for Ranked Entries
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "LeaderboardScroll"
+	scroll.Size = UDim2.new(1, -36, 1, -196)
+	scroll.Position = UDim2.new(0.5, 0, 0, 118)
+	scroll.AnchorPoint = Vector2.new(0.5, 0)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 4
+	scroll.ScrollBarImageTransparency = 0.4
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.Parent = modal
+
+	local scrollLayout = Instance.new("UIListLayout")
+	scrollLayout.Padding = UDim.new(0, 6)
+	scrollLayout.Parent = scroll
+
+	-- "Your Rank" Sticky Bottom Card
+	local userRankCard = Instance.new("Frame")
+	userRankCard.Name = "UserRankCard"
+	userRankCard.Size = UDim2.new(1, -36, 0, 54)
+	userRankCard.Position = UDim2.new(0.5, 0, 1, -66)
+	userRankCard.AnchorPoint = Vector2.new(0.5, 0)
+	userRankCard.BackgroundColor3 = Color3.fromRGB(26, 32, 48)
+	userRankCard.BorderSizePixel = 0
+	userRankCard.Parent = modal
+
+	local userCorner = Instance.new("UICorner")
+	userCorner.CornerRadius = UDim.new(0, 10)
+	userCorner.Parent = userRankCard
+
+	local userStroke = Instance.new("UIStroke")
+	userStroke.Color = Color3.fromRGB(0, 200, 255)
+	userStroke.Thickness = 1.4
+	userStroke.Parent = userRankCard
+
+	local userAvatar = Instance.new("ImageLabel")
+	userAvatar.Size = UDim2.new(0, 38, 0, 38)
+	userAvatar.Position = UDim2.new(0, 10, 0.5, 0)
+	userAvatar.AnchorPoint = Vector2.new(0, 0.5)
+	userAvatar.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
+	userAvatar.BorderSizePixel = 0
+	userAvatar.Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=100&h=100", player.UserId)
+	userAvatar.Parent = userRankCard
+
+	local userAvCorner = Instance.new("UICorner")
+	userAvCorner.CornerRadius = UDim.new(1, 0)
+	userAvCorner.Parent = userAvatar
+
+	local userStandingLbl = Instance.new("TextLabel")
+	userStandingLbl.Size = UDim2.new(1, -220, 0, 20)
+	userStandingLbl.Position = UDim2.new(0, 56, 0, 8)
+	userStandingLbl.BackgroundTransparency = 1
+	userStandingLbl.Text = "YOUR STANDING: LOADING..."
+	userStandingLbl.TextColor3 = Color3.fromRGB(0, 220, 255)
+	userStandingLbl.Font = Enum.Font.GothamBlack
+	userStandingLbl.TextSize = 13
+	userStandingLbl.TextXAlignment = Enum.TextXAlignment.Left
+	userStandingLbl.Parent = userRankCard
+
+	local userSubLbl = Instance.new("TextLabel")
+	userSubLbl.Size = UDim2.new(1, -220, 0, 16)
+	userSubLbl.Position = UDim2.new(0, 56, 0, 28)
+	userSubLbl.BackgroundTransparency = 1
+	userSubLbl.Text = player.DisplayName .. " (@" .. player.Name .. ")"
+	userSubLbl.TextColor3 = Color3.fromRGB(180, 195, 215)
+	userSubLbl.Font = Enum.Font.GothamBold
+	userSubLbl.TextSize = 11
+	userSubLbl.TextXAlignment = Enum.TextXAlignment.Left
+	userSubLbl.Parent = userRankCard
+
+	local userValLbl = Instance.new("TextLabel")
+	userValLbl.Size = UDim2.new(0, 140, 1, 0)
+	userValLbl.Position = UDim2.new(1, -150, 0, 0)
+	userValLbl.BackgroundTransparency = 1
+	userValLbl.Text = "--"
+	userValLbl.TextColor3 = Color3.fromRGB(255, 215, 60)
+	userValLbl.Font = Enum.Font.GothamBlack
+	userValLbl.TextSize = 16
+	userValLbl.TextXAlignment = Enum.TextXAlignment.Right
+	userValLbl.Parent = userRankCard
+
+	local function loadCategory(cat: LeaderboardConfig.LeaderboardCategory)
+		selectedCategory = cat
+		local catDef = LeaderboardConfig.CATEGORIES[cat]
+		if not catDef then return end
+
+		userStroke.Color = catDef.color
+		userValLbl.TextColor3 = catDef.color
+
+		-- Re-render category tabs
+		for _, child in ipairs(tabsRow:GetChildren()) do
+			if child:IsA("TextButton") then
+				child:Destroy()
+			end
+		end
+
+		for _, cDef in ipairs(LeaderboardConfig.ORDERED_CATEGORIES) do
+			local isSelected = (cDef.id == selectedCategory)
+			local btn = Instance.new("TextButton")
+			btn.Name = "Tab_" .. cDef.id
+			btn.Size = UDim2.new(0.31, 0, 0.82, 0)
+			btn.BackgroundColor3 = if isSelected then cDef.color else Color3.fromRGB(34, 38, 52)
+			btn.Text = cDef.icon .. " " .. cDef.shortTitle
+			btn.TextColor3 = if isSelected then Color3.fromRGB(15, 18, 25) else Color3.fromRGB(200, 215, 235)
+			btn.Font = Enum.Font.GothamBlack
+			btn.TextSize = 13
+			btn.BorderSizePixel = 0
+			btn.AutoButtonColor = true
+			btn.Parent = tabsRow
+
+			local bCorner = Instance.new("UICorner")
+			bCorner.CornerRadius = UDim.new(0, 8)
+			bCorner.Parent = btn
+
+			btn.Activated:Connect(function()
+				if selectedCategory ~= cDef.id then
+					loadCategory(cDef.id)
+				end
+			end)
+		end
+
+		-- Clear scroll entries & show loading placeholder
+		for _, child in ipairs(scroll:GetChildren()) do
+			if child:IsA("Frame") or child:IsA("TextLabel") then
+				child:Destroy()
+			end
+		end
+
+		local loadingLbl = Instance.new("TextLabel")
+		loadingLbl.Name = "Loading"
+		loadingLbl.Size = UDim2.new(1, 0, 0, 60)
+		loadingLbl.BackgroundTransparency = 1
+		loadingLbl.Text = "⏳ Fetching live rankings..."
+		loadingLbl.TextColor3 = Color3.fromRGB(180, 200, 230)
+		loadingLbl.Font = Enum.Font.GothamBold
+		loadingLbl.TextSize = 14
+		loadingLbl.Parent = scroll
+
+		task.spawn(function()
+			local getFn = Remotes.getFunction("GetLeaderboardData")
+			local ok, res = pcall(function()
+				return getFn:InvokeServer(cat)
+			end)
+
+			if not modal or not modal.Parent or selectedCategory ~= cat then return end
+			loadingLbl:Destroy()
+
+			if not ok or not res or not res.entries then
+				local errLbl = Instance.new("TextLabel")
+				errLbl.Size = UDim2.new(1, 0, 0, 60)
+				errLbl.BackgroundTransparency = 1
+				errLbl.Text = "⚠️ Unable to load rankings. Please retry."
+				errLbl.TextColor3 = Color3.fromRGB(255, 90, 90)
+				errLbl.Font = Enum.Font.GothamBold
+				errLbl.TextSize = 13
+				errLbl.Parent = scroll
+				return
+			end
+
+			-- Update "Your Rank" sticky bottom card
+			if res.playerRank then
+				userStandingLbl.Text = string.format("YOUR STANDING: RANK #%d", res.playerRank)
+				local myVal = res.playerValue or 0
+				if cat == "Cash" then
+					userValLbl.Text = "$" .. FormatNumber.formatCompact(myVal)
+				elseif cat == "Power" then
+					userValLbl.Text = FormatNumber.formatCompact(myVal) .. " ⚡"
+				elseif cat == "Rebirths" then
+					userValLbl.Text = tostring(myVal) .. " 🔄"
+				end
+			end
+
+			-- Render ranked entries
+			for _, entry in ipairs(res.entries) do
+				local isLocal = entry.isLocalPlayer == true
+				local i = entry.rank
+
+				local row = Instance.new("Frame")
+				row.Name = "Row_" .. i
+				row.Size = UDim2.new(1, -6, 0, 44)
+				row.BackgroundColor3 = if isLocal then Color3.fromRGB(36, 45, 68)
+					elseif i == 1 then Color3.fromRGB(48, 42, 24)
+					elseif i == 2 then Color3.fromRGB(38, 42, 50)
+					elseif i == 3 then Color3.fromRGB(44, 34, 28)
+					elseif i % 2 == 0 then Color3.fromRGB(24, 27, 36)
+					else Color3.fromRGB(20, 22, 30)
+				row.BorderSizePixel = 0
+				row.Parent = scroll
+
+				local rowCorner = Instance.new("UICorner")
+				rowCorner.CornerRadius = UDim.new(0, 8)
+				rowCorner.Parent = row
+
+				local rowStroke = Instance.new("UIStroke")
+				rowStroke.Color = if isLocal then Color3.fromRGB(0, 230, 255)
+					elseif i == 1 then Color3.fromRGB(255, 215, 0)
+					elseif i == 2 then Color3.fromRGB(215, 225, 240)
+					elseif i == 3 then Color3.fromRGB(205, 127, 50)
+					else Color3.fromRGB(42, 48, 62)
+				rowStroke.Transparency = if isLocal then 0.2 elseif i <= 3 then 0.4 else 0.8
+				rowStroke.Thickness = if isLocal then 1.8 elseif i <= 3 then 1.4 else 1.0
+				rowStroke.Parent = row
+
+				-- Rank Badge
+				local rankBadge = Instance.new("TextLabel")
+				rankBadge.Size = UDim2.new(0, 44, 1, 0)
+				rankBadge.Position = UDim2.new(0, 4, 0, 0)
+				rankBadge.BackgroundTransparency = 1
+				rankBadge.Text = if i == 1 then "🥇" elseif i == 2 then "🥈" elseif i == 3 then "🥉" else "#" .. i
+				rankBadge.TextColor3 = if i == 1 then Color3.fromRGB(255, 215, 0)
+					elseif i == 2 then Color3.fromRGB(220, 230, 245)
+					elseif i == 3 then Color3.fromRGB(230, 150, 80)
+					elseif isLocal then Color3.fromRGB(0, 235, 255)
+					else Color3.fromRGB(160, 175, 195)
+				rankBadge.Font = Enum.Font.GothamBlack
+				rankBadge.TextSize = 16
+				rankBadge.Parent = row
+
+				-- Avatar Headshot
+				local avatar = Instance.new("ImageLabel")
+				avatar.Size = UDim2.new(0, 32, 0, 32)
+				avatar.Position = UDim2.new(0, 50, 0.5, 0)
+				avatar.AnchorPoint = Vector2.new(0, 0.5)
+				avatar.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
+				avatar.BorderSizePixel = 0
+				avatar.Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=100&h=100", entry.userId)
+				avatar.Parent = row
+
+				local avC = Instance.new("UICorner")
+				avC.CornerRadius = UDim.new(1, 0)
+				avC.Parent = avatar
+
+				-- Name Container
+				local nameLbl = Instance.new("TextLabel")
+				nameLbl.Size = UDim2.new(1, -250, 0, 20)
+				nameLbl.Position = UDim2.new(0, 92, 0, 4)
+				nameLbl.BackgroundTransparency = 1
+				nameLbl.Text = entry.displayName .. (if isLocal then " (YOU)" else "")
+				nameLbl.TextColor3 = if isLocal then Color3.fromRGB(0, 240, 255) else Color3.fromRGB(255, 255, 255)
+				nameLbl.Font = Enum.Font.GothamBlack
+				nameLbl.TextSize = 13
+				nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+				nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
+				nameLbl.Parent = row
+
+				local handleLbl = Instance.new("TextLabel")
+				handleLbl.Size = UDim2.new(1, -250, 0, 16)
+				handleLbl.Position = UDim2.new(0, 92, 0, 22)
+				handleLbl.BackgroundTransparency = 1
+				handleLbl.Text = "@" .. entry.username
+				handleLbl.TextColor3 = if isLocal then Color3.fromRGB(150, 220, 255) else Color3.fromRGB(140, 150, 168)
+				handleLbl.Font = Enum.Font.GothamBold
+				handleLbl.TextSize = 11
+				handleLbl.TextXAlignment = Enum.TextXAlignment.Left
+				handleLbl.TextTruncate = Enum.TextTruncate.AtEnd
+				handleLbl.Parent = row
+
+				-- Stat Value
+				local valLbl = Instance.new("TextLabel")
+				valLbl.Size = UDim2.new(0, 135, 1, 0)
+				valLbl.Position = UDim2.new(1, -145, 0, 0)
+				valLbl.BackgroundTransparency = 1
+				valLbl.Text = entry.formattedValue
+				valLbl.TextColor3 = catDef.color
+				valLbl.Font = Enum.Font.GothamBlack
+				valLbl.TextSize = 15
+				valLbl.TextXAlignment = Enum.TextXAlignment.Right
+				valLbl.Parent = row
+			end
+		end)
+	end
+
+	loadCategory(selectedCategory)
 
 	-- Close Button
 	local closeBtn = Instance.new("TextButton")
@@ -6519,6 +6887,9 @@ function UIController.buildHUD()
 	createMenuButton("CodesBtn", "🎟️ Codes", Color3.fromRGB(0, 185, 225), function()
 		openCodesModal()
 	end)
+	createMenuButton("LeaderboardBtn", "🏆 Top Players", Color3.fromRGB(245, 175, 25), function()
+		openLeaderboardModal()
+	end)
 
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
 	local harvestBtn = createMenuButton("HarvestBtn", "⛏️ Mine (+$$/💎)", Color3.fromRGB(0, 180, 120), function()
@@ -6798,12 +7169,23 @@ function UIController.buildHUD()
 			elseif not activeModal and not activeDialogue then
 				openCodesModal()
 			end
+		elseif input.KeyCode == Enum.KeyCode.L then
+			if activeModal and activeModal.Name == "LeaderboardModal" then
+				closeModal()
+			elseif not activeModal and not activeDialogue then
+				openLeaderboardModal()
+			end
 		elseif input.KeyCode == Enum.KeyCode.F6 then
 			triggerShowroomTeleport()
 		end
 	end)
 
 	-- Listen for server events
+	local openLbEvent = Remotes.getEvent("OpenLeaderboardModal")
+	openLbEvent.OnClientEvent:Connect(function(cat: string?)
+		openLeaderboardModal(cat)
+	end)
+
 	local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
 	dialogueEvent.OnClientEvent:Connect(function(npcName: string?)
 		print("🗣️ [UIController] OpenShopDialogue received from server for " .. tostring(npcName))

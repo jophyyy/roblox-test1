@@ -6174,17 +6174,28 @@ function UIController.buildHUD()
 
 	-- DEV TESTING 3D MODEL SHOWROOM BUTTON (Instantly teleports player to model exhibition platform)
 	createMenuButton("DevShowroomBtn", "🧪 Showroom (Dev)", Color3.fromRGB(0, 200, 240), function()
-		local devShowroomFn = Remotes.getFunction("DevTeleportToShowroom")
-		local ok, isAtShowroom = pcall(function()
-			return devShowroomFn:InvokeServer()
-		end)
-		if ok then
-			if isAtShowroom then
-				showFloatingPopup("🧪 TELEPORTED TO 3D MODEL SHOWROOM!", Color3.fromRGB(0, 240, 255), 0)
-			else
+		local char = player.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			local root = char.HumanoidRootPart :: BasePart
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+
+			local dist = (root.Position - Vector3.new(500, 60, 0)).Magnitude
+			if dist < 140 then
+				char:PivotTo(CFrame.new(0, 4, 0))
 				showFloatingPopup("🏡 TELEPORTED TO TOWN SPAWN!", Color3.fromRGB(80, 255, 140), 0)
+			else
+				char:PivotTo(CFrame.new(500, 63, -55))
+				showFloatingPopup("🧪 TELEPORTED TO 3D MODEL SHOWROOM!", Color3.fromRGB(0, 240, 255), 0)
 			end
 		end
+
+		task.spawn(function()
+			pcall(function()
+				local devShowroomFn = Remotes.getFunction("DevTeleportToShowroom")
+				devShowroomFn:InvokeServer()
+			end)
+		end)
 	end)
 
 	-- DEV TESTING METEOR EVENT BUTTON (Instantly summons a Celestial Meteor Strike)

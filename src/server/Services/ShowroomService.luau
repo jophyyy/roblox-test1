@@ -18,15 +18,7 @@ local ShowroomService = {}
 
 local SHOWROOM_CENTER = Vector3.new(500, 60, 0)
 local SHOWROOM_ARRIVAL = Vector3.new(500, 62, -55)
-local TOWN_SPAWN = Vector3.new(0, 3, 0)
-
--- Helper to create welded parts for boss models
-local function weldParts(part0: BasePart, part1: BasePart)
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = part0
-	weld.Part1 = part1
-	weld.Parent = part0
-end
+local TOWN_SPAWN = Vector3.new(0, 4, 0)
 
 local function createPart(
 	parent: Instance,
@@ -63,11 +55,11 @@ local function createPedestal(
 ): CFrame
 	local baseHeight = size.Y
 	-- Base Tier
-	local base = createPart(parent, name .. "_PedestalBase", Vector3.new(size.X, baseHeight * 0.7, size.Z), cf * CFrame.new(0, baseHeight * 0.35, 0), Color3.fromRGB(25, 28, 36), Enum.Material.Slate, true)
+	createPart(parent, name .. "_PedestalBase", Vector3.new(size.X, baseHeight * 0.7, size.Z), cf * CFrame.new(0, baseHeight * 0.35, 0), Color3.fromRGB(25, 28, 36), Enum.Material.Slate, true)
 	-- Top Plinth
 	local top = createPart(parent, name .. "_PedestalTop", Vector3.new(size.X - 0.4, baseHeight * 0.3, size.Z - 0.4), cf * CFrame.new(0, baseHeight * 0.85, 0), Color3.fromRGB(36, 40, 52), Enum.Material.SmoothPlastic, true)
 	-- Glowing Neon Trim Line
-	local trim = createPart(parent, name .. "_PedestalTrim", Vector3.new(size.X - 0.2, 0.12, size.Z - 0.2), cf * CFrame.new(0, baseHeight * 0.7, 0), accentColor, Enum.Material.Neon, false)
+	createPart(parent, name .. "_PedestalTrim", Vector3.new(size.X - 0.2, 0.12, size.Z - 0.2), cf * CFrame.new(0, baseHeight * 0.7, 0), accentColor, Enum.Material.Neon, false)
 
 	-- Overhead Label
 	local bb = Instance.new("BillboardGui")
@@ -75,7 +67,7 @@ local function createPedestal(
 	bb.Size = UDim2.new(0, 180, 0, 48)
 	bb.StudsOffset = Vector3.new(0, (size.Y * 0.5) + 3.8, 0)
 	bb.AlwaysOnTop = false
-	bb.MaxDistance = 45
+	bb.MaxDistance = 55
 	bb.Parent = top
 
 	local title = Instance.new("TextLabel")
@@ -110,10 +102,10 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	local islandCenter = SHOWROOM_CENTER
 
 	-- Main Showroom Floor (190 x 4 x 150)
-	local floor = createPart(showroomFolder, "ShowroomFloor", Vector3.new(190, 4, 150), CFrame.new(islandCenter + Vector3.new(0, -2, 0)), Color3.fromRGB(22, 25, 34), Enum.Material.Slate, true)
+	createPart(showroomFolder, "ShowroomFloor", Vector3.new(190, 4, 150), CFrame.new(islandCenter + Vector3.new(0, -2, 0)), Color3.fromRGB(22, 25, 34), Enum.Material.Slate, true)
 
 	-- Outer Perimeter Glowing Trim
-	local border = createPart(showroomFolder, "ShowroomBorder", Vector3.new(192, 0.4, 152), CFrame.new(islandCenter + Vector3.new(0, 0.2, 0)), Color3.fromRGB(0, 215, 255), Enum.Material.Neon, false)
+	createPart(showroomFolder, "ShowroomBorder", Vector3.new(192, 0.4, 152), CFrame.new(islandCenter + Vector3.new(0, 0.2, 0)), Color3.fromRGB(0, 215, 255), Enum.Material.Neon, false)
 
 	-- Perimeter Safety Glass Railings
 	local halfW = 95
@@ -121,10 +113,8 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	local railingColor = Color3.fromRGB(180, 240, 255)
 	local railingMat = Enum.Material.Glass
 
-	-- North & South Glass Railings
 	createPart(showroomFolder, "Railing_N", Vector3.new(190, 3.5, 0.8), CFrame.new(islandCenter + Vector3.new(0, 1.75, -halfD)), railingColor, railingMat, true)
 	createPart(showroomFolder, "Railing_S", Vector3.new(190, 3.5, 0.8), CFrame.new(islandCenter + Vector3.new(0, 1.75, halfD)), railingColor, railingMat, true)
-	-- West & East Glass Railings
 	createPart(showroomFolder, "Railing_W", Vector3.new(0.8, 3.5, 150), CFrame.new(islandCenter + Vector3.new(-halfW, 1.75, 0)), railingColor, railingMat, true)
 	createPart(showroomFolder, "Railing_E", Vector3.new(0.8, 3.5, 150), CFrame.new(islandCenter + Vector3.new(halfW, 1.75, 0)), railingColor, railingMat, true)
 
@@ -138,7 +128,7 @@ local function buildShowroomIsland(showroomFolder: Folder)
 		Vector3.new(0, 0, halfD - 2),
 	}
 	for i, cOff in ipairs(cornerOffsets) do
-		local pylon = createPart(showroomFolder, "Pylon_" .. i, Vector3.new(2.4, 10, 2.4), CFrame.new(islandCenter + cOff + Vector3.new(0, 5, 0)), Color3.fromRGB(36, 40, 54), Enum.Material.Metal, true)
+		createPart(showroomFolder, "Pylon_" .. i, Vector3.new(2.4, 10, 2.4), CFrame.new(islandCenter + cOff + Vector3.new(0, 5, 0)), Color3.fromRGB(36, 40, 54), Enum.Material.Metal, true)
 		local bulb = createPart(showroomFolder, "PylonBulb_" .. i, Vector3.new(2.0, 1.8, 2.0), CFrame.new(islandCenter + cOff + Vector3.new(0, 10.5, 0)), Color3.fromRGB(0, 230, 255), Enum.Material.Neon, false)
 
 		local light = Instance.new("PointLight")
@@ -159,7 +149,7 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	archBb.Size = UDim2.new(0, 650, 0, 70)
 	archBb.StudsOffset = Vector3.new(0, 2.5, 0)
 	archBb.AlwaysOnTop = false
-	archBb.MaxDistance = 90
+	archBb.MaxDistance = 110
 	archBb.Parent = archBeam
 
 	local archTitle = Instance.new("TextLabel")
@@ -184,18 +174,18 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	archSub.Parent = archBb
 
 	-- Teleport Arrival Landing Pad
-	local arrivalPad = createPart(showroomFolder, "ArrivalPad", Vector3.new(10, 0.4, 10), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -1.8, 0)), Color3.fromRGB(0, 180, 255), Enum.Material.Neon, true)
-	local arrRing = createPart(showroomFolder, "ArrivalRing", Vector3.new(12, 0.2, 12), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -1.9, 0)), Color3.fromRGB(255, 215, 0), Enum.Material.Neon, false)
+	createPart(showroomFolder, "ArrivalPad", Vector3.new(10, 0.4, 10), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -1.8, 0)), Color3.fromRGB(0, 180, 255), Enum.Material.Neon, true)
+	createPart(showroomFolder, "ArrivalRing", Vector3.new(12, 0.2, 12), CFrame.new(SHOWROOM_ARRIVAL + Vector3.new(0, -1.9, 0)), Color3.fromRGB(255, 215, 0), Enum.Material.Neon, false)
 
 	-- Physical Return Teleport Pad (to Town Spawn)
-	local returnPos = SHOWROOM_ARRIVAL + Vector3.new(0, 0, 12)
+	local returnPos = SHOWROOM_ARRIVAL + Vector3.new(0, 0, 14)
 	local returnPad = createPart(showroomFolder, "ReturnPad", Vector3.new(8, 0.4, 8), CFrame.new(returnPos + Vector3.new(0, -1.8, 0)), Color3.fromRGB(0, 230, 120), Enum.Material.Neon, true)
 
 	local returnBb = Instance.new("BillboardGui")
 	returnBb.Size = UDim2.new(0, 160, 0, 40)
 	returnBb.StudsOffset = Vector3.new(0, 2.6, 0)
 	returnBb.AlwaysOnTop = false
-	returnBb.MaxDistance = 45
+	returnBb.MaxDistance = 55
 	returnBb.Parent = returnPad
 
 	local returnLbl = Instance.new("TextLabel")
@@ -217,6 +207,8 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	prompt.Triggered:Connect(function(player)
 		local char = player.Character
 		if char and char:FindFirstChild("HumanoidRootPart") then
+			char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+			char.HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
 			char:PivotTo(CFrame.new(TOWN_SPAWN))
 		end
 	end)
@@ -224,6 +216,8 @@ local function buildShowroomIsland(showroomFolder: Folder)
 	returnPad.Touched:Connect(function(hit)
 		local player = Players:GetPlayerFromCharacter(hit.Parent)
 		if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			player.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.zero
+			player.Character.HumanoidRootPart.AssemblyAngularVelocity = Vector3.zero
 			player.Character:PivotTo(CFrame.new(TOWN_SPAWN))
 		end
 	end)
@@ -251,9 +245,9 @@ local function buildBossModels(showroomFolder: Folder)
 	local eyeGold = Color3.fromRGB(255, 200, 30)
 
 	local gSpawnCF = golemCF * CFrame.new(0, 9, 0)
-	local torso = createPart(golemModel, "Torso", Vector3.new(7.2, 7.5, 4.5), gSpawnCF, basaltDark, Enum.Material.Slate, true)
+	createPart(golemModel, "Torso", Vector3.new(7.2, 7.5, 4.5), gSpawnCF, basaltDark, Enum.Material.Slate, true)
 	local core = createPart(golemModel, "MagmaCore", Vector3.new(3.8, 4.5, 1.2), gSpawnCF * CFrame.new(0, 0.4, -2.1), magmaRed, Enum.Material.Neon, false)
-	local head = createPart(golemModel, "Head", Vector3.new(4.2, 3.8, 3.8), gSpawnCF * CFrame.new(0, 5.2, 0), basaltMid, Enum.Material.Slate, true)
+	createPart(golemModel, "Head", Vector3.new(4.2, 3.8, 3.8), gSpawnCF * CFrame.new(0, 5.2, 0), basaltMid, Enum.Material.Slate, true)
 
 	createPart(golemModel, "EyeL", Vector3.new(0.8, 0.5, 0.4), gSpawnCF * CFrame.new(-1.1, 5.4, -1.95), eyeGold, Enum.Material.Neon, false)
 	createPart(golemModel, "EyeR", Vector3.new(0.8, 0.5, 0.4), gSpawnCF * CFrame.new(1.1, 5.4, -1.95), eyeGold, Enum.Material.Neon, false)
@@ -303,7 +297,6 @@ local function buildBossModels(showroomFolder: Folder)
 	createPart(voidModel, "HornL", Vector3.new(1.4, 4.2, 1.4), vSpawnCF * CFrame.new(-2.6, 8.4, -0.6) * CFrame.Angles(math.rad(25), 0, math.rad(-25)), voidDark, Enum.Material.Slate, false)
 	createPart(voidModel, "HornR", Vector3.new(1.4, 4.2, 1.4), vSpawnCF * CFrame.new(2.6, 8.4, -0.6) * CFrame.Angles(math.rad(25), 0, math.rad(25)), voidDark, Enum.Material.Slate, false)
 
-	-- Swept Void Wings
 	createPart(voidModel, "WingL", Vector3.new(2.0, 10.0, 7.0), vSpawnCF * CFrame.new(-6.5, 4.0, 2.5) * CFrame.Angles(0, math.rad(-35), math.rad(25)), voidMid, Enum.Material.Slate, false)
 	createPart(voidModel, "WingR", Vector3.new(2.0, 10.0, 7.0), vSpawnCF * CFrame.new(6.5, 4.0, 2.5) * CFrame.Angles(0, math.rad(35), math.rad(-25)), voidMid, Enum.Material.Slate, false)
 	createPart(voidModel, "WingFeatherL", Vector3.new(1.0, 8.0, 5.0), vSpawnCF * CFrame.new(-7.0, 4.0, 2.8) * CFrame.Angles(0, math.rad(-35), math.rad(25)), astralPurple, Enum.Material.Neon, false)
@@ -339,7 +332,6 @@ local function buildPetModels(showroomFolder: Folder)
 	local petList = PetConfig.BASE_PET_IDS
 	local totalPets = #petList
 
-	-- Row 1: All 11 Base Pet Breeds (X spread: -75 to +75, Z = -18)
 	local spacingX = 14
 	local startX = -((totalPets - 1) * spacingX) / 2
 
@@ -360,10 +352,14 @@ local function buildPetModels(showroomFolder: Folder)
 			)
 
 			local model = PetModelBuilder.createModel(petDef, 1.05, false)
+			for _, desc in ipairs(model:GetDescendants()) do
+				if desc:IsA("BasePart") then
+					desc.Anchored = true
+				end
+			end
 			model:PivotTo(topCF * CFrame.new(0, 1.6, 0))
 			model.Parent = petFolder
 
-			-- Continuous gentle hovering / rotating
 			task.spawn(function()
 				local basePivot = model:GetPivot()
 				local angle = (i * 0.5)
@@ -377,7 +373,7 @@ local function buildPetModels(showroomFolder: Folder)
 		end
 	end
 
-	-- Row 2: Special Tier Transformations Showcase (Golden & Rainbow variants, Z = -34)
+	-- Special Tier Transformations Showcase (Golden & Rainbow variants)
 	local tierShowcases = {
 		{ id = "CrystalDoge_Golden", title = "🌟 GOLDEN CRYSTAL PUP", sub = "3x Boost • Crafted from 3 Normal", col = Color3.fromRGB(255, 215, 0) },
 		{ id = "SparkleKitty_Rainbow", title = "🌈 RAINBOW SPARKLE KITTY", sub = "9x Boost • Crafted from 3 Golden", col = Color3.fromRGB(255, 100, 220) },
@@ -401,6 +397,11 @@ local function buildPetModels(showroomFolder: Folder)
 			)
 
 			local model = PetModelBuilder.createModel(petDef, 1.25, false)
+			for _, desc in ipairs(model:GetDescendants()) do
+				if desc:IsA("BasePart") then
+					desc.Anchored = true
+				end
+			end
 			model:PivotTo(topCF * CFrame.new(0, 2.0, 0))
 			model.Parent = petFolder
 
@@ -430,9 +431,9 @@ local function buildOreModels(showroomFolder: Folder)
 		-- Zone 1
 		"Stone", "Copper", "Iron", "Gold", "Diamond", "CosmicVoid",
 		-- Zone 2
-		"MagmaBasalt", "MoltenObsidian", "NetheriteSpike",
+		"MagmaBasalt", "ThunderQuartz", "MoltenCrystal", "InfernalGeode",
 		-- Zone 3
-		"AbyssalCore", "AstralStarstone", "ChronosRiftCore",
+		"StarlightCrystal", "NebulaGeode", "AstralVoidstone", "DarkMatterCore",
 	}
 
 	local spacingX = 14
@@ -462,29 +463,33 @@ local function buildOreModels(showroomFolder: Folder)
 				topCF.Position + Vector3.new(0, 0.2, 0),
 				oreDef.zone
 			)
+			for _, desc in ipairs(oreData.model:GetDescendants()) do
+				if desc:IsA("BasePart") then
+					desc.Anchored = true
+				end
+			end
 			oreData.model.Parent = oreFolder
 		end
 	end
 end
 
 -- =========================================================================
--- 5. ALL 6 3D LOOTBOX / CRATE MODELS
+-- 5. ALL 5 3D LOOTBOX / CRATE MODELS
 -- =========================================================================
 local function buildLootBoxModels(showroomFolder: Folder)
 	local boxFolder = Instance.new("Folder")
 	boxFolder.Name = "LootBoxExhibition"
 	boxFolder.Parent = showroomFolder
 
-	local boxOrder = {
+	local boxOrder = LootBoxConfig.ORDERED_IDS or {
 		"wooden_chest",
-		"iron_safe",
-		"golden_cache",
-		"magma_coffer",
-		"void_vault",
-		"cyber_relic",
+		"gold_chest",
+		"magma_chest",
+		"void_chest",
+		"cyber_chest",
 	}
 
-	local spacingX = 18
+	local spacingX = 20
 	local startX = -((#boxOrder - 1) * spacingX) / 2
 
 	for i, boxKey in ipairs(boxOrder) do
@@ -497,13 +502,12 @@ local function buildLootBoxModels(showroomFolder: Folder)
 				boxFolder,
 				boxDef.id,
 				pedCF,
-				Vector3.new(11, 1.4, 10),
+				Vector3.new(12, 1.4, 10),
 				boxDef.icon .. " " .. boxDef.name:upper(),
 				string.format("%s Tier • %s", boxDef.tier, boxDef.title),
 				tierColor
 			)
 
-			-- Build 3D Chest Geometry
 			local chestModel = Instance.new("Model")
 			chestModel.Name = "ShowroomChest_" .. boxDef.id
 			chestModel.Parent = boxFolder
@@ -517,16 +521,12 @@ local function buildLootBoxModels(showroomFolder: Folder)
 			local trimMaterial = if (boxDef.modelType == "Cyber" or boxDef.modelType == "Void" or boxDef.modelType == "Magma") then Enum.Material.Neon else Enum.Material.Metal
 
 			local chestBase = createPart(chestModel, "Base", Vector3.new(4.2, 2.2, 3.0), topCF * CFrame.new(0, 1.1, 0), boxDef.color, baseMaterial, true)
-			-- Bands
 			createPart(chestModel, "BandL", Vector3.new(0.35, 2.25, 3.06), topCF * CFrame.new(-1.8, 1.1, 0), boxDef.accentColor, trimMaterial, false)
 			createPart(chestModel, "BandR", Vector3.new(0.35, 2.25, 3.06), topCF * CFrame.new(1.8, 1.1, 0), boxDef.accentColor, trimMaterial, false)
-			-- Lid
-			local lid = createPart(chestModel, "Lid", Vector3.new(4.3, 1.2, 3.1), topCF * CFrame.new(0, 2.6, 0), boxDef.color, baseMaterial, true)
+			createPart(chestModel, "Lid", Vector3.new(4.3, 1.2, 3.1), topCF * CFrame.new(0, 2.6, 0), boxDef.color, baseMaterial, true)
 			createPart(chestModel, "LidCrown", Vector3.new(4.0, 0.45, 2.8), topCF * CFrame.new(0, 3.3, 0), boxDef.accentColor, trimMaterial, false)
-			-- Front Latch
 			createPart(chestModel, "Latch", Vector3.new(0.9, 1.0, 0.4), topCF * CFrame.new(0, 2.0, -1.6), boxDef.accentColor, Enum.Material.Neon, false)
 
-			-- Internal glowing pointlight
 			local pLight = Instance.new("PointLight")
 			pLight.Color = boxDef.accentColor
 			pLight.Range = 12
@@ -553,31 +553,33 @@ local function buildPickaxeModels(showroomFolder: Folder)
 		"shovel_magma",
 	}
 
-	-- Arranged along the West Wing of Showroom (X = -72, Z = -45 to +10)
-	local spacingZ = 12
+	local spacingZ = 13
 	local startZ = -45
 
 	for i, pickId in ipairs(pickaxes) do
-		local toolDef = ShopConfig.ITEMS[pickId]
+		local toolDef = ShopConfig.getShovel(pickId)
 		if toolDef then
 			local posZ = startZ + (i - 1) * spacingZ
 			local pedCF = CFrame.new(SHOWROOM_CENTER + Vector3.new(-72, 0, posZ))
-			local rarityCol = ShopConfig.getRarityColor(toolDef.rarity)
 			local topCF = createPedestal(
 				pickFolder,
 				toolDef.id,
 				pedCF,
 				Vector3.new(9, 1.2, 8),
-				toolDef.name:upper(),
-				string.format("%s • %dx Power • +%d%% Cash", toolDef.rarity, toolDef.power, toolDef.cashMultiplier or 1),
-				rarityCol
+				toolDef.icon .. " " .. toolDef.name:upper(),
+				string.format("%.1fx Power • +$%d/click", toolDef.powerMultiplier or 1, toolDef.clickCash or 0),
+				toolDef.color
 			)
 
 			local pickModel = PickaxeModelBuilder.buildPickaxe(toolDef)
+			for _, desc in ipairs(pickModel:GetDescendants()) do
+				if desc:IsA("BasePart") then
+					desc.Anchored = true
+				end
+			end
 			pickModel:PivotTo(topCF * CFrame.new(0, 3.2, 0) * CFrame.Angles(0, 0, math.rad(-15)))
 			pickModel.Parent = pickFolder
 
-			-- Continuous gentle rotation
 			task.spawn(function()
 				local basePivot = pickModel:GetPivot()
 				local angle = (i * 0.6)
@@ -596,26 +598,40 @@ end
 -- PUBLIC TELEPORT HANDLER
 -- =========================================================================
 function ShowroomService.teleportPlayer(player: Player): boolean
-	local char = player.Character
+	local char = player.Character or player.CharacterAdded:Wait()
 	if not char then return false end
-	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local root = char:WaitForChild("HumanoidRootPart", 3) :: BasePart?
 	if not root then return false end
 
 	local distToShowroom = (root.Position - SHOWROOM_CENTER).Magnitude
-	if distToShowroom < 130 then
-		-- Already at showroom: teleport back to town
-		char:PivotTo(CFrame.new(TOWN_SPAWN))
-		return false
+	local targetCF: CFrame
+	local isGoingToShowroom = false
+
+	if distToShowroom < 140 then
+		targetCF = CFrame.new(TOWN_SPAWN)
+		isGoingToShowroom = false
 	else
-		-- Teleport to showroom
-		char:PivotTo(CFrame.new(SHOWROOM_ARRIVAL))
-		return true
+		targetCF = CFrame.new(SHOWROOM_ARRIVAL)
+		isGoingToShowroom = true
 	end
+
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.AssemblyAngularVelocity = Vector3.zero
+	char:PivotTo(targetCF)
+
+	return isGoingToShowroom
 end
 
 function ShowroomService.init()
-	print("🧪 [ShowroomService] Constructing 3D Model Showroom Platform...")
+	print("🧪 [ShowroomService] Initializing 3D Model Showroom Service...")
 
+	-- 1. Register and bind RemoteFunction FIRST so player teleports work immediately
+	local tpFn = Remotes.getFunction("DevTeleportToShowroom")
+	tpFn.OnServerInvoke = function(player: Player)
+		return ShowroomService.teleportPlayer(player)
+	end
+
+	-- 2. Build or rebuild Showroom Platform in Workspace
 	local existing = Workspace:FindFirstChild("DevShowroom")
 	if existing then
 		existing:Destroy()
@@ -625,20 +641,25 @@ function ShowroomService.init()
 	showroomFolder.Name = "DevShowroom"
 	showroomFolder.Parent = Workspace
 
-	buildShowroomIsland(showroomFolder)
-	buildBossModels(showroomFolder)
-	buildPetModels(showroomFolder)
-	buildOreModels(showroomFolder)
-	buildLootBoxModels(showroomFolder)
-	buildPickaxeModels(showroomFolder)
+	local sections = {
+		{ name = "Island", fn = function() buildShowroomIsland(showroomFolder) end },
+		{ name = "Bosses", fn = function() buildBossModels(showroomFolder) end },
+		{ name = "Pets", fn = function() buildPetModels(showroomFolder) end },
+		{ name = "Ores", fn = function() buildOreModels(showroomFolder) end },
+		{ name = "LootBoxes", fn = function() buildLootBoxModels(showroomFolder) end },
+		{ name = "Pickaxes", fn = function() buildPickaxeModels(showroomFolder) end },
+	}
 
-	-- Hook up DevTeleportToShowroom RemoteFunction
-	local tpFn = Remotes.getFunction("DevTeleportToShowroom")
-	tpFn.OnServerInvoke = function(player: Player)
-		return ShowroomService.teleportPlayer(player)
+	for _, sec in ipairs(sections) do
+		local ok, err = pcall(sec.fn)
+		if ok then
+			print(string.format("  ✓ [ShowroomService] Built %s", sec.name))
+		else
+			warn(string.format("  ❌ [ShowroomService] Failed to build %s: %s", sec.name, tostring(err)))
+		end
 	end
 
-	print("✅ [ShowroomService] 3D Model Showroom Platform successfully constructed at (500, 60, 0)!")
+	print("✅ [ShowroomService] 3D Model Showroom Platform online at (500, 60, 0)!")
 end
 
 return ShowroomService

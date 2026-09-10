@@ -13,17 +13,28 @@ local LootBoxService = require(script.Services.LootBoxService)
 
 print("⛏️ [Mining Simulator] Initializing Server Services...")
 
-MarketplaceServiceHandler.init()
-MapService.init()
-DataService.init()
-MasteryService.init()
-PetService.init()
-RebirthService.init()
-MiningService.init()
-BossService.init()
-TrailService.init()
-PickaxeService.init()
-LootBoxService.init()
+local services = {
+	{ name = "MarketplaceServiceHandler", fn = MarketplaceServiceHandler.init },
+	{ name = "MapService", fn = MapService.init },
+	{ name = "DataService", fn = DataService.init },
+	{ name = "MasteryService", fn = MasteryService.init },
+	{ name = "PetService", fn = PetService.init },
+	{ name = "RebirthService", fn = RebirthService.init },
+	{ name = "MiningService", fn = MiningService.init },
+	{ name = "BossService", fn = BossService.init },
+	{ name = "TrailService", fn = TrailService.init },
+	{ name = "PickaxeService", fn = PickaxeService.init },
+	{ name = "LootBoxService", fn = LootBoxService.init },
+}
+
+for _, s in ipairs(services) do
+	local ok, err = pcall(s.fn)
+	if ok then
+		print(string.format("  ✓ [%s] Initialized", s.name))
+	else
+		warn(string.format("  ❌ [%s] Init failed: %s", s.name, tostring(err)))
+	end
+end
 
 print("✅ [Mining Simulator] Server Services Successfully Initialized!")
 

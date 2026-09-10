@@ -11,7 +11,7 @@ local MarketplaceServiceHandler = require(script.Parent.MarketplaceServiceHandle
 local TrainingConfig = require(ReplicatedStorage.Shared.Config.TrainingConfig)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 local OreModelBuilder = require(ReplicatedStorage.Shared.Utils.OreModelBuilder)
-local TownBuildingBuilder = require(ReplicatedStorage.Shared.Utils.TownBuildingBuilder)
+local TownBuildingBuilder = require(script.Parent.TownBuildingBuilder)
 
 local MapService = {}
 local brazierLights: { PointLight } = {}
@@ -1439,28 +1439,40 @@ function MapService.init()
 
 	print("🗺️ [MapService] Generating Retro Roguelike Stud Environment...")
 	brazierLights = {}
-	MapService.setupAtmosphere()
-	MapService.buildBase(mapFolder)
-	MapService.buildMountains(mapFolder)
-	MapService.buildPlazaAndPaths(mapFolder)
-	MapService.buildShopStall(mapFolder)
-	MapService.buildTrailShopStall(mapFolder)
-	MapService.buildEggStand(mapFolder)
-	MapService.buildRobuxEggStand(mapFolder)
-	MapService.buildVIPThrone(mapFolder)
-	MapService.buildPetFusionMachine(mapFolder)
-	MapService.buildDungeonRuins(mapFolder)
-	MapService.buildZone2Terrain(mapFolder)
-	MapService.buildMagmaGate(mapFolder)
-	MapService.buildMagmaEggStand(mapFolder)
-	MapService.buildBossArena(mapFolder)
-	MapService.buildTrainingQuarry(mapFolder)
-	MapService.buildZone3Terrain(mapFolder)
-	MapService.buildCosmicGate(mapFolder)
-	MapService.buildCosmicEggStand(mapFolder)
-	MapService.buildCosmicBossArena(mapFolder)
-	MapService.buildTrees(mapFolder)
-	MapService.buildFlora(mapFolder)
+
+	local stages = {
+		{ name = "Atmosphere", fn = function() MapService.setupAtmosphere() end },
+		{ name = "Meadow Base", fn = function() MapService.buildBase(mapFolder) end },
+		{ name = "Mountains", fn = function() MapService.buildMountains(mapFolder) end },
+		{ name = "Plaza & Paths", fn = function() MapService.buildPlazaAndPaths(mapFolder) end },
+		{ name = "Blacksmith Forge", fn = function() MapService.buildShopStall(mapFolder) end },
+		{ name = "Trail Artisan Boutique", fn = function() MapService.buildTrailShopStall(mapFolder) end },
+		{ name = "Pet Hatchery Sanctuary", fn = function() MapService.buildEggStand(mapFolder) end },
+		{ name = "VIP Pavilion", fn = function() MapService.buildVIPThrone(mapFolder) end },
+		{ name = "Alchemy Fusion Lab", fn = function() MapService.buildPetFusionMachine(mapFolder) end },
+		{ name = "Dungeon Ruins", fn = function() MapService.buildDungeonRuins(mapFolder) end },
+		{ name = "Zone 2 Magma Terrain", fn = function() MapService.buildZone2Terrain(mapFolder) end },
+		{ name = "Magma Gate", fn = function() MapService.buildMagmaGate(mapFolder) end },
+		{ name = "Magma Egg Stand", fn = function() MapService.buildMagmaEggStand(mapFolder) end },
+		{ name = "Magma Boss Arena", fn = function() MapService.buildBossArena(mapFolder) end },
+		{ name = "Power Training Quarry", fn = function() MapService.buildTrainingQuarry(mapFolder) end },
+		{ name = "Zone 3 Cosmic Terrain", fn = function() MapService.buildZone3Terrain(mapFolder) end },
+		{ name = "Cosmic Gate", fn = function() MapService.buildCosmicGate(mapFolder) end },
+		{ name = "Cosmic Egg Stand", fn = function() MapService.buildCosmicEggStand(mapFolder) end },
+		{ name = "Cosmic Boss Arena", fn = function() MapService.buildCosmicBossArena(mapFolder) end },
+		{ name = "Retro Trees", fn = function() MapService.buildTrees(mapFolder) end },
+		{ name = "Flora & Shrooms", fn = function() MapService.buildFlora(mapFolder) end },
+	}
+
+	for _, stage in ipairs(stages) do
+		local ok, err = pcall(stage.fn)
+		if ok then
+			print("  ✓ [MapService] " .. stage.name .. " built successfully")
+		else
+			warn("  ❌ [MapService] Error building " .. stage.name .. ": " .. tostring(err))
+		end
+	end
+
 	print("✅ [MapService] Retro Roguelike Map Generation Complete! (Zone 1 Meadow, Zone 2 Magma, Quarry & Zone 3 Cosmic Active)")
 end
 

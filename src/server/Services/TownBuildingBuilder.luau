@@ -3,9 +3,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
-local DataService = require(game:GetService("ServerScriptService").Server.Services.DataService)
-local PetService = require(game:GetService("ServerScriptService").Server.Services.PetService)
-local MarketplaceServiceHandler = require(game:GetService("ServerScriptService").Server.Services.MarketplaceServiceHandler)
+local DataService = require(script.Parent.DataService)
+local PetService = require(script.Parent.PetService)
 
 local TownBuildingBuilder = {}
 

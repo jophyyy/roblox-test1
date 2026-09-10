@@ -3,11 +3,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local PickaxeModelBuilder = require(ReplicatedStorage.Shared.Utils.PickaxeModelBuilder)
 local DataService = require(script.Parent.DataService)
 
 local PickaxeService = {}
 
-local BASE_GRIP = CFrame.new(0, -0.9, 0) * CFrame.Angles(math.rad(10), 0, 0)
+local BASE_GRIP = CFrame.new(0, -0.65, 0) * CFrame.Angles(math.rad(12), 0, 0)
 
 -- Spawns or updates the 3D pickaxe model welded permanently to the player's right hand
 function PickaxeService.updatePlayerPickaxe(player: Player)
@@ -51,63 +52,10 @@ function PickaxeService.updatePlayerPickaxe(player: Player)
 	local toolDef = ShopConfig.getShovel(shovelId)
 	if not toolDef then return end
 
-	local isNeon = (toolDef.id == "shovel_diamond" or toolDef.id == "shovel_void" or toolDef.id == "shovel_magma" or toolDef.id == "shovel_infernal")
-
-	-- 4. Construct Authentic Retro 3D Pickaxe Model
-	local pickaxeModel = Instance.new("Model")
-	pickaxeModel.Name = "EquippedPickaxe"
-
-	-- Handle (Wooden Shaft)
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.35, 2.5, 0.35)
-	handle.Color = Color3.fromRGB(130, 85, 55)
-	handle.Material = Enum.Material.Wood
-	handle.TopSurface = Enum.SurfaceType.Smooth
-	handle.BottomSurface = Enum.SurfaceType.Smooth
-	handle.CanCollide = false
-	handle.Massless = true
-	handle.Anchored = false
-	handle.Parent = pickaxeModel
-	pickaxeModel.PrimaryPart = handle
-
-	-- Pickaxe Dual Curved Head with Studs
-	local head = Instance.new("Part")
-	head.Name = "PickHead"
-	head.Size = Vector3.new(1.9, 0.5, 0.55)
-	head.Color = toolDef.color
-	head.Material = if isNeon then Enum.Material.Neon else Enum.Material.Metal
-	head.TopSurface = Enum.SurfaceType.Studs
-	head.BottomSurface = Enum.SurfaceType.Smooth
-	head.CanCollide = false
-	head.Massless = true
-	head.Anchored = false
-	head.CFrame = handle.CFrame * CFrame.new(0, 1.15, 0)
-	head.Parent = pickaxeModel
-
-	local headWeld = Instance.new("WeldConstraint")
-	headWeld.Part0 = handle
-	headWeld.Part1 = head
-	headWeld.Parent = handle
-
-	-- Glowing point light and sparks for higher-tier pickaxes
-	if isNeon then
-		local light = Instance.new("PointLight")
-		light.Color = toolDef.color
-		light.Brightness = 2.4
-		light.Range = 9
-		light.Parent = head
-
-		local attach = Instance.new("Attachment")
-		attach.Parent = head
-
-		local sparks = Instance.new("ParticleEmitter")
-		sparks.Size = NumberSequence.new(0.25, 0.05)
-		sparks.Rate = 10
-		sparks.Speed = NumberRange.new(0.5, 1.5)
-		sparks.Color = ColorSequence.new(toolDef.color)
-		sparks.Parent = attach
-	end
+	-- 4. Construct Heroic Multi-Part 3D Pickaxe Model via Builder
+	local pickaxeModel = PickaxeModelBuilder.buildPickaxe(toolDef)
+	local handle = pickaxeModel.PrimaryPart or pickaxeModel:FindFirstChild("Handle") :: BasePart?
+	if not handle then return end
 
 	-- 5. Weld Handle directly to Player's Right Hand via Motor6D
 	local gripAtt = rHand:FindFirstChild("RightGripAttachment") :: Attachment?

@@ -26,7 +26,7 @@ local activeHoldTrack: AnimationTrack? = nil
 
 -- Current procedural swing angle applied during RunService.Stepped (overrides Roblox Animate script)
 local currentArmSwingAngle = 0
-local BASE_TOOL_GRIP = CFrame.new(0, -0.9, 0) * CFrame.Angles(math.rad(10), 0, 0)
+local BASE_TOOL_GRIP = CFrame.new(0, -0.65, 0) * CFrame.Angles(math.rad(12), 0, 0)
 
 -- Ensures the character is permanently in the active pickaxe-ready holding pose
 function MiningClient.updateHoldingPose()
@@ -147,15 +147,15 @@ function MiningClient.performSwing()
 				local p = progress / 0.30
 				currentArmSwingAngle = p * 45
 				if gripMotor then
-					gripMotor.C1 = BASE_TOOL_GRIP * CFrame.new(0, 0.2 * p, -0.3 * p) * CFrame.Angles(math.rad(-40 * p), 0, math.rad(-10 * p))
+					gripMotor.C1 = BASE_TOOL_GRIP * CFrame.new(0, 0.2 * p, -0.3 * p) * CFrame.Angles(math.rad(-40 * p), 0, 0)
 				end
 			elseif progress <= 0.65 then
 				-- Phase 2: Heavy Downward Strike (Chop hard down into the ore!)
 				local p = (progress - 0.30) / 0.35
 				currentArmSwingAngle = 45 - (p * 135) -- Slams from +45 down to -90 degrees
 				if gripMotor then
-					local windupGrip = BASE_TOOL_GRIP * CFrame.new(0, 0.2, -0.3) * CFrame.Angles(math.rad(-40), 0, math.rad(-10))
-					local strikeGrip = BASE_TOOL_GRIP * CFrame.new(0, -0.3, 0.4) * CFrame.Angles(math.rad(75), 0, math.rad(15))
+					local windupGrip = BASE_TOOL_GRIP * CFrame.new(0, 0.2, -0.3) * CFrame.Angles(math.rad(-40), 0, 0)
+					local strikeGrip = BASE_TOOL_GRIP * CFrame.new(0, -0.25, 0.35) * CFrame.Angles(math.rad(75), 0, 0)
 					gripMotor.C1 = windupGrip:Lerp(strikeGrip, p)
 				end
 			else
@@ -164,7 +164,7 @@ function MiningClient.performSwing()
 				local easedP = TweenService:GetValue(p, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 				currentArmSwingAngle = -90 * (1 - easedP)
 				if gripMotor then
-					local strikeGrip = BASE_TOOL_GRIP * CFrame.new(0, -0.3, 0.4) * CFrame.Angles(math.rad(75), 0, math.rad(15))
+					local strikeGrip = BASE_TOOL_GRIP * CFrame.new(0, -0.25, 0.35) * CFrame.Angles(math.rad(75), 0, 0)
 					gripMotor.C1 = strikeGrip:Lerp(BASE_TOOL_GRIP, easedP)
 				end
 			end

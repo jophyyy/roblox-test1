@@ -15,6 +15,7 @@ local TutorialService = require(script.Services.TutorialService)
 local ShowroomService = require(script.Services.ShowroomService)
 local CodeService = require(script.Services.CodeService)
 local LeaderboardService = require(script.Services.LeaderboardService)
+local DailyRewardService = require(script.Services.DailyRewardService)
 
 print("⛏️ [Mining Simulator] Initializing Server Services...")
 
@@ -35,6 +36,7 @@ local services = {
 	{ name = "ShowroomService", fn = ShowroomService.init },
 	{ name = "CodeService", fn = CodeService.init },
 	{ name = "LeaderboardService", fn = LeaderboardService.init },
+	{ name = "DailyRewardService", fn = DailyRewardService.init },
 }
 
 for _, s in ipairs(services) do

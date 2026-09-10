@@ -36,6 +36,8 @@ local REGISTERED_EVENTS = {
 	"TutorialStepCompleted",
 	"OpenLeaderboardModal",
 	"LeaderboardSync",
+	"PromptDailyRewardModal",
+	"OpenDailyRewardModal",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -72,6 +74,9 @@ local REGISTERED_FUNCTIONS = {
 	"DevTeleportToShowroom",
 	"RedeemCode",
 	"GetLeaderboardData",
+	"ClaimDailyReward",
+	"GetDailyRewardStatus",
+	"DevAdvanceDailyReward",
 }
 
 local function getRemotesFolder(): Folder

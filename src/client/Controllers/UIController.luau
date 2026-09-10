@@ -21,6 +21,7 @@ local MasteryConfig = require(ReplicatedStorage.Shared.Config.MasteryConfig)
 local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
 local CodeConfig = require(ReplicatedStorage.Shared.Config.CodeConfig)
 local LeaderboardConfig = require(ReplicatedStorage.Shared.Config.LeaderboardConfig)
+local DailyRewardConfig = require(ReplicatedStorage.Shared.Config.DailyRewardConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
@@ -48,6 +49,8 @@ local activeDialogue: Frame? = nil
 local currentShopTab = "Shovel"
 local isSpinningWheel = false
 local wheelFreeBadge: Frame? = nil
+local dailyRewardBadge: Frame? = nil
+local currentSelectedDailyWeek = 1
 
 -- Typewriter and RPG Dialogue State
 local dialogueTypingThread: thread? = nil
@@ -136,6 +139,10 @@ function UIController.updateHUD()
 		local elapsed = now - lastSpin
 		local hasFree = (cachedData.FreeSpins and cachedData.FreeSpins > 0) or (elapsed >= WheelConfig.COOLDOWN_SECONDS)
 		wheelFreeBadge.Visible = hasFree
+	end
+	if dailyRewardBadge and cachedData then
+		local canClaim = DailyRewardConfig.canClaim(cachedData.LastDailyClaimTime)
+		dailyRewardBadge.Visible = canClaim
 	end
 
 	-- Auto-update whichever modal is currently active with zero latency
@@ -3357,6 +3364,690 @@ local function openLeaderboardModal(initialCategory: string?)
 	end
 
 	loadCategory(selectedCategory)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeBtn.Position = UDim2.new(1, -40, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.BorderSizePixel = 0
+	closeBtn.AutoButtonColor = true
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 8)
+	closeCorner.Parent = closeBtn
+	closeBtn.Activated:Connect(closeModal)
+
+	local tween = TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	})
+	tween:Play()
+end
+
+local function openDailyRewardModal(isRefresh: boolean?)
+	if activeModal and activeModal.Name == "DailyRewardModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
+	end
+
+	closeModal()
+	closeDialogue()
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		else
+			return
+		end
+	end
+
+	local curWeek = cachedData.DailyRewardWeek or 1
+	local curDay = cachedData.DailyRewardDay or 1
+	local streak = cachedData.DailyRewardStreak or 0
+	local lastClaim = cachedData.LastDailyClaimTime or 0
+
+	if isRefresh ~= true then
+		currentSelectedDailyWeek = curWeek
+	end
+
+	local modal = createStyledFrame(screenGui, "DailyRewardModal", UDim2.new(0, 750, 0, 580), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(16, 20, 30))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local modalStroke = modal:FindFirstChildOfClass("UIStroke")
+	if modalStroke then
+		modalStroke.Color = Color3.fromRGB(245, 185, 25)
+		modalStroke.Thickness = 2.0
+	end
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 34)
+	title.Position = UDim2.new(0, 0, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "📅 7-WEEK DAILY LOGIN REWARDS 📅"
+	title.TextColor3 = Color3.fromRGB(255, 215, 0)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 20
+	title.TextStrokeTransparency = 0.2
+	title.Parent = modal
+
+	-- Subtitle (Streak & Status)
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 18)
+	subTitle.Position = UDim2.new(0, 0, 0, 42)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = string.format("🔥 Login Streak: %d Days  •  Current: Week %d, Day %d  •  49 Escalating Prizes!", streak, curWeek, curDay)
+	subTitle.TextColor3 = Color3.fromRGB(180, 220, 255)
+	subTitle.Font = Enum.Font.GothamBold
+	subTitle.TextSize = 12
+	subTitle.TextStrokeTransparency = 0.3
+	subTitle.Parent = modal
+
+	-- Week Tabs Frame
+	local tabsFrame = Instance.new("Frame")
+	tabsFrame.Name = "TabsFrame"
+	tabsFrame.Size = UDim2.new(1, -40, 0, 36)
+	tabsFrame.Position = UDim2.new(0.5, 0, 0, 68)
+	tabsFrame.AnchorPoint = Vector2.new(0.5, 0)
+	tabsFrame.BackgroundTransparency = 1
+	tabsFrame.Parent = modal
+
+	local tabsLayout = Instance.new("UIListLayout")
+	tabsLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	tabsLayout.Padding = UDim.new(0, 6)
+	tabsLayout.Parent = tabsFrame
+
+	-- Week Info Banner
+	local infoBanner = Instance.new("Frame")
+	infoBanner.Name = "InfoBanner"
+	infoBanner.Size = UDim2.new(1, -40, 0, 28)
+	infoBanner.Position = UDim2.new(0.5, 0, 0, 110)
+	infoBanner.AnchorPoint = Vector2.new(0.5, 0)
+	infoBanner.BackgroundColor3 = Color3.fromRGB(22, 28, 42)
+	infoBanner.BorderSizePixel = 0
+	infoBanner.Parent = modal
+
+	local ibCorner = Instance.new("UICorner")
+	ibCorner.CornerRadius = UDim.new(0, 6)
+	ibCorner.Parent = infoBanner
+
+	local ibStroke = Instance.new("UIStroke")
+	ibStroke.Color = Color3.fromRGB(45, 55, 75)
+	ibStroke.Thickness = 1
+	ibStroke.Parent = infoBanner
+
+	local infoBannerText = Instance.new("TextLabel")
+	infoBannerText.Size = UDim2.new(1, -16, 1, 0)
+	infoBannerText.Position = UDim2.new(0, 8, 0, 0)
+	infoBannerText.BackgroundTransparency = 1
+	infoBannerText.Font = Enum.Font.GothamMedium
+	infoBannerText.TextSize = 11.5
+	infoBannerText.TextColor3 = Color3.fromRGB(200, 225, 255)
+	infoBannerText.TextXAlignment = Enum.TextXAlignment.Left
+	infoBannerText.Parent = infoBanner
+
+	-- Content Area (Days 1-6 Left Grid, Day 7 Right Card)
+	local contentArea = Instance.new("Frame")
+	contentArea.Name = "ContentArea"
+	contentArea.Size = UDim2.new(1, -40, 0, 335)
+	contentArea.Position = UDim2.new(0.5, 0, 0, 144)
+	contentArea.AnchorPoint = Vector2.new(0.5, 0)
+	contentArea.BackgroundTransparency = 1
+	contentArea.Parent = modal
+
+	-- Left Grid: Days 1 to 6
+	local leftGrid = Instance.new("Frame")
+	leftGrid.Name = "LeftGrid"
+	leftGrid.Size = UDim2.new(0.70, -6, 1, 0)
+	leftGrid.Position = UDim2.new(0, 0, 0, 0)
+	leftGrid.BackgroundTransparency = 1
+	leftGrid.Parent = contentArea
+
+	local gridLayout = Instance.new("UIGridLayout")
+	gridLayout.CellSize = UDim2.new(0.315, 0, 0.47, 0)
+	gridLayout.CellPadding = UDim2.new(0.027, 0, 0.05, 0)
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	gridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	gridLayout.Parent = leftGrid
+
+	-- Right Card: Day 7 Grand Jackpot
+	local rightCard = Instance.new("Frame")
+	rightCard.Name = "RightCard"
+	rightCard.Size = UDim2.new(0.30, 0, 1, 0)
+	rightCard.Position = UDim2.new(0.70, 6, 0, 0)
+	rightCard.BackgroundColor3 = Color3.fromRGB(26, 22, 38)
+	rightCard.BorderSizePixel = 0
+	rightCard.Parent = contentArea
+
+	local rcCorner = Instance.new("UICorner")
+	rcCorner.CornerRadius = UDim.new(0, 12)
+	rcCorner.Parent = rightCard
+
+	local rcStroke = Instance.new("UIStroke")
+	rcStroke.Color = Color3.fromRGB(255, 215, 0)
+	rcStroke.Thickness = 2.0
+	rcStroke.Parent = rightCard
+
+	-- Bottom Action Bar
+	local bottomBar = Instance.new("Frame")
+	bottomBar.Name = "BottomBar"
+	bottomBar.Size = UDim2.new(1, -40, 0, 54)
+	bottomBar.Position = UDim2.new(0.5, 0, 1, -66)
+	bottomBar.AnchorPoint = Vector2.new(0.5, 0)
+	bottomBar.BackgroundColor3 = Color3.fromRGB(20, 26, 38)
+	bottomBar.BorderSizePixel = 0
+	bottomBar.Parent = modal
+
+	local bbCorner = Instance.new("UICorner")
+	bbCorner.CornerRadius = UDim.new(0, 10)
+	bbCorner.Parent = bottomBar
+
+	local bbStroke = Instance.new("UIStroke")
+	bbStroke.Color = Color3.fromRGB(50, 65, 90)
+	bbStroke.Thickness = 1.0
+	bbStroke.Parent = bottomBar
+
+	local renderContent: () -> ()
+
+	renderContent = function()
+		if not activeModal or activeModal ~= modal then return end
+
+		curWeek = cachedData.DailyRewardWeek or 1
+		curDay = cachedData.DailyRewardDay or 1
+		streak = cachedData.DailyRewardStreak or 0
+		lastClaim = cachedData.LastDailyClaimTime or 0
+		local canClaimNow = DailyRewardConfig.canClaim(lastClaim)
+
+		subTitle.Text = string.format("🔥 Login Streak: %d Days  •  Active: Week %d, Day %d  •  49 Unique Escalating Rewards!", streak, curWeek, curDay)
+
+		-- 1. Render Tabs
+		for _, child in ipairs(tabsFrame:GetChildren()) do
+			if child:IsA("TextButton") then
+				child:Destroy()
+			end
+		end
+
+		for w = 1, DailyRewardConfig.TOTAL_WEEKS do
+			local tabBtn = Instance.new("TextButton")
+			tabBtn.Name = "Tab_" .. w
+			tabBtn.Size = UDim2.new(0, 94, 1, 0)
+			tabBtn.BorderSizePixel = 0
+			tabBtn.AutoButtonColor = true
+
+			local isCurrentTab = (w == currentSelectedDailyWeek)
+			local isActivePlayerWeek = (w == curWeek)
+
+			local tabText = "Week " .. w
+			if w < curWeek then
+				tabText = "✓ Wk " .. w
+				tabBtn.BackgroundColor3 = if isCurrentTab then Color3.fromRGB(35, 70, 50) else Color3.fromRGB(20, 42, 32)
+				tabBtn.TextColor3 = Color3.fromRGB(120, 240, 160)
+			elseif isActivePlayerWeek then
+				tabText = "🌟 Wk " .. w
+				tabBtn.BackgroundColor3 = if isCurrentTab then Color3.fromRGB(245, 175, 25) else Color3.fromRGB(150, 105, 15)
+				tabBtn.TextColor3 = if isCurrentTab then Color3.fromRGB(15, 20, 25) else Color3.fromRGB(255, 245, 200)
+			else
+				tabText = "🔒 Wk " .. w
+				tabBtn.BackgroundColor3 = if isCurrentTab then Color3.fromRGB(38, 44, 58) else Color3.fromRGB(22, 26, 36)
+				tabBtn.TextColor3 = Color3.fromRGB(120, 130, 150)
+			end
+
+			tabBtn.Text = tabText
+			tabBtn.Font = Enum.Font.GothamBold
+			tabBtn.TextSize = 12
+			tabBtn.Parent = tabsFrame
+
+			local tCorner = Instance.new("UICorner")
+			tCorner.CornerRadius = UDim.new(0, 8)
+			tCorner.Parent = tabBtn
+
+			local tStroke = Instance.new("UIStroke")
+			tStroke.Thickness = if isCurrentTab then 2.0 else 1.0
+			tStroke.Color = if isCurrentTab then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(50, 60, 80)
+			tStroke.Transparency = if isCurrentTab then 0.1 else 0.5
+			tStroke.Parent = tabBtn
+
+			tabBtn.Activated:Connect(function()
+				currentSelectedDailyWeek = w
+				renderContent()
+			end)
+		end
+
+		-- 2. Render Info Banner
+		local weekDef = DailyRewardConfig.getWeek(currentSelectedDailyWeek)
+		if weekDef then
+			infoBannerText.Text = string.format("%s Week %d: %s — %s", weekDef.icon, weekDef.weekNumber, weekDef.name, weekDef.tagline)
+			infoBanner.BackgroundColor3 = Color3.fromRGB(
+				math.floor(weekDef.themeColor.R * 40),
+				math.floor(weekDef.themeColor.G * 40),
+				math.floor(weekDef.themeColor.B * 40)
+			)
+			ibStroke.Color = weekDef.themeColor
+		end
+
+		-- 3. Render Days 1 to 6 (Left Grid)
+		for _, child in ipairs(leftGrid:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		if weekDef then
+			for d = 1, 6 do
+				local dayReward = weekDef.days[d]
+				if not dayReward then continue end
+
+				local card = Instance.new("Frame")
+				card.Name = "DayCard_" .. d
+				card.BorderSizePixel = 0
+
+				local isPast = (currentSelectedDailyWeek < curWeek) or (currentSelectedDailyWeek == curWeek and d < curDay)
+				local isToday = (currentSelectedDailyWeek == curWeek and d == curDay)
+				local isFuture = (currentSelectedDailyWeek > curWeek) or (currentSelectedDailyWeek == curWeek and d > curDay)
+
+				if isPast then
+					card.BackgroundColor3 = Color3.fromRGB(20, 26, 32)
+				elseif isToday then
+					if canClaimNow then
+						card.BackgroundColor3 = Color3.fromRGB(20, 52, 38)
+					else
+						card.BackgroundColor3 = Color3.fromRGB(32, 36, 52)
+					end
+				else
+					card.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+				end
+
+				card.Parent = leftGrid
+
+				local cCorner = Instance.new("UICorner")
+				cCorner.CornerRadius = UDim.new(0, 10)
+				cCorner.Parent = card
+
+				local cStroke = Instance.new("UIStroke")
+				cStroke.Parent = card
+				if isToday and canClaimNow then
+					cStroke.Color = Color3.fromRGB(46, 204, 113)
+					cStroke.Thickness = 2.0
+				elseif isToday then
+					cStroke.Color = Color3.fromRGB(150, 120, 255)
+					cStroke.Thickness = 1.5
+				elseif isPast then
+					cStroke.Color = Color3.fromRGB(40, 60, 50)
+					cStroke.Thickness = 1.0
+				else
+					cStroke.Color = Color3.fromRGB(40, 48, 65)
+					cStroke.Thickness = 1.0
+				end
+
+				-- Day Header Tag
+				local dayTag = Instance.new("TextLabel")
+				dayTag.Size = UDim2.new(1, -12, 0, 18)
+				dayTag.Position = UDim2.new(0, 6, 0, 6)
+				dayTag.BackgroundTransparency = 1
+				dayTag.Text = "DAY " .. d
+				dayTag.TextColor3 = if isToday then Color3.fromRGB(255, 215, 0) else Color3.fromRGB(140, 160, 190)
+				dayTag.Font = Enum.Font.GothamBlack
+				dayTag.TextSize = 11
+				dayTag.TextXAlignment = Enum.TextXAlignment.Left
+				dayTag.Parent = card
+
+				-- Center Emoji Icon
+				local iconLbl = Instance.new("TextLabel")
+				iconLbl.Size = UDim2.new(1, 0, 0, 46)
+				iconLbl.Position = UDim2.new(0, 0, 0, 26)
+				iconLbl.BackgroundTransparency = 1
+				iconLbl.Text = dayReward.icon
+				iconLbl.Font = Enum.Font.GothamBold
+				iconLbl.TextSize = 34
+				iconLbl.Parent = card
+
+				-- Title
+				local titleLbl = Instance.new("TextLabel")
+				titleLbl.Size = UDim2.new(1, -12, 0, 32)
+				titleLbl.Position = UDim2.new(0, 6, 0, 76)
+				titleLbl.BackgroundTransparency = 1
+				titleLbl.Text = dayReward.title
+				titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+				titleLbl.Font = Enum.Font.GothamBold
+				titleLbl.TextSize = 11
+				titleLbl.TextWrapped = true
+				titleLbl.Parent = card
+
+				-- Status Badge at Bottom of Card
+				local badge = Instance.new("Frame")
+				badge.Size = UDim2.new(1, -16, 0, 22)
+				badge.Position = UDim2.new(0.5, 0, 1, -26)
+				badge.AnchorPoint = Vector2.new(0.5, 0)
+				badge.BorderSizePixel = 0
+				badge.Parent = card
+
+				local bgc = Instance.new("UICorner")
+				bgc.CornerRadius = UDim.new(0, 6)
+				bgc.Parent = badge
+
+				local badgeText = Instance.new("TextLabel")
+				badgeText.Size = UDim2.new(1, 0, 1, 0)
+				badgeText.BackgroundTransparency = 1
+				badgeText.Font = Enum.Font.GothamBlack
+				badgeText.TextSize = 10
+				badgeText.Parent = badge
+
+				if isPast then
+					badge.BackgroundColor3 = Color3.fromRGB(25, 45, 35)
+					badgeText.Text = "✓ CLAIMED"
+					badgeText.TextColor3 = Color3.fromRGB(100, 220, 140)
+				elseif isToday then
+					if canClaimNow then
+						badge.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+						badgeText.Text = "✨ READY!"
+						badgeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+					else
+						badge.BackgroundColor3 = Color3.fromRGB(50, 45, 75)
+						badgeText.Text = "⏳ LOCKED"
+						badgeText.TextColor3 = Color3.fromRGB(190, 175, 240)
+					end
+				else
+					badge.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+					badgeText.Text = "🔒 LOCKED"
+					badgeText.TextColor3 = Color3.fromRGB(100, 110, 130)
+				end
+			end
+		end
+
+		-- 4. Render Day 7 Grand Jackpot (Right Card)
+		for _, child in ipairs(rightCard:GetChildren()) do
+			if child:IsA("TextLabel") or child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		if weekDef and weekDef.days[7] then
+			local d7Reward = weekDef.days[7]
+			local isPast7 = (currentSelectedDailyWeek < curWeek) or (currentSelectedDailyWeek == curWeek and 7 < curDay)
+			local isToday7 = (currentSelectedDailyWeek == curWeek and 7 == curDay)
+			local isFuture7 = (currentSelectedDailyWeek > curWeek) or (currentSelectedDailyWeek == curWeek and 7 > curDay)
+
+			local headerBadge = Instance.new("Frame")
+			headerBadge.Size = UDim2.new(1, -20, 0, 24)
+			headerBadge.Position = UDim2.new(0.5, 0, 0, 10)
+			headerBadge.AnchorPoint = Vector2.new(0.5, 0)
+			headerBadge.BackgroundColor3 = Color3.fromRGB(245, 175, 25)
+			headerBadge.BorderSizePixel = 0
+			headerBadge.Parent = rightCard
+
+			local hbCorner = Instance.new("UICorner")
+			hbCorner.CornerRadius = UDim.new(0, 6)
+			hbCorner.Parent = headerBadge
+
+			local hbText = Instance.new("TextLabel")
+			hbText.Size = UDim2.new(1, 0, 1, 0)
+			hbText.BackgroundTransparency = 1
+			hbText.Text = "👑 DAY 7 JACKPOT 👑"
+			hbText.TextColor3 = Color3.fromRGB(15, 20, 25)
+			hbText.Font = Enum.Font.GothamBlack
+			hbText.TextSize = 11
+			hbText.Parent = headerBadge
+
+			local bigIcon = Instance.new("TextLabel")
+			bigIcon.Size = UDim2.new(1, 0, 0, 65)
+			bigIcon.Position = UDim2.new(0, 0, 0, 42)
+			bigIcon.BackgroundTransparency = 1
+			bigIcon.Text = d7Reward.icon
+			bigIcon.Font = Enum.Font.GothamBold
+			bigIcon.TextSize = 52
+			bigIcon.Parent = rightCard
+
+			local d7Title = Instance.new("TextLabel")
+			d7Title.Size = UDim2.new(1, -20, 0, 42)
+			d7Title.Position = UDim2.new(0.5, 0, 0, 114)
+			d7Title.AnchorPoint = Vector2.new(0.5, 0)
+			d7Title.BackgroundTransparency = 1
+			d7Title.Text = d7Reward.title
+			d7Title.TextColor3 = Color3.fromRGB(255, 220, 80)
+			d7Title.Font = Enum.Font.GothamBlack
+			d7Title.TextSize = 13
+			d7Title.TextWrapped = true
+			d7Title.Parent = rightCard
+
+			local d7Desc = Instance.new("TextLabel")
+			d7Desc.Size = UDim2.new(1, -24, 0, 95)
+			d7Desc.Position = UDim2.new(0.5, 0, 0, 160)
+			d7Desc.AnchorPoint = Vector2.new(0.5, 0)
+			d7Desc.BackgroundTransparency = 1
+			d7Desc.Text = d7Reward.description
+			d7Desc.TextColor3 = Color3.fromRGB(200, 215, 240)
+			d7Desc.Font = Enum.Font.GothamMedium
+			d7Desc.TextSize = 11
+			d7Desc.TextWrapped = true
+			d7Desc.TextYAlignment = Enum.TextYAlignment.Top
+			d7Desc.Parent = rightCard
+
+			local d7StatusBadge = Instance.new("Frame")
+			d7StatusBadge.Size = UDim2.new(1, -24, 0, 32)
+			d7StatusBadge.Position = UDim2.new(0.5, 0, 1, -40)
+			d7StatusBadge.AnchorPoint = Vector2.new(0.5, 0)
+			d7StatusBadge.BorderSizePixel = 0
+			d7StatusBadge.Parent = rightCard
+
+			local d7sCorner = Instance.new("UICorner")
+			d7sCorner.CornerRadius = UDim.new(0, 8)
+			d7sCorner.Parent = d7StatusBadge
+
+			local d7sText = Instance.new("TextLabel")
+			d7sText.Size = UDim2.new(1, 0, 1, 0)
+			d7sText.BackgroundTransparency = 1
+			d7sText.Font = Enum.Font.GothamBlack
+			d7sText.TextSize = 12
+			d7sText.Parent = d7StatusBadge
+
+			if isPast7 then
+				d7StatusBadge.BackgroundColor3 = Color3.fromRGB(25, 45, 35)
+				d7sText.Text = "✓ CLAIMED"
+				d7sText.TextColor3 = Color3.fromRGB(100, 220, 140)
+			elseif isToday7 then
+				if canClaimNow then
+					d7StatusBadge.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+					d7sText.Text = "✨ CLAIM JACKPOT!"
+					d7sText.TextColor3 = Color3.fromRGB(255, 255, 255)
+				else
+					d7StatusBadge.BackgroundColor3 = Color3.fromRGB(50, 45, 75)
+					d7sText.Text = "⏳ LOCKED"
+					d7sText.TextColor3 = Color3.fromRGB(190, 175, 240)
+				end
+			else
+				d7StatusBadge.BackgroundColor3 = Color3.fromRGB(35, 38, 50)
+				d7sText.Text = "🔒 LOCKED"
+				d7sText.TextColor3 = Color3.fromRGB(110, 120, 140)
+			end
+		end
+
+		-- 5. Render Bottom Bar
+		for _, child in ipairs(bottomBar:GetChildren()) do
+			if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		local isCurrentViewingActiveWeek = (currentSelectedDailyWeek == curWeek)
+
+		if not isCurrentViewingActiveWeek then
+			local jumpBtn = Instance.new("TextButton")
+			jumpBtn.Size = UDim2.new(0, 240, 0, 38)
+			jumpBtn.Position = UDim2.new(0, 12, 0.5, 0)
+			jumpBtn.AnchorPoint = Vector2.new(0, 0.5)
+			jumpBtn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+			jumpBtn.Text = "⬅ Jump to Active Week " .. curWeek
+			jumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			jumpBtn.Font = Enum.Font.GothamBold
+			jumpBtn.TextSize = 13
+			jumpBtn.BorderSizePixel = 0
+			jumpBtn.AutoButtonColor = true
+			jumpBtn.Parent = bottomBar
+
+			local jc = Instance.new("UICorner")
+			jc.CornerRadius = UDim.new(0, 8)
+			jc.Parent = jumpBtn
+
+			jumpBtn.Activated:Connect(function()
+				currentSelectedDailyWeek = curWeek
+				renderContent()
+			end)
+		else
+			if canClaimNow then
+				local claimBtn = Instance.new("TextButton")
+				claimBtn.Size = UDim2.new(0, 360, 0, 40)
+				claimBtn.Position = UDim2.new(0, 12, 0.5, 0)
+				claimBtn.AnchorPoint = Vector2.new(0, 0.5)
+				claimBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+				claimBtn.Text = string.format("🎁 CLAIM WEEK %d DAY %d REWARD!", curWeek, curDay)
+				claimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				claimBtn.Font = Enum.Font.GothamBlack
+				claimBtn.TextSize = 14
+				claimBtn.BorderSizePixel = 0
+				claimBtn.AutoButtonColor = true
+				claimBtn.Parent = bottomBar
+
+				local cbc = Instance.new("UICorner")
+				cbc.CornerRadius = UDim.new(0, 8)
+				cbc.Parent = claimBtn
+
+				local cStroke = Instance.new("UIStroke")
+				cStroke.Color = Color3.fromRGB(255, 255, 255)
+				cStroke.Thickness = 1.5
+				cStroke.Transparency = 0.4
+				cStroke.Parent = claimBtn
+
+				claimBtn.Activated:Connect(function()
+					claimBtn.AutoButtonColor = false
+					claimBtn.Text = "CLAIMING..."
+					local claimFn = Remotes.getFunction("ClaimDailyReward")
+					local ok, success, msg, reward = pcall(function()
+						return claimFn:InvokeServer()
+					end)
+					if ok and success then
+						showFloatingPopup("🎉 " .. tostring(msg), Color3.fromRGB(255, 215, 0), -20)
+						UIController.updateHUD()
+						renderContent()
+					else
+						showFloatingPopup(tostring(msg or "Failed to claim reward!"), Color3.fromRGB(255, 100, 100), 0)
+						renderContent()
+					end
+				end)
+			else
+				local timerContainer = Instance.new("Frame")
+				timerContainer.Size = UDim2.new(0, 380, 1, 0)
+				timerContainer.Position = UDim2.new(0, 12, 0, 0)
+				timerContainer.BackgroundTransparency = 1
+				timerContainer.Parent = bottomBar
+
+				local timerLbl = Instance.new("TextLabel")
+				timerLbl.Name = "CountdownLabel"
+				timerLbl.Size = UDim2.new(1, 0, 0, 24)
+				timerLbl.Position = UDim2.new(0, 0, 0, 6)
+				timerLbl.BackgroundTransparency = 1
+				local rem = DailyRewardConfig.getTimeRemaining(lastClaim)
+				timerLbl.Text = "⏳ Next Reward Unlocks in: " .. DailyRewardConfig.formatTimeRemaining(rem)
+				timerLbl.TextColor3 = Color3.fromRGB(245, 185, 25)
+				timerLbl.Font = Enum.Font.GothamBold
+				timerLbl.TextSize = 14
+				timerLbl.TextXAlignment = Enum.TextXAlignment.Left
+				timerLbl.Parent = timerContainer
+
+				local timerSub = Instance.new("TextLabel")
+				timerSub.Size = UDim2.new(1, 0, 0, 16)
+				timerSub.Position = UDim2.new(0, 0, 0, 30)
+				timerSub.BackgroundTransparency = 1
+				timerSub.Text = "Log in daily to keep your streak and reach Week 7 God Tier rewards!"
+				timerSub.TextColor3 = Color3.fromRGB(150, 170, 195)
+				timerSub.Font = Enum.Font.Gotham
+				timerSub.TextSize = 10.5
+				timerSub.TextXAlignment = Enum.TextXAlignment.Left
+				timerSub.Parent = timerContainer
+			end
+		end
+
+		-- Developer Fast-Forward Button on Right
+		local devBtn = Instance.new("TextButton")
+		devBtn.Size = UDim2.new(0, 160, 0, 38)
+		devBtn.Position = UDim2.new(1, -12, 0.5, 0)
+		devBtn.AnchorPoint = Vector2.new(1, 0.5)
+		devBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+		devBtn.Text = "⚡ +1 Day (Dev)"
+		devBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		devBtn.Font = Enum.Font.GothamBold
+		devBtn.TextSize = 13
+		devBtn.BorderSizePixel = 0
+		devBtn.AutoButtonColor = true
+		devBtn.Parent = bottomBar
+
+		local dbc = Instance.new("UICorner")
+		dbc.CornerRadius = UDim.new(0, 8)
+		dbc.Parent = devBtn
+
+		devBtn.Activated:Connect(function()
+			devBtn.Text = "ADVANCING..."
+			local devFn = Remotes.getFunction("DevAdvanceDailyReward")
+			local ok, success, msg = pcall(function()
+				return devFn:InvokeServer()
+			end)
+			if ok and success then
+				showFloatingPopup(tostring(msg), Color3.fromRGB(255, 215, 0), -20)
+				local getFn = Remotes.getFunction("GetPlayerData")
+				pcall(function()
+					cachedData = getFn:InvokeServer()
+				end)
+				currentSelectedDailyWeek = cachedData.DailyRewardWeek or 1
+				UIController.updateHUD()
+				renderContent()
+			else
+				showFloatingPopup(tostring(msg or "Failed dev advance!"), Color3.fromRGB(255, 100, 100), 0)
+				renderContent()
+			end
+		end)
+	end
+
+	renderContent()
+
+	activeModalUpdater = function()
+		if activeModal and activeModal == modal then
+			renderContent()
+		end
+	end
+
+	-- Live countdown loop
+	task.spawn(function()
+		while activeModal == modal do
+			task.wait(1)
+			if not activeModal or activeModal ~= modal then break end
+			local last = (cachedData and cachedData.LastDailyClaimTime) or 0
+			local rem = DailyRewardConfig.getTimeRemaining(last)
+			local countLbl = bottomBar:FindFirstChild("CountdownLabel", true) :: TextLabel?
+			if countLbl then
+				countLbl.Text = "⏳ Next Reward Unlocks in: " .. DailyRewardConfig.formatTimeRemaining(rem)
+			end
+			if rem <= 0 and not DailyRewardConfig.canClaim(last) then
+				renderContent()
+			end
+		end
+	end)
 
 	-- Close Button
 	local closeBtn = Instance.new("TextButton")
@@ -6891,6 +7582,31 @@ function UIController.buildHUD()
 		openLeaderboardModal()
 	end)
 
+	local dailyBtn = createMenuButton("DailyBtn", "📅 Daily", Color3.fromRGB(46, 204, 113), function()
+		openDailyRewardModal()
+	end)
+
+	local dBadge = Instance.new("Frame")
+	dBadge.Name = "DailyBadge"
+	dBadge.Size = UDim2.new(0, 12, 0, 12)
+	dBadge.Position = UDim2.new(1, -14, 0, 4)
+	dBadge.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	dBadge.BorderSizePixel = 0
+	dBadge.ZIndex = 5
+	dBadge.Visible = false
+	dBadge.Parent = dailyBtn
+
+	local dbCorner = Instance.new("UICorner")
+	dbCorner.CornerRadius = UDim.new(1, 0)
+	dbCorner.Parent = dBadge
+
+	local dbStroke = Instance.new("UIStroke")
+	dbStroke.Color = Color3.fromRGB(255, 255, 255)
+	dbStroke.Thickness = 1.5
+	dbStroke.Parent = dBadge
+
+	dailyRewardBadge = dBadge
+
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
 	local harvestBtn = createMenuButton("HarvestBtn", "⛏️ Mine (+$$/💎)", Color3.fromRGB(0, 180, 120), function()
 		MiningClient.performSwing()
@@ -7175,6 +7891,12 @@ function UIController.buildHUD()
 			elseif not activeModal and not activeDialogue then
 				openLeaderboardModal()
 			end
+		elseif input.KeyCode == Enum.KeyCode.Y then
+			if activeModal and activeModal.Name == "DailyRewardModal" then
+				closeModal()
+			elseif not activeModal and not activeDialogue then
+				openDailyRewardModal()
+			end
 		elseif input.KeyCode == Enum.KeyCode.F6 then
 			triggerShowroomTeleport()
 		end
@@ -7184,6 +7906,18 @@ function UIController.buildHUD()
 	local openLbEvent = Remotes.getEvent("OpenLeaderboardModal")
 	openLbEvent.OnClientEvent:Connect(function(cat: string?)
 		openLeaderboardModal(cat)
+	end)
+
+	local promptDailyEvent = Remotes.getEvent("PromptDailyRewardModal")
+	promptDailyEvent.OnClientEvent:Connect(function()
+		if not activeModal and not activeDialogue then
+			openDailyRewardModal()
+		end
+	end)
+
+	local openDailyEvent = Remotes.getEvent("OpenDailyRewardModal")
+	openDailyEvent.OnClientEvent:Connect(function()
+		openDailyRewardModal()
 	end)
 
 	local dialogueEvent = Remotes.getEvent("OpenShopDialogue")

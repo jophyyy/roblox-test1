@@ -41,6 +41,10 @@ export type PlayerData = {
 	TutorialStep: number?,
 	TutorialCompleted: boolean?,
 	RedeemedCodes: { [string]: boolean }?,
+	DailyRewardWeek: number?,
+	DailyRewardDay: number?,
+	DailyRewardStreak: number?,
+	LastDailyClaimTime: number?,
 	LastSaved: number,
 }
 
@@ -91,6 +95,10 @@ local function getDefaultData(): PlayerData
 		TutorialStep = 1,
 		TutorialCompleted = false,
 		RedeemedCodes = {},
+		DailyRewardWeek = 1,
+		DailyRewardDay = 1,
+		DailyRewardStreak = 0,
+		LastDailyClaimTime = 0,
 		LastSaved = os.time(),
 	}
 end
@@ -368,6 +376,10 @@ function DataService.load(player: Player)
 	data.Power = data.Power or GameConfig.STARTER_POWER
 	data.LootBoxes = data.LootBoxes or {}
 	data.RedeemedCodes = data.RedeemedCodes or {}
+	data.DailyRewardWeek = data.DailyRewardWeek or 1
+	data.DailyRewardDay = data.DailyRewardDay or 1
+	data.DailyRewardStreak = data.DailyRewardStreak or 0
+	data.LastDailyClaimTime = data.LastDailyClaimTime or 0
 
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
@@ -904,6 +916,36 @@ function DataService.markCodeRedeemed(player: Player, codeKey: string)
 	if not data then return end
 	data.RedeemedCodes = data.RedeemedCodes or {}
 	data.RedeemedCodes[codeKey] = true
+	syncToClient(player, data)
+end
+
+function DataService.addFreeSpins(player: Player, count: number)
+	local data = playerDataCache[player]
+	if not data then return end
+	data.FreeSpins = math.max(0, (data.FreeSpins or 0) + count)
+	syncToClient(player, data)
+end
+
+function DataService.getDailyRewardData(player: Player): (number, number, number, number)
+	local data = playerDataCache[player]
+	if not data then return 1, 1, 0, 0 end
+	return data.DailyRewardWeek or 1, data.DailyRewardDay or 1, data.DailyRewardStreak or 0, data.LastDailyClaimTime or 0
+end
+
+function DataService.setDailyRewardClaimed(player: Player, nextWeek: number, nextDay: number, streak: number, claimTime: number)
+	local data = playerDataCache[player]
+	if not data then return end
+	data.DailyRewardWeek = nextWeek
+	data.DailyRewardDay = nextDay
+	data.DailyRewardStreak = streak
+	data.LastDailyClaimTime = claimTime
+	syncToClient(player, data)
+end
+
+function DataService.devResetDailyCooldown(player: Player)
+	local data = playerDataCache[player]
+	if not data then return end
+	data.LastDailyClaimTime = 0
 	syncToClient(player, data)
 end
 

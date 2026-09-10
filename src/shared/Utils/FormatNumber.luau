@@ -22,7 +22,8 @@ function FormatNumber.formatCompact(value: number): string
 	end
 end
 
-function FormatNumber.formatComma(value: number): string
+function FormatNumber.formatComma(value: number?): string
+	if not value then return "0" end
 	local formatted = tostring(math.floor(value))
 	local k
 	while true do
@@ -32,6 +33,10 @@ function FormatNumber.formatComma(value: number): string
 		end
 	end
 	return formatted
+end
+
+function FormatNumber.format(value: number?): string
+	return FormatNumber.formatComma(value)
 end
 
 return FormatNumber

@@ -502,7 +502,7 @@ local function spawnHitPopup(pos: Vector3, damage: number, isLocalPlayer: boolea
 	lbl.TextSize = if isLocalPlayer then 18 else 14
 	lbl.TextColor3 = if isLocalPlayer then Color3.fromRGB(255, 215, 60) else Color3.fromRGB(255, 120, 40)
 	lbl.TextStrokeTransparency = 0.2
-	lbl.Text = "-" .. FormatNumber.format(damage) .. " 💥"
+	lbl.Text = "-" .. FormatNumber.formatComma(damage) .. " 💥"
 	lbl.Parent = bill
 
 	local p = Instance.new("Part")
@@ -722,7 +722,7 @@ function MeteorClient.init()
 			shakeCamera(1.8, 1.0)
 
 			victoryTitle.Text = "🎉 METEOR SHATTERED! JACKPOT GRANTED! 🎉"
-			victorySubtitle.Text = string.format("+$%s Cash  •  +%s Gems  •  3 Rare Crates", FormatNumber.format(data.jackpotCash or 25_000_000), FormatNumber.format(data.jackpotGems or 15_000))
+			victorySubtitle.Text = string.format("+$%s Cash  •  +%s Gems  •  3 Rare Crates", FormatNumber.formatComma(data.jackpotCash or 25_000_000), FormatNumber.formatComma(data.jackpotGems or 15_000))
 
 			-- Slide victory banner down into view
 			victoryBanner.Position = UDim2.new(0.5, 0, -0.2, 0)

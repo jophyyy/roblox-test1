@@ -265,9 +265,8 @@ local function buildMeteorMonolith(location: MeteorConfig.CrashLocation): (Model
 
 	local hpText = Instance.new("TextLabel")
 	hpText.Name = "HPText"
-	hpText.Size = UDim2.new(1, 0, 1, 0)
-	hpText.BackgroundTransparency = 1
-	hpText.Text = string.format("%s / %s HP (100%%)", FormatNumber.format(maxHealth), FormatNumber.format(maxHealth))
+	local initialHpDisplay = if maxHealth and maxHealth > 0 then FormatNumber.formatComma(maxHealth) else "5,000"
+	hpText.Text = string.format("%s / %s HP (100%%)", initialHpDisplay, initialHpDisplay)
 	hpText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	hpText.Font = Enum.Font.GothamBlack
 	hpText.TextSize = 12
@@ -409,7 +408,16 @@ function MeteorService.performCrash()
 	eventFolder.Parent = Workspace
 
 	-- Build the physical monolith at the crash crater
-	local model, core = buildMeteorMonolith(loc)
+	local ok, modelOrErr, core = pcall(function()
+		return buildMeteorMonolith(loc)
+	end)
+
+	if not ok or not modelOrErr or not core then
+		warn("❌ [MeteorService] CRITICAL: Failed to build meteor monolith:", tostring(modelOrErr))
+		return
+	end
+
+	local model = modelOrErr :: Model
 	meteorModel = model
 	corePart = core
 	model.Parent = eventFolder
@@ -499,7 +507,7 @@ function MeteorService.hitMeteor(player: Player): (boolean, any)
 		healthFillFrame.Size = UDim2.new(healthPct, 0, 1, 0)
 	end
 	if healthLabel and healthLabel.Parent then
-		healthLabel.Text = string.format("%s / %s HP (%d%%)", FormatNumber.format(currentHealth), FormatNumber.format(maxHealth), math.floor(healthPct * 100))
+		healthLabel.Text = string.format("%s / %s HP (%d%%)", FormatNumber.formatComma(currentHealth), FormatNumber.formatComma(maxHealth), math.floor(healthPct * 100))
 	end
 
 	-- Award per-hit rewards
@@ -627,7 +635,7 @@ function MeteorService.endEvent(isVictory: boolean)
 						DataService.addLootBox(contribPlayer, crateType, 1)
 					end
 
-					print(string.format("  🎁 Granted Jackpot to %s (Dmg: %s): +$%s, +%s 💎, 3 Crates!", contribPlayer.Name, FormatNumber.format(damageDealt), FormatNumber.format(finalCash), FormatNumber.format(finalGems)))
+					print(string.format("  🎁 Granted Jackpot to %s (Dmg: %s): +$%s, +%s 💎, 3 Crates!", contribPlayer.Name, FormatNumber.formatComma(damageDealt), FormatNumber.formatComma(finalCash), FormatNumber.formatComma(finalGems)))
 				end)
 			end
 		end

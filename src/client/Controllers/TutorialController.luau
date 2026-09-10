@@ -106,32 +106,68 @@ local function clearButtonSpotlight()
 	activeTargetButton = nil
 end
 
--- Finds the closest active Zone 1 ore to the player
-local function findNearestZone1Ore(): BasePart?
+-- Finds the closest active low-level starter ore in Zone 1 (Stone 25 HP, Copper 60 HP)
+local function findNearestLowLevelOre(): (BasePart?, string?, number?)
 	local char = player.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+	if not char or not char:FindFirstChild("HumanoidRootPart") then return nil, nil, nil end
 	local rootPos = char.HumanoidRootPart.Position
 
 	local activeOres = Workspace:FindFirstChild("ActiveOres")
-	if not activeOres then return nil end
+	if not activeOres then return nil, nil, nil end
 
-	local closestPart: BasePart? = nil
-	local closestDist = 120 -- Within 120 studs
+	local bestPart: BasePart? = nil
+	local bestName: string? = nil
+	local bestHp: number? = nil
+	local bestDist = math.huge
 
+	-- Tier 1 Priority: Stone Boulder (25 HP) or Copper Vein (60 HP)
 	for _, oreModel in ipairs(activeOres:GetChildren()) do
 		if oreModel:IsA("Model") and oreModel.PrimaryPart then
-			local dist = (oreModel.PrimaryPart.Position - rootPos).Magnitude
-			if dist < closestDist then
-				closestDist = dist
-				closestPart = oreModel.PrimaryPart
+			local oreType = oreModel:GetAttribute("OreType")
+			local maxHp = oreModel:GetAttribute("MaxHealth") or 9999
+			local nameText = oreModel.Name
+			local billboard = oreModel:FindFirstChild("OreBillboard", true)
+			if billboard then
+				local tLabel = billboard:FindFirstChild("OreTitle") :: TextLabel?
+				if tLabel then nameText = tLabel.Text end
+			end
+
+			local isStarterLowLevel = (oreType == "Stone" or oreType == "Copper" or maxHp <= 60
+				or string.find(nameText:lower(), "stone") ~= nil
+				or string.find(nameText:lower(), "copper") ~= nil)
+
+			if isStarterLowLevel then
+				local dist = (oreModel.PrimaryPart.Position - rootPos).Magnitude
+				if dist < bestDist then
+					bestDist = dist
+					bestPart = oreModel.PrimaryPart
+					bestName = if oreType then oreType else (if string.find(nameText:lower(), "copper") then "Copper" else "Stone")
+					bestHp = if maxHp <= 60 then maxHp else 25
+				end
 			end
 		end
 	end
 
-	return closestPart
+	-- Tier 2 Fallback: Any Zone 1 ore with health <= 140 (Iron)
+	if not bestPart then
+		for _, oreModel in ipairs(activeOres:GetChildren()) do
+			if oreModel:IsA("Model") and oreModel.PrimaryPart then
+				local maxHp = oreModel:GetAttribute("MaxHealth") or 9999
+				local dist = (oreModel.PrimaryPart.Position - rootPos).Magnitude
+				if maxHp <= 140 and dist < bestDist then
+					bestDist = dist
+					bestPart = oreModel.PrimaryPart
+					bestName = oreModel:GetAttribute("OreType") or "Iron"
+					bestHp = maxHp
+				end
+			end
+		end
+	end
+
+	return bestPart, bestName, bestHp
 end
 
--- Renders a vibrant 3D floating guide arrow above a target position
+-- Renders a vibrant ground guide line with streaming arrows leading directly to the target
 local function updateWorldGuide(worldTargetType: string?)
 	clearWorldGuide()
 	if not worldTargetType or isTutorialCompleted then return end
@@ -141,7 +177,7 @@ local function updateWorldGuide(worldTargetType: string?)
 	guideModel.Parent = Workspace
 	activeWorldGuideModel = guideModel
 
-	-- Glowing Arrow Head (Inverted Diamond/Cone)
+	-- 1. Glowing 3D Arrow Head (Inverted Diamond/Cone pointing down at target)
 	local arrow = Instance.new("Part")
 	arrow.Name = "ArrowHead"
 	arrow.Size = Vector3.new(2.4, 2.8, 2.4)
@@ -156,7 +192,7 @@ local function updateWorldGuide(worldTargetType: string?)
 	arrowMesh.Scale = Vector3.new(0.8, 1.4, 0.8)
 	arrowMesh.Parent = arrow
 
-	-- Glowing Ground Warning Ring
+	-- 2. Glowing Ground Warning Ring at Base of Target
 	local ring = Instance.new("Part")
 	ring.Name = "GroundRing"
 	ring.Size = Vector3.new(7, 0.2, 7)
@@ -171,31 +207,196 @@ local function updateWorldGuide(worldTargetType: string?)
 	ringMesh.MeshType = Enum.MeshType.Cylinder
 	ringMesh.Parent = ring
 
+	-- 3. Overhead Target Billboard Banner (Tells player exactly what low-level ore to mine)
+	local targetBillboard = Instance.new("BillboardGui")
+	targetBillboard.Name = "TargetBillboard"
+	targetBillboard.Size = UDim2.new(0, 240, 0, 36)
+	targetBillboard.StudsOffset = Vector3.new(0, 4.2, 0)
+	targetBillboard.AlwaysOnTop = true
+	targetBillboard.MaxDistance = 150
+	targetBillboard.Parent = arrow
+
+	local tbCard = Instance.new("Frame")
+	tbCard.Size = UDim2.new(1, 0, 1, 0)
+	tbCard.BackgroundColor3 = Color3.fromRGB(18, 14, 28)
+	tbCard.BackgroundTransparency = 0.15
+	tbCard.BorderSizePixel = 0
+	tbCard.Parent = targetBillboard
+
+	local tbCorner = Instance.new("UICorner")
+	tbCorner.CornerRadius = UDim.new(0, 8)
+	tbCorner.Parent = tbCard
+
+	local tbStroke = Instance.new("UIStroke")
+	tbStroke.Color = Color3.fromRGB(255, 215, 50)
+	tbStroke.Thickness = 1.8
+	tbStroke.Parent = tbCard
+
+	local targetBillboardLabel = Instance.new("TextLabel")
+	targetBillboardLabel.Size = UDim2.new(1, 0, 1, 0)
+	targetBillboardLabel.BackgroundTransparency = 1
+	targetBillboardLabel.Text = "🎯 MINE THIS (LOW LEVEL) 🪨"
+	targetBillboardLabel.TextColor3 = Color3.fromRGB(255, 225, 60)
+	targetBillboardLabel.Font = Enum.Font.GothamBlack
+	targetBillboardLabel.TextSize = 12
+	targetBillboardLabel.TextStrokeTransparency = 0.2
+	targetBillboardLabel.Parent = tbCard
+
+	-- 4. Ground Navigation Beam (Continuous glowing line connecting player to target)
+	local startPart = Instance.new("Part")
+	startPart.Name = "BeamStart"
+	startPart.Size = Vector3.new(0.2, 0.2, 0.2)
+	startPart.Transparency = 1
+	startPart.CanCollide = false
+	startPart.Anchored = true
+	startPart.Parent = guideModel
+
+	local startAtt = Instance.new("Attachment")
+	startAtt.Parent = startPart
+
+	local endPart = Instance.new("Part")
+	endPart.Name = "BeamEnd"
+	endPart.Size = Vector3.new(0.2, 0.2, 0.2)
+	endPart.Transparency = 1
+	endPart.CanCollide = false
+	endPart.Anchored = true
+	endPart.Parent = guideModel
+
+	local endAtt = Instance.new("Attachment")
+	endAtt.Parent = endPart
+
+	local guideBeam = Instance.new("Beam")
+	guideBeam.Name = "NavGuideBeam"
+	guideBeam.Attachment0 = startAtt
+	guideBeam.Attachment1 = endAtt
+	guideBeam.Width0 = 2.4
+	guideBeam.Width1 = 2.4
+	guideBeam.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 240, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 215, 40)),
+	})
+	guideBeam.Texture = "rbxassetid://4483345998"
+	guideBeam.TextureMode = Enum.TextureMode.Wrap
+	guideBeam.TextureLength = 3.2
+	guideBeam.TextureSpeed = 2.4
+	guideBeam.LightEmission = 0.9
+	guideBeam.LightInfluence = 0
+	guideBeam.FaceCamera = true
+	guideBeam.Parent = guideModel
+
+	-- 5. Procedural Runway Chevron Arrows along the ground path
+	local CHEVRON_COUNT = 24
+	type ChevronRecord = { part: Part, gui: SurfaceGui, label: TextLabel }
+	local chevrons: { ChevronRecord } = {}
+
+	for i = 1, CHEVRON_COUNT do
+		local chPart = Instance.new("Part")
+		chPart.Name = "NavArrowChevron_" .. i
+		chPart.Size = Vector3.new(2.4, 0.08, 1.8)
+		chPart.Material = Enum.Material.Neon
+		chPart.Color = Color3.fromRGB(255, 215, 40)
+		chPart.Transparency = 0.2
+		chPart.CanCollide = false
+		chPart.Anchored = true
+		chPart.TopSurface = Enum.SurfaceType.Smooth
+		chPart.BottomSurface = Enum.SurfaceType.Smooth
+		chPart.Parent = guideModel
+
+		local chGui = Instance.new("SurfaceGui")
+		chGui.Face = Enum.NormalId.Top
+		chGui.AlwaysOnTop = false
+		chGui.LightInfluence = 0
+		chGui.Parent = chPart
+
+		local chLabel = Instance.new("TextLabel")
+		chLabel.Size = UDim2.new(1, 0, 1, 0)
+		chLabel.BackgroundTransparency = 1
+		chLabel.Text = "➤"
+		chLabel.TextColor3 = Color3.fromRGB(255, 245, 140)
+		chLabel.Font = Enum.Font.GothamBlack
+		chLabel.TextSize = 28
+		chLabel.Parent = chGui
+
+		table.insert(chevrons, { part = chPart, gui = chGui, label = chLabel })
+	end
+
 	local guideTime = 0
 	activeGuideConn = RunService.RenderStepped:Connect(function(dt)
 		guideTime += dt * 3.5
 
+		local char = player.Character
+		local rootPart = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not rootPart then return end
+
+		local playerPos = rootPart.Position
 		local targetPos: Vector3? = nil
+		local targetLabelText: string? = nil
+
 		if worldTargetType == "NEAREST_ORE" then
-			local orePart = findNearestZone1Ore()
+			local orePart, oreName, oreHp = findNearestLowLevelOre()
 			if orePart then
 				targetPos = orePart.Position
+				targetLabelText = string.format("🎯 MINE THIS! (%s • %d HP)", oreName or "Stone", oreHp or 25)
 			end
 		elseif worldTargetType == "BLACKSMITH" then
 			targetPos = Vector3.new(-38, 2, 0)
+			targetLabelText = "🛒 BLACKSMITH (BUY PICKAXE)"
 		elseif worldTargetType == "HATCHERY" then
 			targetPos = Vector3.new(38, 2, 0)
+			targetLabelText = "🐾 HATCHERY (GET PETS)"
 		end
 
 		if targetPos then
+			-- Position overhead 3D arrow above target
 			arrow.Transparency = 0
 			ring.Transparency = 0.35 + math.sin(guideTime) * 0.15
 			local bobY = math.sin(guideTime) * 0.8
-			arrow.CFrame = CFrame.new(targetPos + Vector3.new(0, 6.5 + bobY, 0)) * CFrame.Angles(0, guideTime * 0.6, 0)
+			arrow.CFrame = CFrame.new(targetPos + Vector3.new(0, 6.5 + bobY, 0)) * CFrame.Angles(0, guideTime * 0.8, 0)
 			ring.CFrame = CFrame.new(targetPos + Vector3.new(0, 0.15, 0))
+
+			targetBillboard.Enabled = true
+			targetBillboardLabel.Text = targetLabelText or "🎯 OBJECTIVE"
+
+			-- Update Ground Navigation Beam
+			startPart.CFrame = CFrame.new(playerPos - Vector3.new(0, 2.3, 0))
+			endPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 0.2, 0))
+			guideBeam.Enabled = true
+
+			-- Position Ground Chevron Arrows in a direct line to the target
+			local delta = (targetPos - playerPos)
+			local flatDelta = Vector3.new(delta.X, 0, delta.Z)
+			local totalDist = flatDelta.Magnitude
+			local dir = if totalDist > 0.1 then flatDelta.Unit else Vector3.new(0, 0, -1)
+
+			local stepSpacing = 4.5
+			local visibleChevrons = math.clamp(math.floor((totalDist - 4) / stepSpacing), 0, CHEVRON_COUNT)
+
+			for i = 1, CHEVRON_COUNT do
+				local ch = chevrons[i]
+				if i <= visibleChevrons then
+					ch.part.Transparency = 0.1
+					local distFromPlayer = 3.5 + (i * stepSpacing)
+					local pointPos = playerPos + (dir * distFromPlayer)
+					pointPos = Vector3.new(pointPos.X, 0.25, pointPos.Z)
+
+					ch.part.CFrame = CFrame.lookAt(pointPos, pointPos + dir)
+
+					-- Animated ripple pulse travelling towards target
+					local wave = (math.sin(guideTime * 6 - i * 0.7) + 1) * 0.5
+					ch.part.Color = Color3.fromRGB(255, math.floor(190 + wave * 65), math.floor(30 + wave * 170))
+					ch.label.TextColor3 = Color3.fromRGB(255, 255, math.floor(120 + wave * 135))
+				else
+					ch.part.Transparency = 1
+				end
+			end
 		else
 			arrow.Transparency = 1
 			ring.Transparency = 1
+			guideBeam.Enabled = false
+			targetBillboard.Enabled = false
+			for _, ch in ipairs(chevrons) do
+				ch.part.Transparency = 1
+			end
 		end
 	end)
 end

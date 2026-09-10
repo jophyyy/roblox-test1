@@ -60,6 +60,10 @@ function MiningService.spawnOre(oreDef: OreConfig.OreDef, position: Vector3): Ac
 	local corePart = oreData.corePart
 	local sides = oreData.sides
 
+	model:SetAttribute("OreType", oreDef.id)
+	model:SetAttribute("MaxHealth", oreDef.maxHealth)
+	model:SetAttribute("Zone", oreDef.zone)
+
 	-- Overhead Billboard GUI (Health Bar & Name)
 	local coreHeight = 3.2 * scale
 	local billboard = Instance.new("BillboardGui")

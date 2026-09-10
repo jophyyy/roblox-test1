@@ -11,6 +11,7 @@ local RebirthConfig = require(ReplicatedStorage.Shared.Config.RebirthConfig)
 local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
+local OreModelBuilder = require(ReplicatedStorage.Shared.Utils.OreModelBuilder)
 
 local DataService = require(script.Parent.DataService)
 local PetService = require(script.Parent.PetService)
@@ -53,68 +54,18 @@ function MiningService.spawnOre(oreDef: OreConfig.OreDef, position: Vector3): Ac
 	local oreId = "Ore_" .. HttpService:GenerateGUID(false):sub(1, 8)
 	local scale = oreDef.scale
 
-	local model = Instance.new("Model")
-	model.Name = oreId
-
-	-- Main Boulder Core (Studded Rock Base)
-	local coreSize = Vector3.new(3.8, 3.2, 3.8) * scale
-	local corePart = createStudPart(model, "OreCore", coreSize, CFrame.new(position + Vector3.new(0, coreSize.Y / 2, 0)), oreDef.color)
-	model.PrimaryPart = corePart
-
-	-- Protruding Angled Crystal Shards (Neon spikes)
-	local shardColors = { oreDef.accentColor, oreDef.color }
-	local shardOffsets = {
-		{ offset = Vector3.new(0.8, 1.1, 0.7) * scale, angles = Vector3.new(25, 30, -20), size = Vector3.new(1.1, 2.2, 1.1) * scale },
-		{ offset = Vector3.new(-0.9, 0.9, -0.6) * scale, angles = Vector3.new(-30, 45, 15), size = Vector3.new(1.0, 1.9, 1.0) * scale },
-		{ offset = Vector3.new(0.5, 1.4, -0.8) * scale, angles = Vector3.new(15, -40, 35), size = Vector3.new(0.9, 2.4, 0.9) * scale },
-		{ offset = Vector3.new(-0.6, 1.2, 0.9) * scale, angles = Vector3.new(-20, 15, -30), size = Vector3.new(1.0, 2.0, 1.0) * scale },
-	}
-
-	for sIdx, sInfo in ipairs(shardOffsets) do
-		local shard = Instance.new("Part")
-		shard.Name = "CrystalShard_" .. sIdx
-		shard.Size = sInfo.size
-		shard.CFrame = corePart.CFrame * CFrame.new(sInfo.offset) * CFrame.Angles(math.rad(sInfo.angles.X), math.rad(sInfo.angles.Y), math.rad(sInfo.angles.Z))
-		shard.Color = shardColors[(sIdx % #shardColors) + 1]
-		shard.Material = Enum.Material.Neon
-		shard.Anchored = true
-		shard.CanCollide = false
-		shard.Parent = model
-	end
-
-	-- Ambient Radiant Glow Light
-	local light = Instance.new("PointLight")
-	light.Color = oreDef.accentColor
-	light.Brightness = 1.8
-	light.Range = 12 * scale
-	light.Parent = corePart
-
-	-- Sparkle Particles
-	local attach = Instance.new("Attachment")
-	attach.Position = Vector3.new(0, coreSize.Y * 0.4, 0)
-	attach.Parent = corePart
-
-	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Name = "OreSparkles"
-	sparkles.Color = ColorSequence.new(oreDef.accentColor)
-	sparkles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.25 * scale),
-		NumberSequenceKeypoint.new(0.5, 0.45 * scale),
-		NumberSequenceKeypoint.new(1, 0.05),
-	})
-	sparkles.Lifetime = NumberRange.new(1.0, 1.8)
-	sparkles.Rate = 5 * scale
-	sparkles.Speed = NumberRange.new(0.8, 2.0)
-	sparkles.SpreadAngle = Vector2.new(35, 35)
-	sparkles.Acceleration = Vector3.new(0, 2.5, 0)
-	sparkles.LightEmission = 0.9
-	sparkles.Parent = attach
+	-- Build Multifaceted Rugged Boulder with Multi-Sided Crystal Spire Clusters
+	local oreData = OreModelBuilder.buildOreModel(oreId, oreDef.name, oreDef.color, oreDef.accentColor, scale, position, oreDef.zone)
+	local model = oreData.model
+	local corePart = oreData.corePart
+	local sides = oreData.sides
 
 	-- Overhead Billboard GUI (Health Bar & Name)
+	local coreHeight = 3.2 * scale
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "OreBillboard"
 	billboard.Size = UDim2.new(0, 160, 0, 50)
-	billboard.StudsOffset = Vector3.new(0, (coreSize.Y * 0.6) + 2.2, 0)
+	billboard.StudsOffset = Vector3.new(0, (coreHeight * 0.7) + 2.4, 0)
 	billboard.AlwaysOnTop = false
 	billboard.MaxDistance = 55
 
@@ -193,11 +144,19 @@ function MiningService.spawnOre(oreDef: OreConfig.OreDef, position: Vector3): Ac
 
 	model.Parent = oresFolder
 
-	-- Bouncy pop-in spawn animation
+	-- Bouncy pop-in spawn animation:
+	-- 1. Rock Boulder drops and lands with bounce
+	local origCoreSize = corePart.Size
 	corePart.Size = Vector3.new(0.1, 0.1, 0.1)
-	TweenService:Create(corePart, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = coreSize,
-	}):Play()
+	local coreTween = TweenService:Create(corePart, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = origCoreSize,
+	})
+	coreTween:Play()
+
+	-- 2. Staggered Sprout Animation: Crystals pop up little by little on each side!
+	coreTween.Completed:Connect(function()
+		OreModelBuilder.animateSprout(sides, 0.08)
+	end)
 
 	return activeOre
 end

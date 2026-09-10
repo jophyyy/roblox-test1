@@ -566,7 +566,7 @@ function MiningClient.init()
 	damagedEvent.OnClientEvent:Connect(function(oreId: string, damage: number, isCrit: boolean, health: number, maxHealth: number, position: Vector3)
 		MiningClient.showDamageNumber(position, damage, isCrit)
 
-		-- Elastic wobble on the hit ore model
+		-- Elastic wobble and radiant light pulse on the hit ore model
 		local oresFolder = Workspace:FindFirstChild("ActiveOres")
 		if oresFolder then
 			local model = oresFolder:FindFirstChild(oreId) :: Model?
@@ -582,6 +582,13 @@ function MiningClient.init()
 						Size = origSize,
 					}):Play()
 				end)
+
+				local light = core:FindFirstChildOfClass("PointLight")
+				if light then
+					local origBright = light.Brightness
+					light.Brightness = origBright * 1.6
+					TweenService:Create(light, TweenInfo.new(0.25), { Brightness = origBright }):Play()
+				end
 			end
 		end
 	end)
@@ -592,7 +599,7 @@ function MiningClient.init()
 		MiningClient.playShatterEffect(position, oreType)
 	end)
 
-	-- 7. Listen for Training Ore Hit Event (Squash & stretch wobble)
+	-- 7. Listen for Training Ore Hit Event (Squash & stretch wobble + radiant light pulse)
 	local trainHitEvent = Remotes.getEvent("TrainingOreHit")
 	trainHitEvent.OnClientEvent:Connect(function(oreId: string, playerName: string, powerGained: number, position: Vector3)
 		local trainingFolder = Workspace:FindFirstChild("TrainingOres")
@@ -610,6 +617,13 @@ function MiningClient.init()
 						Size = origSize,
 					}):Play()
 				end)
+
+				local light = core:FindFirstChildOfClass("PointLight")
+				if light then
+					local origBright = light.Brightness
+					light.Brightness = origBright * 1.6
+					TweenService:Create(light, TweenInfo.new(0.25), { Brightness = origBright }):Play()
+				end
 			end
 		end
 	end)

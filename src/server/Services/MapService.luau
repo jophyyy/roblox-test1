@@ -10,6 +10,7 @@ local PetService = require(script.Parent.PetService)
 local MarketplaceServiceHandler = require(script.Parent.MarketplaceServiceHandler)
 local TrainingConfig = require(ReplicatedStorage.Shared.Config.TrainingConfig)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
+local OreModelBuilder = require(ReplicatedStorage.Shared.Utils.OreModelBuilder)
 
 local MapService = {}
 local brazierLights: { PointLight } = {}
@@ -2617,69 +2618,34 @@ function MapService.buildTrainingQuarry(folder: Folder)
 		local pedCap = createStudPart(model, "PedestalCap", pedCapSize, CFrame.new(pos + Vector3.new(0, pedBaseSize.Y + pedCapSize.Y / 2, 0)), oreDef.color)
 		pedCap.Material = Enum.Material.Neon
 
-		-- Main Boulder Monolith Core
-		local coreHeight = 3.6 * scale
-		local coreSize = Vector3.new(3.8, coreHeight, 3.8) * scale
-		local coreY = pedBaseSize.Y + pedCapSize.Y + (coreSize.Y / 2)
-		local corePart = createStudPart(model, "OreCore", coreSize, CFrame.new(pos + Vector3.new(0, coreY, 0)), oreDef.color)
-		corePart.Material = Enum.Material.Plastic
-		corePart.TopSurface = Enum.SurfaceType.Studs
+		-- Main Multifaceted Boulder Monolith with Multi-Sided Crystal Spire Clusters
+		local baseElevation = pos.Y + pedBaseSize.Y + pedCapSize.Y
+		local oreData = OreModelBuilder.buildOreModel(
+			oreId,
+			oreDef.name,
+			oreDef.color,
+			oreDef.accentColor,
+			scale,
+			Vector3.new(pos.X, baseElevation, pos.Z)
+		)
+
+		local corePart = oreData.corePart
 		corePart.Name = "OreCore"
 		corePart:SetAttribute("TrainingOreId", oreId)
 		model.PrimaryPart = corePart
 
-		-- 4 Protruding Angled Neon Shards
-		local shardColors = { oreDef.accentColor, oreDef.color }
-		local shardOffsets = {
-			{ offset = Vector3.new(0.8, 1.1, 0.7) * scale, angles = Vector3.new(25, 30, -20), size = Vector3.new(1.1, 2.2, 1.1) * scale },
-			{ offset = Vector3.new(-0.9, 0.9, -0.6) * scale, angles = Vector3.new(-30, 45, 15), size = Vector3.new(1.0, 1.9, 1.0) * scale },
-			{ offset = Vector3.new(0.5, 1.4, -0.8) * scale, angles = Vector3.new(15, -40, 35), size = Vector3.new(0.9, 2.4, 0.9) * scale },
-			{ offset = Vector3.new(-0.6, 1.2, 0.9) * scale, angles = Vector3.new(-20, 15, -30), size = Vector3.new(1.0, 2.0, 1.0) * scale },
-		}
-
-		for sIdx, sInfo in ipairs(shardOffsets) do
-			local shard = Instance.new("Part")
-			shard.Name = "CrystalShard_" .. sIdx
-			shard.Size = sInfo.size
-			shard.CFrame = corePart.CFrame * CFrame.new(sInfo.offset) * CFrame.Angles(math.rad(sInfo.angles.X), math.rad(sInfo.angles.Y), math.rad(sInfo.angles.Z))
-			shard.Color = shardColors[(sIdx % #shardColors) + 1]
-			shard.Material = Enum.Material.Neon
-			shard.Anchored = true
-			shard.CanCollide = false
-			shard.Parent = model
+		-- Move multifaceted boulder parts and crystal spires into model
+		for _, child in ipairs(oreData.model:GetChildren()) do
+			child.Parent = model
 		end
 
-		-- Radiant Light
-		local light = Instance.new("PointLight")
-		light.Color = oreDef.accentColor
-		light.Brightness = 2.0
-		light.Range = 14 * scale
-		light.Parent = corePart
-
-		-- Particle Sparkles
-		local attach = Instance.new("Attachment")
-		attach.Position = Vector3.new(0, coreSize.Y * 0.3, 0)
-		attach.Parent = corePart
-
-		local sparkles = Instance.new("ParticleEmitter")
-		sparkles.Name = "OreSparkles"
-		sparkles.Color = ColorSequence.new(oreDef.accentColor)
-		sparkles.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.3 * scale),
-			NumberSequenceKeypoint.new(1, 0.05),
-		})
-		sparkles.Lifetime = NumberRange.new(0.8, 1.4)
-		sparkles.Rate = 12
-		sparkles.Speed = NumberRange.new(2, 4)
-		sparkles.SpreadAngle = Vector2.new(35, 35)
-		sparkles.LightEmission = 0.9
-		sparkles.Parent = attach
+		local coreSize = corePart.Size
 
 		-- Overhead Holographic Billboard
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "OreBillboard"
 		billboard.Size = UDim2.new(0, 220, 0, 64)
-		billboard.StudsOffset = Vector3.new(0, (coreSize.Y / 2) + 2.4, 0)
+		billboard.StudsOffset = Vector3.new(0, (coreSize.Y / 2) + 2.6, 0)
 		billboard.AlwaysOnTop = false
 		billboard.MaxDistance = 55
 
@@ -2730,6 +2696,9 @@ function MapService.buildTrainingQuarry(folder: Folder)
 		clickDetector.Parent = corePart
 
 		model.Parent = trainingOresFolder
+
+		-- Staggered crystal sprout animation on world build
+		OreModelBuilder.animateSprout(oreData.sides, 0.10)
 	end
 
 	print("⚡ [MapService] The Power Quarry built successfully with 6 Training Ores!")

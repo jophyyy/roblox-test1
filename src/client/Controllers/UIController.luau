@@ -19,6 +19,7 @@ local TrailConfig = require(ReplicatedStorage.Shared.Config.TrailConfig)
 local SkillTreeConfig = require(ReplicatedStorage.Shared.Config.SkillTreeConfig)
 local MasteryConfig = require(ReplicatedStorage.Shared.Config.MasteryConfig)
 local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
+local CodeConfig = require(ReplicatedStorage.Shared.Config.CodeConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
@@ -2615,6 +2616,397 @@ local function openVIPModal(isRefresh: boolean?)
 	closeCorner.CornerRadius = UDim.new(0, 8)
 	closeCorner.Parent = closeBtn
 	closeBtn.MouseButton1Click:Connect(closeModal)
+
+	local tween = TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	})
+	tween:Play()
+end
+
+local function openCodesModal(isRefresh: boolean?)
+	if activeModal and activeModal.Name == "CodesModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
+	end
+
+	closeModal()
+	closeDialogue()
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		else
+			return
+		end
+	end
+
+	local modal = createStyledFrame(screenGui, "CodesModal", UDim2.new(0, 520, 0, 510), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(18, 20, 28))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local modalStroke = modal:FindFirstChildOfClass("UIStroke")
+	if modalStroke then
+		modalStroke.Color = Color3.fromRGB(0, 215, 255)
+		modalStroke.Thickness = 2.0
+	end
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 36)
+	title.Position = UDim2.new(0, 0, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "🎟️ SECRET PROMO CODES 🎟️"
+	title.TextColor3 = Color3.fromRGB(0, 235, 255)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 21
+	title.TextStrokeTransparency = 0.2
+	title.Parent = modal
+
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 18)
+	subTitle.Position = UDim2.new(0, 0, 0, 46)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Redeem active community codes for Free Cash, Gems, Crates & Spins!"
+	subTitle.TextColor3 = Color3.fromRGB(180, 210, 235)
+	subTitle.Font = Enum.Font.GothamBold
+	subTitle.TextSize = 12
+	subTitle.TextStrokeTransparency = 0.3
+	subTitle.Parent = modal
+
+	-- Input Section Container Card
+	local inputCard = Instance.new("Frame")
+	inputCard.Name = "InputCard"
+	inputCard.Size = UDim2.new(1, -36, 0, 92)
+	inputCard.Position = UDim2.new(0.5, 0, 0, 70)
+	inputCard.AnchorPoint = Vector2.new(0.5, 0)
+	inputCard.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	inputCard.BorderSizePixel = 0
+	inputCard.Parent = modal
+
+	local inputCorner = Instance.new("UICorner")
+	inputCorner.CornerRadius = UDim.new(0, 12)
+	inputCorner.Parent = inputCard
+
+	local inputStroke = Instance.new("UIStroke")
+	inputStroke.Color = Color3.fromRGB(50, 60, 80)
+	inputStroke.Thickness = 1.2
+	inputStroke.Parent = inputCard
+
+	-- Text Box Inset Frame
+	local boxFrame = Instance.new("Frame")
+	boxFrame.Size = UDim2.new(1, -130, 0, 44)
+	boxFrame.Position = UDim2.new(0, 12, 0, 12)
+	boxFrame.BackgroundColor3 = Color3.fromRGB(14, 16, 24)
+	boxFrame.BorderSizePixel = 0
+	boxFrame.Parent = inputCard
+
+	local boxCorner = Instance.new("UICorner")
+	boxCorner.CornerRadius = UDim.new(0, 8)
+	boxCorner.Parent = boxFrame
+
+	local boxStroke = Instance.new("UIStroke")
+	boxStroke.Color = Color3.fromRGB(65, 80, 105)
+	boxStroke.Thickness = 1.2
+	boxStroke.Parent = boxFrame
+
+	local codeBox = Instance.new("TextBox")
+	codeBox.Name = "CodeTextBox"
+	codeBox.Size = UDim2.new(1, -16, 1, 0)
+	codeBox.Position = UDim2.new(0, 10, 0, 0)
+	codeBox.BackgroundTransparency = 1
+	codeBox.PlaceholderText = "Enter Code Here (e.g. TEST1)..."
+	codeBox.PlaceholderColor3 = Color3.fromRGB(110, 125, 145)
+	codeBox.Text = ""
+	codeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	codeBox.Font = Enum.Font.GothamBold
+	codeBox.TextSize = 14
+	codeBox.ClearTextOnFocus = false
+	codeBox.Parent = boxFrame
+
+	-- Status Feedback Label
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "StatusLabel"
+	statusLabel.Size = UDim2.new(1, -24, 0, 22)
+	statusLabel.Position = UDim2.new(0, 12, 0, 62)
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.Text = "💡 Tip: Codes are case-insensitive. Click any code below to auto-fill!"
+	statusLabel.TextColor3 = Color3.fromRGB(150, 165, 185)
+	statusLabel.Font = Enum.Font.GothamBold
+	statusLabel.TextSize = 11
+	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statusLabel.Parent = inputCard
+
+	-- Redeem Button
+	local redeemBtn = Instance.new("TextButton")
+	redeemBtn.Name = "RedeemBtn"
+	redeemBtn.Size = UDim2.new(0, 105, 0, 44)
+	redeemBtn.Position = UDim2.new(1, -117, 0, 12)
+	redeemBtn.BackgroundColor3 = Color3.fromRGB(0, 205, 125)
+	redeemBtn.Text = "REDEEM"
+	redeemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	redeemBtn.Font = Enum.Font.GothamBlack
+	redeemBtn.TextSize = 14
+	redeemBtn.BorderSizePixel = 0
+	redeemBtn.AutoButtonColor = true
+	redeemBtn.Parent = inputCard
+
+	local redeemCorner = Instance.new("UICorner")
+	redeemCorner.CornerRadius = UDim.new(0, 8)
+	redeemCorner.Parent = redeemBtn
+
+	local redeemStroke = Instance.new("UIStroke")
+	redeemStroke.Color = Color3.fromRGB(255, 255, 255)
+	redeemStroke.Transparency = 0.7
+	redeemStroke.Parent = redeemBtn
+
+	-- Active Codes Section Header
+	local activeHeader = Instance.new("TextLabel")
+	activeHeader.Size = UDim2.new(1, -40, 0, 22)
+	activeHeader.Position = UDim2.new(0, 20, 0, 172)
+	activeHeader.BackgroundTransparency = 1
+	activeHeader.Text = "⭐ ACTIVE REWARD CODES"
+	activeHeader.TextColor3 = Color3.fromRGB(255, 215, 60)
+	activeHeader.Font = Enum.Font.GothamBlack
+	activeHeader.TextSize = 13
+	activeHeader.TextXAlignment = Enum.TextXAlignment.Left
+	activeHeader.Parent = modal
+
+	-- Scrolling List for Codes
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "CodesScroll"
+	scroll.Size = UDim2.new(1, -36, 0, 290)
+	scroll.Position = UDim2.new(0.5, 0, 0, 198)
+	scroll.AnchorPoint = Vector2.new(0.5, 0)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 4
+	scroll.ScrollBarImageTransparency = 0.4
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.Parent = modal
+
+	local scrollList = Instance.new("UIListLayout")
+	scrollList.Padding = UDim.new(0, 8)
+	scrollList.Parent = scroll
+
+	local function renderCodeList()
+		for _, child in ipairs(scroll:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		local redeemedSet = (cachedData and cachedData.RedeemedCodes) or {}
+
+		for _, codeDef in ipairs(CodeConfig.ORDERED_CODES) do
+			local isRedeemed = redeemedSet[codeDef.code] == true
+
+			local itemFrame = Instance.new("Frame")
+			itemFrame.Name = "CodeCard_" .. codeDef.code
+			itemFrame.Size = UDim2.new(1, -6, 0, 62)
+			itemFrame.BackgroundColor3 = if isRedeemed then Color3.fromRGB(22, 25, 33) else Color3.fromRGB(28, 32, 44)
+			itemFrame.BorderSizePixel = 0
+			itemFrame.Parent = scroll
+
+			local itemCorner = Instance.new("UICorner")
+			itemCorner.CornerRadius = UDim.new(0, 10)
+			itemCorner.Parent = itemFrame
+
+			local itemStroke = Instance.new("UIStroke")
+			itemStroke.Color = if isRedeemed then Color3.fromRGB(40, 50, 65) else codeDef.badgeColor
+			itemStroke.Transparency = if isRedeemed then 0.6 else 0.4
+			itemStroke.Thickness = 1.2
+			itemStroke.Parent = itemFrame
+
+			-- Code Pill Badge
+			local pill = Instance.new("Frame")
+			pill.Size = UDim2.new(0, 95, 0, 26)
+			pill.Position = UDim2.new(0, 10, 0, 10)
+			pill.BackgroundColor3 = if isRedeemed then Color3.fromRGB(36, 42, 54) else codeDef.badgeColor
+			pill.BorderSizePixel = 0
+			pill.Parent = itemFrame
+
+			local pillCorner = Instance.new("UICorner")
+			pillCorner.CornerRadius = UDim.new(0, 6)
+			pillCorner.Parent = pill
+
+			local pillText = Instance.new("TextLabel")
+			pillText.Size = UDim2.new(1, 0, 1, 0)
+			pillText.BackgroundTransparency = 1
+			pillText.Text = codeDef.code
+			pillText.TextColor3 = if isRedeemed then Color3.fromRGB(150, 160, 175) else Color3.fromRGB(15, 18, 25)
+			pillText.Font = Enum.Font.GothamBlack
+			pillText.TextSize = 13
+			pillText.Parent = pill
+
+			-- Title
+			local titleLbl = Instance.new("TextLabel")
+			titleLbl.Size = UDim2.new(1, -220, 0, 20)
+			titleLbl.Position = UDim2.new(0, 114, 0, 10)
+			titleLbl.BackgroundTransparency = 1
+			titleLbl.Text = codeDef.title
+			titleLbl.TextColor3 = if isRedeemed then Color3.fromRGB(140, 150, 165) else Color3.fromRGB(255, 255, 255)
+			titleLbl.Font = Enum.Font.GothamBold
+			titleLbl.TextSize = 13
+			titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+			titleLbl.Parent = itemFrame
+
+			-- Rewards Summary
+			local rewLbl = Instance.new("TextLabel")
+			rewLbl.Size = UDim2.new(1, -120, 0, 18)
+			rewLbl.Position = UDim2.new(0, 10, 0, 38)
+			rewLbl.BackgroundTransparency = 1
+			rewLbl.Text = codeDef.rewardSummary
+			rewLbl.TextColor3 = if isRedeemed then Color3.fromRGB(100, 110, 125) else Color3.fromRGB(180, 230, 255)
+			rewLbl.Font = Enum.Font.GothamBold
+			rewLbl.TextSize = 11
+			rewLbl.TextXAlignment = Enum.TextXAlignment.Left
+			rewLbl.Parent = itemFrame
+
+			-- Action Pill (Right)
+			if isRedeemed then
+				local doneLabel = Instance.new("TextLabel")
+				doneLabel.Size = UDim2.new(0, 95, 0, 30)
+				doneLabel.Position = UDim2.new(1, -105, 0, 16)
+				doneLabel.BackgroundColor3 = Color3.fromRGB(32, 45, 38)
+				doneLabel.Text = "✓ CLAIMED"
+				doneLabel.TextColor3 = Color3.fromRGB(80, 220, 130)
+				doneLabel.Font = Enum.Font.GothamBlack
+				doneLabel.TextSize = 11
+				doneLabel.BorderSizePixel = 0
+				doneLabel.Parent = itemFrame
+
+				local doneCorner = Instance.new("UICorner")
+				doneCorner.CornerRadius = UDim.new(0, 6)
+				doneCorner.Parent = doneLabel
+			else
+				local pasteBtn = Instance.new("TextButton")
+				pasteBtn.Size = UDim2.new(0, 95, 0, 30)
+				pasteBtn.Position = UDim2.new(1, -105, 0, 16)
+				pasteBtn.BackgroundColor3 = Color3.fromRGB(36, 44, 62)
+				pasteBtn.Text = "USE CODE 📋"
+				pasteBtn.TextColor3 = Color3.fromRGB(0, 220, 255)
+				pasteBtn.Font = Enum.Font.GothamBold
+				pasteBtn.TextSize = 11
+				pasteBtn.BorderSizePixel = 0
+				pasteBtn.AutoButtonColor = true
+				pasteBtn.Parent = itemFrame
+
+				local pasteCorner = Instance.new("UICorner")
+				pasteCorner.CornerRadius = UDim.new(0, 6)
+				pasteCorner.Parent = pasteBtn
+
+				local pasteStroke = Instance.new("UIStroke")
+				pasteStroke.Color = Color3.fromRGB(0, 200, 255)
+				pasteStroke.Transparency = 0.7
+				pasteStroke.Parent = pasteBtn
+
+				pasteBtn.Activated:Connect(function()
+					codeBox.Text = codeDef.code
+					codeBox:CaptureFocus()
+					statusLabel.Text = string.format("Selected [%s]! Click REDEEM to claim.", codeDef.code)
+					statusLabel.TextColor3 = Color3.fromRGB(0, 225, 255)
+				end)
+			end
+		end
+	end
+
+	activeModalUpdater = renderCodeList
+	renderCodeList()
+
+	-- Redeem Action Handler
+	local function doRedeem()
+		local entered = codeBox.Text
+		if not entered or string.gsub(entered, "%s+", "") == "" then
+			statusLabel.Text = "⚠️ Please enter a code first!"
+			statusLabel.TextColor3 = Color3.fromRGB(255, 190, 40)
+			return
+		end
+
+		redeemBtn.Text = "..."
+		local redeemFn = Remotes.getFunction("RedeemCode")
+		local ok, success, msg, codeTitle, reward = pcall(function()
+			return redeemFn:InvokeServer(entered)
+		end)
+
+		redeemBtn.Text = "REDEEM"
+
+		if ok and success then
+			statusLabel.Text = "✓ " .. tostring(msg)
+			statusLabel.TextColor3 = Color3.fromRGB(80, 255, 140)
+			codeBox.Text = ""
+
+			showFloatingPopup("🎟️ CODE REDEEMED!", Color3.fromRGB(0, 255, 200), 0)
+			if reward then
+				if reward.cash and reward.cash > 0 then
+					showFloatingPopup("+$" .. FormatNumber.formatCompact(reward.cash), Color3.fromRGB(255, 215, 0), -40)
+				end
+				if reward.gems and reward.gems > 0 then
+					showFloatingPopup("+" .. reward.gems .. " 💎", Color3.fromRGB(0, 230, 255), 40)
+				end
+				if reward.power and reward.power > 0 then
+					showFloatingPopup("+" .. FormatNumber.formatCompact(reward.power) .. " ⚡ Power", Color3.fromRGB(255, 140, 0), 0)
+				end
+				if reward.freeSpins and reward.freeSpins > 0 then
+					showFloatingPopup("+" .. reward.freeSpins .. " 🎡 Free Spins!", Color3.fromRGB(200, 80, 255), 0)
+				end
+				if reward.lootBoxes then
+					showFloatingPopup("📦 Crates Added to Inventory!", Color3.fromRGB(180, 100, 255), 0)
+				end
+			end
+
+			-- Re-fetch updated player data to refresh UI
+			task.spawn(function()
+				local getFn = Remotes.getFunction("GetPlayerData")
+				local okData, freshData = pcall(function()
+					return getFn:InvokeServer()
+				end)
+				if okData and freshData then
+					cachedData = freshData
+					renderCodeList()
+				end
+			end)
+		else
+			statusLabel.Text = "❌ " .. tostring(msg or "Invalid code or already claimed!")
+			statusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+		end
+	end
+
+	redeemBtn.Activated:Connect(doRedeem)
+	codeBox.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			doRedeem()
+		end
+	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeBtn.Position = UDim2.new(1, -40, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.BorderSizePixel = 0
+	closeBtn.AutoButtonColor = true
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 8)
+	closeCorner.Parent = closeBtn
+	closeBtn.Activated:Connect(closeModal)
 
 	local tween = TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -6124,6 +6516,9 @@ function UIController.buildHUD()
 	createMenuButton("TrailsBtn", "✨ Trails", Color3.fromRGB(160, 40, 220), openTrailsShopModal)
 	createMenuButton("TreeBtn", "🌳 Upgrades", Color3.fromRGB(0, 175, 120), openUpgradeTreeModal)
 	createMenuButton("VIPBtn", "👑 VIP Pass", Color3.fromRGB(190, 140, 15), openVIPModal)
+	createMenuButton("CodesBtn", "🎟️ Codes", Color3.fromRGB(0, 185, 225), function()
+		openCodesModal()
+	end)
 
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
 	local harvestBtn = createMenuButton("HarvestBtn", "⛏️ Mine (+$$/💎)", Color3.fromRGB(0, 180, 120), function()
@@ -6396,6 +6791,12 @@ function UIController.buildHUD()
 				closeModal()
 			elseif not activeModal and not activeDialogue then
 				openMasteryModal()
+			end
+		elseif input.KeyCode == Enum.KeyCode.C then
+			if activeModal and activeModal.Name == "CodesModal" then
+				closeModal()
+			elseif not activeModal and not activeDialogue then
+				openCodesModal()
 			end
 		elseif input.KeyCode == Enum.KeyCode.F6 then
 			triggerShowroomTeleport()

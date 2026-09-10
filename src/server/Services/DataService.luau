@@ -40,6 +40,7 @@ export type PlayerData = {
 	LootBoxes: { [string]: number }?,
 	TutorialStep: number?,
 	TutorialCompleted: boolean?,
+	RedeemedCodes: { [string]: boolean }?,
 	LastSaved: number,
 }
 
@@ -89,6 +90,7 @@ local function getDefaultData(): PlayerData
 		LootBoxes = {},
 		TutorialStep = 1,
 		TutorialCompleted = false,
+		RedeemedCodes = {},
 		LastSaved = os.time(),
 	}
 end
@@ -365,6 +367,7 @@ function DataService.load(player: Player)
 	data.FreeSpins = data.FreeSpins or 1
 	data.Power = data.Power or GameConfig.STARTER_POWER
 	data.LootBoxes = data.LootBoxes or {}
+	data.RedeemedCodes = data.RedeemedCodes or {}
 
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
@@ -887,6 +890,20 @@ function DataService.addPet(player: Player, petId: string, count: number?)
 	local qty = count or 1
 	data.OwnedPets[petId] = (data.OwnedPets[petId] or 0) + qty
 	data.PetIndex[petId] = true
+	syncToClient(player, data)
+end
+
+function DataService.isCodeRedeemed(player: Player, codeKey: string): boolean
+	local data = playerDataCache[player]
+	if not data or not data.RedeemedCodes then return false end
+	return data.RedeemedCodes[codeKey] == true
+end
+
+function DataService.markCodeRedeemed(player: Player, codeKey: string)
+	local data = playerDataCache[player]
+	if not data then return end
+	data.RedeemedCodes = data.RedeemedCodes or {}
+	data.RedeemedCodes[codeKey] = true
 	syncToClient(player, data)
 end
 

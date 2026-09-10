@@ -68,6 +68,7 @@ local REGISTERED_FUNCTIONS = {
 	"GetMeteorStatus",
 	"SkipTutorial",
 	"DevTeleportToShowroom",
+	"RedeemCode",
 }
 
 local function getRemotesFolder(): Folder

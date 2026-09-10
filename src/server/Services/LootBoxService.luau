@@ -39,6 +39,16 @@ function LootBoxService.openBox(player: Player, boxId: string): (boolean, any)
 
 	print(string.format("📦 [LootBoxService] %s opened %s -> %s (%s)", player.Name, boxDef.name, reward.name, reward.category))
 
+	-- Tutorial progress hook
+	task.spawn(function()
+		local okTut, TutorialService = pcall(function()
+			return require(script.Parent.TutorialService)
+		end)
+		if okTut and TutorialService then
+			TutorialService.onBoxOpened(player, boxId)
+		end
+	end)
+
 	return true, {
 		boxId = boxId,
 		box = boxDef,

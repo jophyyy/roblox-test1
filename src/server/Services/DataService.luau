@@ -38,6 +38,8 @@ export type PlayerData = {
 	LastWheelSpin: number?,
 	FreeSpins: number?,
 	LootBoxes: { [string]: number }?,
+	TutorialStep: number?,
+	TutorialCompleted: boolean?,
 	LastSaved: number,
 }
 
@@ -85,6 +87,8 @@ local function getDefaultData(): PlayerData
 		LastWheelSpin = 0,
 		FreeSpins = 1,
 		LootBoxes = {},
+		TutorialStep = 1,
+		TutorialCompleted = false,
 		LastSaved = os.time(),
 	}
 end
@@ -399,6 +403,16 @@ function DataService.buyShopItem(player: Player, category: string, itemId: strin
 		end
 
 		print(string.format("🛒 [Shop] %s purchased Shovel: %s", player.Name, shovelDef.name))
+
+		task.spawn(function()
+			local okTut, TutorialService = pcall(function()
+				return require(script.Parent.TutorialService)
+			end)
+			if okTut and TutorialService then
+				TutorialService.onShopItemPurchased(player, "Shovels", itemId)
+			end
+		end)
+
 		return true, "Successfully purchased " .. shovelDef.name .. "!"
 	elseif category == "Backpack" then
 		local packDef = ShopConfig.getBackpack(itemId)
@@ -411,6 +425,16 @@ function DataService.buyShopItem(player: Player, category: string, itemId: strin
 		data.EquippedBackpack = itemId
 		syncToClient(player, data)
 		print(string.format("🛒 [Shop] %s purchased Backpack: %s", player.Name, packDef.name))
+
+		task.spawn(function()
+			local okTut, TutorialService = pcall(function()
+				return require(script.Parent.TutorialService)
+			end)
+			if okTut and TutorialService then
+				TutorialService.onShopItemPurchased(player, "Backpacks", itemId)
+			end
+		end)
+
 		return true, "Successfully purchased " .. packDef.name .. "!"
 	end
 
@@ -632,6 +656,20 @@ function DataService.unlockSkillNode(player: Player, nodeId: string): (boolean, 
 
 	print(string.format("🌳 [DataService] %s unlocked talent: %s (%s)", player.Name, node.name, nodeId))
 	return true, nil
+end
+
+function DataService.getTutorialProgress(player: Player): (number, boolean)
+	local data = playerDataCache[player]
+	if not data then return 1, false end
+	return data.TutorialStep or 1, data.TutorialCompleted or false
+end
+
+function DataService.setTutorialProgress(player: Player, step: number, completed: boolean)
+	local data = playerDataCache[player]
+	if not data then return end
+	data.TutorialStep = step
+	data.TutorialCompleted = completed
+	syncToClient(player, data)
 end
 
 function DataService.init()

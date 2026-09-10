@@ -128,6 +128,15 @@ function PetService.hatchEgg(player: Player, eggId: string, count: number?): (bo
 	local hatchEvent = Remotes.getEvent("EggHatched")
 	hatchEvent:FireClient(player, true, pickedPetIds, nil)
 
+	task.spawn(function()
+		local okTut, TutorialService = pcall(function()
+			return require(script.Parent.TutorialService)
+		end)
+		if okTut and TutorialService then
+			TutorialService.onPetEquippedOrHatched(player)
+		end
+	end)
+
 	return true, pickedPetIds, nil
 end
 
@@ -154,6 +163,15 @@ function PetService.toggleEquip(player: Player, petId: string): boolean
 			return false
 		end
 		data.EquippedPets[petId] = true
+
+		task.spawn(function()
+			local okTut, TutorialService = pcall(function()
+				return require(script.Parent.TutorialService)
+			end)
+			if okTut and TutorialService then
+				TutorialService.onPetEquippedOrHatched(player)
+			end
+		end)
 	end
 
 	PetService.updateFollowers(player)

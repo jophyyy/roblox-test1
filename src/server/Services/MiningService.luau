@@ -325,6 +325,16 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 		local destroyedEvent = Remotes.getEvent("OreDestroyed")
 		destroyedEvent:FireAllClients(oreId, ore.position, ore.oreType)
 
+		-- Tutorial progress hook
+		task.spawn(function()
+			local okTut, TutorialService = pcall(function()
+				return require(script.Parent.TutorialService)
+			end)
+			if okTut and TutorialService then
+				TutorialService.onOreMined(player)
+			end
+		end)
+
 		-- Remove model
 		activeOres[oreId] = nil
 		ore.model:Destroy()

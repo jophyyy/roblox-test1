@@ -8,6 +8,7 @@ local MiningClient = require(script.Controllers.MiningClient)
 local ZoneClient = require(script.Controllers.ZoneClient)
 local BossClient = require(script.Controllers.BossClient)
 local MeteorClient = require(script.Controllers.MeteorClient)
+local TutorialController = require(script.Controllers.TutorialController)
 
 print("⛏️ [Mining Simulator] Initializing Client Controllers...")
 
@@ -20,5 +21,6 @@ MiningClient.init()
 ZoneClient.init()
 BossClient.init()
 MeteorClient.init()
+TutorialController.init()
 
 print("✅ [Mining Simulator] Client Ready!")

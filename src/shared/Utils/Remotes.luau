@@ -32,6 +32,8 @@ local REGISTERED_EVENTS = {
 	"MeteorDamaged",
 	"MeteorDestroyed",
 	"MeteorTimerSync",
+	"TutorialProgressSync",
+	"TutorialStepCompleted",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -64,6 +66,7 @@ local REGISTERED_FUNCTIONS = {
 	"HitMeteor",
 	"DevTriggerMeteor",
 	"GetMeteorStatus",
+	"SkipTutorial",
 }
 
 local function getRemotesFolder(): Folder

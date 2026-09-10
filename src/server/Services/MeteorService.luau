@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
 
 local MeteorConfig = require(ReplicatedStorage.Shared.Config.MeteorConfig)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
@@ -24,6 +25,7 @@ local currentLocation: MeteorConfig.CrashLocation? = nil
 local currentHealth: number = 0
 local maxHealth: number = 0
 local contributors: { [Player]: number } = {} -- player -> damage
+local playerHitCooldowns: { [Player]: number } = {}
 local eventFolder: Folder? = nil
 local meteorModel: Model? = nil
 local corePart: Part? = nil
@@ -269,29 +271,17 @@ local function buildMeteorMonolith(location: MeteorConfig.CrashLocation): (Model
 
 	billboard.Parent = meteorCore
 
-	-- 6. ClickDetector & ProximityPrompt for Interaction
-	local clickDetector = Instance.new("ClickDetector")
-	clickDetector.MaxActivationDistance = 32
-	clickDetector.Parent = meteorCore
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "MineMeteorPrompt"
-	prompt.ActionText = "Mine Meteor"
-	prompt.ObjectText = "Celestial Starfall"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 24
-	prompt.RequiresLineOfSight = false
-	prompt.ClickablePrompt = true
-	prompt.Parent = meteorCore
-
-	clickDetector.MouseClick:Connect(function(player)
-		MeteorService.hitMeteor(player)
-	end)
-
-	prompt.Triggered:Connect(function(player)
-		MeteorService.hitMeteor(player)
-	end)
+	-- 6. ClickDetectors on meteor core and crystal shards (no [E] prompt)
+	for _, child in ipairs(model:GetChildren()) do
+		if child:IsA("BasePart") and (child.Name == "MeteorCore" or child.Name:find("MeteorShard")) then
+			local cd = Instance.new("ClickDetector")
+			cd.MaxActivationDistance = 36
+			cd.Parent = child
+			cd.MouseClick:Connect(function(player)
+				MeteorService.hitMeteor(player)
+			end)
+		end
+	end
 
 	return model, meteorCore
 end
@@ -317,6 +307,7 @@ function MeteorService.startCountdown(forcedLocation: MeteorConfig.CrashLocation
 	local loc = currentLocation :: MeteorConfig.CrashLocation
 	currentState = "COUNTDOWN"
 	contributors = {}
+	playerHitCooldowns = {}
 
 	print(string.format("☄️ [MeteorService] Celestial Meteor Strike announced at %s! Impact in %ds", loc.zoneName, MeteorConfig.COUNTDOWN_DURATION))
 
@@ -356,11 +347,17 @@ function MeteorService.performCrash()
 	local targetPos = loc.position
 	local skyStartPos = targetPos + Vector3.new(45, 260, 45)
 
+	-- Transition global sky to night time when the meteor begins to fall
+	Lighting.ClockTime = 23.8
+	Lighting.Brightness = 0.9
+	Lighting.OutdoorAmbient = Color3.fromRGB(45, 40, 65)
+
 	-- Calculate scaled health based on active player count
 	local activePlayers = Players:GetPlayers()
 	maxHealth = MeteorConfig.BASE_HEALTH + (#activePlayers * MeteorConfig.HEALTH_PER_PLAYER)
 	currentHealth = maxHealth
 	contributors = {}
+	playerHitCooldowns = {}
 
 	-- Broadcast crash descent to all clients for synchronized VFX & screen shake
 	local crashEvent = Remotes.getEvent("MeteorCrashed")
@@ -432,9 +429,16 @@ function MeteorService.hitMeteor(player: Player): (boolean, any)
 
 	local pRoot = char.HumanoidRootPart :: BasePart
 	local dist = (pRoot.Position - corePart.Position).Magnitude
-	if dist > 35 then
+	if dist > 45 then
 		return false, "Too far from meteor"
 	end
+
+	local now = os.clock()
+	local lastHit = playerHitCooldowns[player] or 0
+	if (now - lastHit) < 0.20 then
+		return false, "Hit cooldown"
+	end
+	playerHitCooldowns[player] = now
 
 	local data = DataService.get(player)
 	if not data then return false, "No player data" end
@@ -509,62 +513,125 @@ function MeteorService.endEvent(isVictory: boolean)
 		eventExpiryThread = nil
 	end
 
+	-- Restore daytime lighting when meteor event concludes
+	Lighting.ClockTime = 17.5
+	Lighting.Brightness = 2.4
+	Lighting.OutdoorAmbient = Color3.fromRGB(135, 140, 155)
+
 	local jackpot = MeteorConfig.REWARDS.Jackpot
+	local centerPos = if corePart then corePart.Position else (if currentLocation then currentLocation.position else Vector3.zero)
 
 	if isVictory then
 		print("🎉 [MeteorService] Celestial Meteor Shattered! Distributing Jackpot Rewards...")
+
+		-- 1. Immediately disable collisions, prompts, and billboard so it cannot be hit anymore
+		if meteorModel then
+			for _, part in ipairs(meteorModel:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				elseif part:IsA("ClickDetector") or part:IsA("BillboardGui") then
+					part:Destroy()
+				end
+			end
+		end
+
+		-- 2. Spawn physical flying debris chunks blasting out of the core
+		for i = 1, 28 do
+			local chunk = Instance.new("Part")
+			chunk.Name = "MeteorDebrisChunk"
+			local sz = math.random(14, 32) / 10
+			chunk.Size = Vector3.new(sz, sz, sz)
+			chunk.Position = centerPos + Vector3.new(math.random(-3, 3), math.random(1, 6), math.random(-3, 3))
+			chunk.Material = if i % 3 == 0 then Enum.Material.Neon else Enum.Material.Slate
+			chunk.Color = if i % 4 == 0 then Color3.fromRGB(255, 215, 60) elseif i % 2 == 0 then Color3.fromRGB(255, 80, 10) else Color3.fromRGB(30, 26, 36)
+			chunk.CanCollide = true
+			chunk.Anchored = false
+			chunk.Parent = Workspace
+
+			local phi = math.random() * math.pi * 2
+			local costheta = (math.random() - 0.5) * 2
+			local speed = math.random(40, 85)
+			local dir = Vector3.new(math.cos(phi) * 0.85, math.abs(costheta) + 0.45, math.sin(phi) * 0.85).Unit
+			chunk.AssemblyLinearVelocity = dir * speed
+			chunk.AssemblyAngularVelocity = Vector3.new(math.random(-18, 18), math.random(-18, 18), math.random(-18, 18))
+			Debris:AddItem(chunk, 3.5)
+		end
+
+		-- 3. Tween all monolith parts shrinking rapidly
+		if meteorModel then
+			for _, part in ipairs(meteorModel:GetDescendants()) do
+				if part:IsA("BasePart") then
+					TweenService:Create(part, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+						Size = Vector3.new(0.1, 0.1, 0.1),
+						Transparency = 1,
+					}):Play()
+				end
+			end
+		end
 
 		-- Broadcast victory to all clients
 		local destroyedEvent = Remotes.getEvent("MeteorDestroyed")
 		destroyedEvent:FireAllClients({
 			success = true,
-			position = if corePart then corePart.Position else Vector3.zero,
+			position = centerPos,
 			jackpotCash = jackpot.CashBase,
 			jackpotGems = jackpot.GemsBase,
 		})
 
-		-- Distribute jackpot rewards to every player who contributed
+		-- Distribute jackpot rewards to every player who contributed (safely wrapped in pcall)
 		for contribPlayer, damageDealt in pairs(contributors) do
 			if contribPlayer and contribPlayer.Parent then
-				local pData = DataService.get(contribPlayer)
-				local pRebirthMult = if pData then RebirthConfig.getMultiplier(pData.Rebirths or 0) else 1.0
+				pcall(function()
+					local pData = DataService.get(contribPlayer)
+					local pRebirthMult = if pData then RebirthConfig.getMultiplier(pData.Rebirths or 0) else 1.0
 
-				local finalCash = math.floor(jackpot.CashBase * pRebirthMult)
-				local finalGems = jackpot.GemsBase
-				local finalPower = jackpot.PowerBase
+					local finalCash = math.floor(jackpot.CashBase * pRebirthMult)
+					local finalGems = jackpot.GemsBase
+					local finalPower = jackpot.PowerBase
 
-				DataService.addCash(contribPlayer, finalCash)
-				DataService.addGems(contribPlayer, finalGems)
-				DataService.addPower(contribPlayer, finalPower)
+					DataService.addCash(contribPlayer, finalCash)
+					DataService.addGems(contribPlayer, finalGems)
+					DataService.addPower(contribPlayer, finalPower)
 
-				-- Award 3 rare/exclusive loot boxes
-				for _, crateType in ipairs(jackpot.CrateTypes) do
-					LootBoxService.addLootBox(contribPlayer, crateType, 1)
-				end
+					-- Award 3 rare/exclusive loot boxes
+					for _, crateType in ipairs(jackpot.CrateTypes) do
+						DataService.addLootBox(contribPlayer, crateType, 1)
+					end
 
-				print(string.format("  🎁 Granted Jackpot to %s (Dmg: %s): +$%s, +%s 💎, 3 Crates!", contribPlayer.Name, FormatNumber.format(damageDealt), FormatNumber.format(finalCash), FormatNumber.format(finalGems)))
+					print(string.format("  🎁 Granted Jackpot to %s (Dmg: %s): +$%s, +%s 💎, 3 Crates!", contribPlayer.Name, FormatNumber.format(damageDealt), FormatNumber.format(finalCash), FormatNumber.format(finalGems)))
+				end)
 			end
 		end
 
 		-- Spawn final celebratory explosion
-		if corePart then
-			local exp = Instance.new("Explosion")
-			exp.Position = corePart.Position
-			exp.BlastRadius = 0
-			exp.DestroyJointRadiusPercent = 0
-			exp.Parent = Workspace
-		end
+		local exp = Instance.new("Explosion")
+		exp.Position = centerPos
+		exp.BlastRadius = 0
+		exp.DestroyJointRadiusPercent = 0
+		exp.Parent = Workspace
 	else
 		-- Timeout failure
 		local destroyedEvent = Remotes.getEvent("MeteorDestroyed")
 		destroyedEvent:FireAllClients({
 			success = false,
-			position = if corePart then corePart.Position else Vector3.zero,
+			position = centerPos,
 		})
+
+		-- Fade out model on timeout
+		if meteorModel then
+			for _, part in ipairs(meteorModel:GetDescendants()) do
+				if part:IsA("BasePart") then
+					TweenService:Create(part, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+						Transparency = 1,
+					}):Play()
+				end
+			end
+		end
 	end
 
-	-- Clean up visual model after brief delay for particle explosion
-	task.delay(2.5, function()
+	-- Clean up visual model after swift shatter/dissipate animation
+	local cleanupDelay = if isVictory then 0.45 else 0.85
+	task.delay(cleanupDelay, function()
 		if eventFolder then
 			eventFolder:Destroy()
 			eventFolder = nil
@@ -619,6 +686,9 @@ function MeteorService.init()
 		if currentState ~= "IDLE" then
 			if eventFolder then eventFolder:Destroy(); eventFolder = nil end
 			currentState = "IDLE"
+			Lighting.ClockTime = 17.5
+			Lighting.Brightness = 2.4
+			Lighting.OutdoorAmbient = Color3.fromRGB(135, 140, 155)
 		end
 		local ok, msg = MeteorService.startCountdown()
 		return ok, msg

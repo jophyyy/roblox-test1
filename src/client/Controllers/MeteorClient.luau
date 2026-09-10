@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
@@ -401,7 +402,15 @@ function MeteorClient.init()
 	-- 2. MeteorCrashed Handler
 	local crashEvent = Remotes.getEvent("MeteorCrashed")
 	crashEvent.OnClientEvent:Connect(function(data)
-		print("☄️ [MeteorClient] Meteor touched down at " .. tostring(data.zoneName))
+		print("☄️ [MeteorClient] Meteor descending upon " .. tostring(data.zoneName))
+
+		-- Smoothly transition sky to night time as the meteor begins to fall
+		TweenService:Create(Lighting, TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+			ClockTime = 23.8,
+			Brightness = 0.9,
+			OutdoorAmbient = Color3.fromRGB(45, 40, 65),
+			FogColor = Color3.fromRGB(30, 25, 45),
+		}):Play()
 
 		-- Remove ground beacon
 		if activeBeaconFolder then
@@ -437,11 +446,23 @@ function MeteorClient.init()
 			activeBeaconFolder = nil
 		end
 
+		-- Smoothly transition sky back to daytime dusk
+		TweenService:Create(Lighting, TweenInfo.new(3.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+			ClockTime = 17.5,
+			Brightness = 2.4,
+			OutdoorAmbient = Color3.fromRGB(135, 140, 155),
+			FogColor = Color3.fromRGB(155, 168, 185),
+		}):Play()
+
 		if data.success then
 			print("🎉 [MeteorClient] Meteor Shattered! Jackpot celebration triggered!")
 
-			-- Victory Fanfare Sound
-			playSound("rbxassetid://5153737200", 1.1, 0.9)
+			-- Shatter sound & victory fanfare
+			playSound("rbxassetid://9114223849", 1.0, 1.0) -- Heavy crystal shatter
+			playSound("rbxassetid://5153737200", 1.1, 0.9) -- Fanfare
+
+			-- Camera shake on shatter
+			shakeCamera(1.5, 0.9)
 
 			victoryTitle.Text = "🎉 METEOR SHATTERED! JACKPOT GRANTED! 🎉"
 			victorySubtitle.Text = string.format("+$%s Cash  •  +%s Gems  •  3 Rare Crates", FormatNumber.format(data.jackpotCash or 25_000_000), FormatNumber.format(data.jackpotGems or 15_000))

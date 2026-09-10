@@ -47,6 +47,10 @@ function LootBoxService.openBox(player: Player, boxId: string): (boolean, any)
 	}
 end
 
+function LootBoxService.addLootBox(player: Player, boxId: string, amount: number?)
+	DataService.addLootBox(player, boxId, amount)
+end
+
 function LootBoxService.init()
 	local openRemote = Remotes.getFunction("OpenLootBox")
 	openRemote.OnServerInvoke = function(player: Player, boxId: string)

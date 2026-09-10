@@ -192,8 +192,8 @@ function MiningClient.performSwing()
 		local mModel = activeMeteor:FindFirstChild("CelestialMeteorMonolith")
 		if mModel and mModel:IsA("Model") and mModel.PrimaryPart then
 			local distToMeteor = (mModel.PrimaryPart.Position - rootPart.Position).Magnitude
-			local isTargeting = (mouse.Target and mouse.Target:IsDescendantOf(mModel) and distToMeteor <= 35)
-			if isTargeting or distToMeteor <= 28 then
+			local isTargeting = (mouse.Target and mouse.Target:IsDescendantOf(mModel) and distToMeteor <= 45)
+			if isTargeting or distToMeteor <= 32 then
 				task.spawn(function()
 					local hitMeteorFn = Remotes.getFunction("HitMeteor")
 					hitMeteorFn:InvokeServer()
@@ -545,8 +545,21 @@ function MiningClient.init()
 
 	-- 3. Mouse Click & Hold-to-Mine Listener
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			-- Don't trigger if interacting with UI buttons
+			local pGui = player:FindFirstChild("PlayerGui")
+			if pGui and gameProcessed then
+				local guiObjects = (pGui :: PlayerGui):GetGuiObjectsAtPosition(Vector2.new(mouse.X, mouse.Y))
+				local isClickingUI = false
+				for _, gui in ipairs(guiObjects) do
+					if gui:IsA("GuiButton") and gui.Visible and gui.Active then
+						isClickingUI = true
+						break
+					end
+				end
+				if isClickingUI then return end
+			end
+
 			isMouseDown = true
 			MiningClient.performSwing()
 		end

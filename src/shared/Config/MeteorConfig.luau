@@ -14,8 +14,8 @@ MeteorConfig.EVENT_DURATION = 120 -- seconds to mine before meteor dissipates
 MeteorConfig.AUTO_INTERVAL_MIN = 360 -- 6 minutes
 MeteorConfig.AUTO_INTERVAL_MAX = 480 -- 8 minutes
 
-MeteorConfig.BASE_HEALTH = 25000 -- Base HP for the meteor monolith
-MeteorConfig.HEALTH_PER_PLAYER = 5000 -- Extra HP per player on server
+MeteorConfig.BASE_HEALTH = 3000 -- Base HP for the meteor monolith
+MeteorConfig.HEALTH_PER_PLAYER = 2000 -- Extra HP per player on server
 
 MeteorConfig.CRASH_LOCATIONS = {
 	{

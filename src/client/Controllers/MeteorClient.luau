@@ -1008,11 +1008,11 @@ local function playSequentialAwardsAnimation(data: any)
 
 		local targetSlotX = startX + (index - 1) * slotStep
 
-		-- 1. Create transparent Slot Holder at Center
+		-- 1. Create transparent Slot Holder directly at its assigned tray slot position
 		local slotHolder = Instance.new("Frame")
 		slotHolder.Name = "RewardSlot_" .. award.id
 		slotHolder.Size = UDim2.new(0, 165, 0, 215)
-		slotHolder.Position = UDim2.new(0.5, 0, centerScreenY, 0) -- Dead Center
+		slotHolder.Position = UDim2.new(0.5, targetSlotX, centerScreenY, 0) -- Reveals directly in place!
 		slotHolder.AnchorPoint = Vector2.new(0.5, 0.5)
 		slotHolder.BackgroundTransparency = 1
 		slotHolder.BorderSizePixel = 0
@@ -1139,9 +1139,9 @@ local function playSequentialAwardsAnimation(data: any)
 		table.insert(activeSlots, activeSlotRecord)
 
 		-- =====================================================================
-		-- PHASE 1: BLACK SILHOUETTE ENTRANCE & SUSPENSE WOBBLE
+		-- PHASE 1: BLACK SILHOUETTE ENTRANCE & SUSPENSE WOBBLE IN PLACE
 		-- =====================================================================
-		-- Pops into center as a pitch black spinning silhouette
+		-- Pops into its assigned position as a pitch black spinning silhouette
 		playSound("rbxassetid://6895079853", 1.5, 0.65) -- Mystery thud / click
 
 		local silhouettePop = TweenService:Create(slotScale, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
@@ -1154,7 +1154,7 @@ local function playSequentialAwardsAnimation(data: any)
 			Scale = 1.0,
 		}):Play()
 
-		-- Suspense anticipation wobble while spinning in pitch black
+		-- Suspense anticipation wobble in place while spinning in pitch black
 		local wobbleStart = os.clock()
 		while (os.clock() - wobbleStart) < 0.32 do
 			local wobble = math.sin((os.clock() - wobbleStart) * 32) * 5.5
@@ -1225,7 +1225,7 @@ local function playSequentialAwardsAnimation(data: any)
 			end)
 		end
 
-		-- Emit outward glowing sparks from center
+		-- Emit outward glowing sparks directly from this slot
 		emitSparks2D(slotHolder, 28, 145, award.sparkColor)
 
 		-- Big physical pop scale-bounce overshoot
@@ -1240,27 +1240,22 @@ local function playSequentialAwardsAnimation(data: any)
 		}):Play()
 
 		-- =====================================================================
-		-- PHASE 3: HOVER in the Spotlight while spinning in full color
+		-- PHASE 3: HOVER & SETTLE IN PLACE (No sliding across screen)
 		-- =====================================================================
-		local hoverTween = TweenService:Create(slotHolder, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-			Position = UDim2.new(0.5, 0, centerScreenY, -10),
+		local hoverUp = TweenService:Create(slotHolder, TweenInfo.new(0.24, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, targetSlotX, centerScreenY, -8),
 		})
-		hoverTween:Play()
-		hoverTween.Completed:Wait()
+		hoverUp:Play()
+		hoverUp.Completed:Wait()
 
-		-- =====================================================================
-		-- PHASE 4: SLIDE to the Left (into assigned slot tray position)
-		-- =====================================================================
-		playSound("rbxassetid://9114223170", 1.85, 0.35)
-
-		local slideTween = TweenService:Create(slotHolder, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		local hoverDown = TweenService:Create(slotHolder, TweenInfo.new(0.20, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
 			Position = UDim2.new(0.5, targetSlotX, centerScreenY, 0),
 		})
-		slideTween:Play()
-		slideTween.Completed:Wait()
+		hoverDown:Play()
+		hoverDown.Completed:Wait()
 
-		-- Short settle pause before next reward appears as black silhouette
-		task.wait(0.14)
+		-- Short settle pause before next reward appears in its own slot position
+		task.wait(0.18)
 	end
 
 	-- 5. Grand Finale: All 4 3D models spinning together!

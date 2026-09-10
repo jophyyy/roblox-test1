@@ -5,6 +5,7 @@ local Workspace = game:GetService("Workspace")
 
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
+local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
 local DataService = require(script.Parent.DataService)
 
 local PetService = {}
@@ -215,25 +216,25 @@ function PetService.updateFollowers(player: Player)
 	end
 
 	for index, petDef in ipairs(equippedList) do
-		local petModel = Instance.new("Model")
+		local petModel = PetModelBuilder.createModel(petDef, 0.85, true)
 		petModel.Name = player.Name .. "_" .. petDef.name
 
-		local part = Instance.new("Part")
-		part.Name = "PrimaryPart"
-		part.Size = Vector3.new(2, 2, 2)
-		part.CanCollide = false
-		part.Massless = true
-		part.Color = petDef.color
-		part.Material = Enum.Material.SmoothPlastic
-
-		if petDef.meshType == "Sphere" then
-			part.Shape = Enum.PartType.Ball
+		local part = petModel.PrimaryPart
+		if not part then
+			part = Instance.new("Part")
+			part.Name = "PrimaryPart"
+			part.Size = Vector3.new(1.8, 1.8, 1.8)
+			part.CanCollide = false
+			part.Massless = true
+			part.Anchored = false
+			part.Parent = petModel
+			petModel.PrimaryPart = part
 		end
 
 		-- Floating Billboard tag
 		local billboard = Instance.new("BillboardGui")
 		billboard.Size = UDim2.new(0, 100, 0, 30)
-		billboard.StudsOffset = Vector3.new(0, 1.8, 0)
+		billboard.StudsOffset = Vector3.new(0, 2.0, 0)
 		billboard.AlwaysOnTop = false
 		billboard.MaxDistance = 45
 
@@ -261,13 +262,10 @@ function PetService.updateFollowers(player: Player)
 		particles.Parent = attachment
 
 		if petDef.tier == "Golden" then
-			part.Material = Enum.Material.Glass
-			part.Reflectance = 0.4
 			particles.Rate = 18
 			particles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 80))
 			label.TextColor3 = Color3.fromRGB(255, 225, 60)
 		elseif petDef.tier == "Rainbow" then
-			part.Material = Enum.Material.Neon
 			particles.Rate = 24
 			particles.Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
@@ -303,9 +301,7 @@ function PetService.updateFollowers(player: Player)
 		alignRot.Responsiveness = 15
 		alignRot.Parent = part
 
-		part.CFrame = rootPart.CFrame * CFrame.new(offsetX, 1.5, offsetZ)
-		part.Parent = petModel
-		petModel.PrimaryPart = part
+		petModel:PivotTo(rootPart.CFrame * CFrame.new(offsetX, 1.5, offsetZ))
 		petModel.Parent = petFolder
 
 		activePetModels[player][petDef.id] = petModel

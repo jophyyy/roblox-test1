@@ -21,6 +21,7 @@ local MasteryConfig = require(ReplicatedStorage.Shared.Config.MasteryConfig)
 local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
+local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
 local LootBoxAnimation = require(script.Parent.LootBoxAnimation)
 local MiningClient = require(script.Parent.MiningClient)
 
@@ -987,14 +988,15 @@ openPetModal = function(isRefresh: boolean?)
 			pStroke.Transparency = if isEquipped then 0.3 else 0.6
 			pStroke.Parent = picBox
 
-			-- Pet Picture / Icon
-			local petIcon = Instance.new("TextLabel")
-			petIcon.Size = UDim2.new(1, 0, 1, 0)
-			petIcon.Position = UDim2.new(0, 0, 0, -2)
-			petIcon.BackgroundTransparency = 1
-			petIcon.Text = pet.icon or "🐾"
-			petIcon.TextSize = 38
-			petIcon.Parent = picBox
+			-- 3D Pet Picture Viewport
+			local vp = Instance.new("ViewportFrame")
+			vp.Size = UDim2.new(1, 0, 1, 0)
+			vp.Position = UDim2.new(0, 0, 0, 0)
+			vp.BackgroundTransparency = 1
+			vp.BorderSizePixel = 0
+			vp.Parent = picBox
+
+			PetModelBuilder.setupViewport(vp, pet, true)
 
 			-- Top-Left Status / Tier Badge
 			if pet.tier == "Golden" then
@@ -1638,14 +1640,25 @@ openPetIndexModal = function(currentFilter: string?, isRefresh: boolean?)
 					rbCorner.CornerRadius = UDim.new(0, 4)
 					rbCorner.Parent = rarityBadge
 
-					-- Pet Icon
-					local iconLabel = Instance.new("TextLabel")
-					iconLabel.Size = UDim2.new(1, 0, 0, 44)
-					iconLabel.Position = UDim2.new(0, 0, 0, 28)
-					iconLabel.BackgroundTransparency = 1
-					iconLabel.Text = if isDiscovered then pet.icon else "❓"
-					iconLabel.TextSize = if isDiscovered then 36 else 30
-					iconLabel.Parent = card
+					-- Pet Icon (3D Viewport when discovered, mystery text when locked)
+					if isDiscovered then
+						local vp = Instance.new("ViewportFrame")
+						vp.Size = UDim2.new(1, 0, 0, 44)
+						vp.Position = UDim2.new(0, 0, 0, 26)
+						vp.BackgroundTransparency = 1
+						vp.BorderSizePixel = 0
+						vp.Parent = card
+
+						PetModelBuilder.setupViewport(vp, pet, true)
+					else
+						local iconLabel = Instance.new("TextLabel")
+						iconLabel.Size = UDim2.new(1, 0, 0, 44)
+						iconLabel.Position = UDim2.new(0, 0, 0, 28)
+						iconLabel.BackgroundTransparency = 1
+						iconLabel.Text = "❓"
+						iconLabel.TextSize = 30
+						iconLabel.Parent = card
+					end
 
 					-- Pet Name
 					local nameLabel = Instance.new("TextLabel")
@@ -1993,14 +2006,15 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?, isRefresh: bool
 				cStroke.Thickness = if cand.canFuse then 1.5 else 1
 				cStroke.Parent = card
 
-				-- Left: Source Pet Column
-				local srcIcon = Instance.new("TextLabel")
-				srcIcon.Size = UDim2.new(0, 46, 0, 46)
-				srcIcon.Position = UDim2.new(0, 10, 0, 16)
-				srcIcon.BackgroundTransparency = 1
-				srcIcon.Text = srcPet.icon
-				srcIcon.TextSize = 30
-				srcIcon.Parent = card
+				-- Left: Source Pet Column (3D Viewport)
+				local srcVp = Instance.new("ViewportFrame")
+				srcVp.Size = UDim2.new(0, 46, 0, 46)
+				srcVp.Position = UDim2.new(0, 10, 0, 16)
+				srcVp.BackgroundTransparency = 1
+				srcVp.BorderSizePixel = 0
+				srcVp.Parent = card
+
+				PetModelBuilder.setupViewport(srcVp, srcPet, true)
 
 				local srcName = Instance.new("TextLabel")
 				srcName.Size = UDim2.new(0, 140, 0, 20)
@@ -2040,14 +2054,15 @@ openFusionModal = function(initialMode: ("Golden" | "Rainbow")?, isRefresh: bool
 				arrow.TextSize = 22
 				arrow.Parent = card
 
-				-- Right Column: Target Pet Result Preview
-				local tgtIcon = Instance.new("TextLabel")
-				tgtIcon.Size = UDim2.new(0, 46, 0, 46)
-				tgtIcon.Position = UDim2.new(0, 248, 0, 16)
-				tgtIcon.BackgroundTransparency = 1
-				tgtIcon.Text = tgtPet.icon
-				tgtIcon.TextSize = 30
-				tgtIcon.Parent = card
+				-- Right Column: Target Pet Result Preview (3D Viewport)
+				local tgtVp = Instance.new("ViewportFrame")
+				tgtVp.Size = UDim2.new(0, 46, 0, 46)
+				tgtVp.Position = UDim2.new(0, 248, 0, 16)
+				tgtVp.BackgroundTransparency = 1
+				tgtVp.BorderSizePixel = 0
+				tgtVp.Parent = card
+
+				PetModelBuilder.setupViewport(tgtVp, tgtPet, true)
 
 				local tgtName = Instance.new("TextLabel")
 				tgtName.Size = UDim2.new(0, 150, 0, 20)

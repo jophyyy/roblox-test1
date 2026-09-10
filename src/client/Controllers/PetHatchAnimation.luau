@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
+local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
 
 local PetHatchAnimation = {}
 
@@ -41,170 +42,7 @@ end
 
 -- Builds a stylized, adorable 3D Pet model for the ViewportFrame
 local function buildPetModel(petDef: PetConfig.PetDef, scaleMult: number?): Model
-	local mult = scaleMult or 1.0
-	local model = Instance.new("Model")
-	model.Name = "HatchedPetPreview_" .. petDef.id
-
-	-- Primary Body
-	local body = Instance.new("Part")
-	body.Name = "PrimaryPart"
-	body.Size = Vector3.new(2.4 * mult, 2.4 * mult, 2.4 * mult)
-	body.CFrame = CFrame.new(0, 0, 0)
-	body.Color = petDef.color
-	body.Material = Enum.Material.SmoothPlastic
-	body.Anchored = true
-	body.CanCollide = false
-	body.CanTouch = false
-
-	if petDef.meshType == "Sphere" then
-		body.Shape = Enum.PartType.Ball
-	elseif petDef.meshType == "Diamond" then
-		local dMesh = Instance.new("SpecialMesh")
-		dMesh.MeshType = Enum.MeshType.Sphere
-		dMesh.Scale = Vector3.new(1.1, 1.45, 1.1)
-		dMesh.Parent = body
-	end
-	body.Parent = model
-	model.PrimaryPart = body
-
-	-- Adorable Glossy Eyes (Left & Right)
-	local eyePositions = {
-		Vector3.new(-0.55 * mult, 0.25 * mult, -1.18 * mult),
-		Vector3.new(0.55 * mult, 0.25 * mult, -1.18 * mult),
-	}
-	for i, eyeOffset in ipairs(eyePositions) do
-		local eye = Instance.new("Part")
-		eye.Name = "Eye_" .. i
-		eye.Size = Vector3.new(0.38 * mult, 0.44 * mult, 0.15 * mult)
-		eye.CFrame = CFrame.new(eyeOffset)
-		eye.Color = Color3.fromRGB(24, 24, 30)
-		eye.Material = Enum.Material.SmoothPlastic
-		eye.Anchored = true
-		eye.CanCollide = false
-		eye.Parent = model
-
-		local eyeMesh = Instance.new("SpecialMesh")
-		eyeMesh.MeshType = Enum.MeshType.Sphere
-		eyeMesh.Parent = eye
-
-		-- Cute white sparkle glint inside each eye
-		local glint = Instance.new("Part")
-		glint.Name = "Glint_" .. i
-		glint.Size = Vector3.new(0.14 * mult, 0.16 * mult, 0.08 * mult)
-		glint.CFrame = eye.CFrame * CFrame.new(0.08 * mult, 0.1 * mult, -0.07 * mult)
-		glint.Color = Color3.fromRGB(255, 255, 255)
-		glint.Material = Enum.Material.Neon
-		glint.Anchored = true
-		glint.CanCollide = false
-		glint.Parent = model
-	end
-
-	-- Cute button nose
-	local nose = Instance.new("Part")
-	nose.Name = "Nose"
-	nose.Size = Vector3.new(0.28 * mult, 0.22 * mult, 0.18 * mult)
-	nose.CFrame = CFrame.new(0, -0.1 * mult, -1.22 * mult)
-	nose.Color = Color3.fromRGB(45, 35, 35)
-	nose.Material = Enum.Material.SmoothPlastic
-	nose.Anchored = true
-	nose.CanCollide = false
-	nose.Parent = model
-
-	local noseMesh = Instance.new("SpecialMesh")
-	noseMesh.MeshType = Enum.MeshType.Sphere
-	noseMesh.Parent = nose
-
-	-- Ears / Feature Accents according to pet breed
-	if petDef.id == "CrystalDoge" then
-		-- Floppy Puppy Ears
-		local earConfigs = {
-			{ pos = Vector3.new(-1.25 * mult, 1.0 * mult, -0.2 * mult), rotZ = -28 },
-			{ pos = Vector3.new(1.25 * mult, 1.0 * mult, -0.2 * mult), rotZ = 28 },
-		}
-		for eIdx, eCfg in ipairs(earConfigs) do
-			local ear = Instance.new("Part")
-			ear.Name = "DogeEar_" .. eIdx
-			ear.Size = Vector3.new(0.5 * mult, 0.9 * mult, 0.6 * mult)
-			ear.CFrame = CFrame.new(eCfg.pos) * CFrame.Angles(0, 0, math.rad(eCfg.rotZ))
-			ear.Color = Color3.fromRGB(205, 165, 60)
-			ear.Material = Enum.Material.SmoothPlastic
-			ear.Anchored = true
-			ear.CanCollide = false
-			ear.Parent = model
-
-			local eMesh = Instance.new("SpecialMesh")
-			eMesh.MeshType = Enum.MeshType.Sphere
-			eMesh.Parent = ear
-		end
-	elseif petDef.id == "SparkleKitty" then
-		-- Pointed Cat Ears with Pink Inner Lining
-		local earConfigs = {
-			{ pos = Vector3.new(-0.85 * mult, 1.35 * mult, -0.2 * mult), rotZ = 16 },
-			{ pos = Vector3.new(0.85 * mult, 1.35 * mult, -0.2 * mult), rotZ = -16 },
-		}
-		for eIdx, eCfg in ipairs(earConfigs) do
-			local ear = Instance.new("Part")
-			ear.Name = "KittyEar_" .. eIdx
-			ear.Size = Vector3.new(0.55 * mult, 0.8 * mult, 0.45 * mult)
-			ear.CFrame = CFrame.new(eCfg.pos) * CFrame.Angles(math.rad(10), 0, math.rad(eCfg.rotZ))
-			ear.Color = Color3.fromRGB(255, 175, 195)
-			ear.Material = Enum.Material.SmoothPlastic
-			ear.Anchored = true
-			ear.CanCollide = false
-			ear.Parent = model
-
-			local innerEar = Instance.new("Part")
-			innerEar.Name = "InnerEar_" .. eIdx
-			innerEar.Size = Vector3.new(0.3 * mult, 0.55 * mult, 0.25 * mult)
-			innerEar.CFrame = ear.CFrame * CFrame.new(0, 0, -0.15 * mult)
-			innerEar.Color = Color3.fromRGB(255, 120, 150)
-			innerEar.Material = Enum.Material.SmoothPlastic
-			innerEar.Anchored = true
-			innerEar.CanCollide = false
-			innerEar.Parent = model
-		end
-	elseif petDef.id == "NeonBunny" then
-		-- Tall Upright Bunny Ears
-		local earConfigs = {
-			{ pos = Vector3.new(-0.55 * mult, 1.8 * mult, -0.1 * mult), rotZ = -6 },
-			{ pos = Vector3.new(0.55 * mult, 1.8 * mult, -0.1 * mult), rotZ = 6 },
-		}
-		for eIdx, eCfg in ipairs(earConfigs) do
-			local ear = Instance.new("Part")
-			ear.Name = "BunnyEar_" .. eIdx
-			ear.Size = Vector3.new(0.42 * mult, 1.55 * mult, 0.42 * mult)
-			ear.CFrame = CFrame.new(eCfg.pos) * CFrame.Angles(math.rad(-8), 0, math.rad(eCfg.rotZ))
-			ear.Color = Color3.fromRGB(80, 240, 255)
-			ear.Material = Enum.Material.Neon
-			ear.Anchored = true
-			ear.CanCollide = false
-			ear.Parent = model
-
-			local eMesh = Instance.new("SpecialMesh")
-			eMesh.MeshType = Enum.MeshType.Sphere
-			eMesh.Scale = Vector3.new(1.0, 1.8, 1.0)
-			eMesh.Parent = ear
-		end
-	elseif petDef.id == "InfernoDragon" then
-		-- Curved Fiery Horns
-		local hornConfigs = {
-			{ pos = Vector3.new(-0.85 * mult, 1.4 * mult, 0.2 * mult), rotZ = -25 },
-			{ pos = Vector3.new(0.85 * mult, 1.4 * mult, 0.2 * mult), rotZ = 25 },
-		}
-		for hIdx, hCfg in ipairs(hornConfigs) do
-			local horn = Instance.new("Part")
-			horn.Name = "DragonHorn_" .. hIdx
-			horn.Size = Vector3.new(0.5 * mult, 1.1 * mult, 0.5 * mult)
-			horn.CFrame = CFrame.new(hCfg.pos) * CFrame.Angles(math.rad(-25), 0, math.rad(hCfg.rotZ))
-			horn.Color = Color3.fromRGB(255, 100, 0)
-			horn.Material = Enum.Material.Neon
-			horn.Anchored = true
-			horn.CanCollide = false
-			horn.Parent = model
-		end
-	end
-
-	return model
+	return PetModelBuilder.createModel(petDef, (scaleMult or 1.0) * 1.1, false)
 end
 
 -- Emits a 2D expanding shockwave ring in ScreenGui
@@ -833,11 +671,7 @@ function PetHatchAnimation.playHatch(petInput: any)
 		petModel.Parent = slot.worldModel
 		slot.petModel = petModel
 
-		local primary = petModel.PrimaryPart :: BasePart
-		primary.CFrame = CFrame.new(0, 3.5, 0)
-		TweenService:Create(primary, TweenInfo.new(0.65, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
-			CFrame = CFrame.new(0, 0, 0),
-		}):Play()
+		petModel:PivotTo(CFrame.new(0, 0, 0))
 
 		-- Create Showcase Card below the slot
 		local cardPos: UDim2

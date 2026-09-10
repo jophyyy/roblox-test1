@@ -8,6 +8,7 @@ local Debris = game:GetService("Debris")
 
 local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
 local PetConfig = require(ReplicatedStorage.Shared.Config.PetConfig)
+local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 
 local LootBoxAnimation = {}
@@ -330,77 +331,12 @@ local function buildPhysicalRewardProp(
 		pLight.Parent = root
 
 	elseif reward.category == "Pet" then
-		-- 3D Stylized Mini Pet Companion
-		local petDef = if reward.petId and PetConfig.PETS then PetConfig.PETS[reward.petId] else nil
-		local petColor = if petDef then petDef.color else rarityColor
-
-		local root = Instance.new("Part")
-		root.Name = "PrimaryPart"
-		root.Size = Vector3.new(2.2, 2.2, 2.2)
-		root.CFrame = spawnCF
-		root.Color = petColor
-		root.Material = Enum.Material.SmoothPlastic
-		root.Anchored = true
-		root.CanCollide = false
-		root.Parent = model
-		model.PrimaryPart = root
-
-		-- Glossy Eyes (Left & Right)
-		local eyePositions = {
-			Vector3.new(-0.5, 0.25, -1.05),
-			Vector3.new(0.5, 0.25, -1.05),
-		}
-		for i, offset in ipairs(eyePositions) do
-			local eye = Instance.new("Part")
-			eye.Name = "Eye_" .. i
-			eye.Size = Vector3.new(0.38, 0.44, 0.15)
-			eye.CFrame = root.CFrame * CFrame.new(offset)
-			eye.Color = Color3.fromRGB(20, 20, 26)
-			eye.Material = Enum.Material.SmoothPlastic
-			eye.CanCollide = false
-			eye.Parent = model
-			weldParts(root, eye)
-
-			local eMesh = Instance.new("SpecialMesh")
-			eMesh.MeshType = Enum.MeshType.Sphere
-			eMesh.Parent = eye
-
-			local glint = Instance.new("Part")
-			glint.Name = "Glint_" .. i
-			glint.Size = Vector3.new(0.14, 0.14, 0.08)
-			glint.CFrame = eye.CFrame * CFrame.new(0.08, 0.1, -0.06)
-			glint.Color = Color3.fromRGB(255, 255, 255)
-			glint.Material = Enum.Material.Neon
-			glint.CanCollide = false
-			glint.Parent = model
-			weldParts(root, glint)
-		end
-
-		-- Cute Nose
-		local nose = Instance.new("Part")
-		nose.Name = "Nose"
-		nose.Size = Vector3.new(0.24, 0.2, 0.16)
-		nose.CFrame = root.CFrame * CFrame.new(0, -0.1, -1.1)
-		nose.Color = Color3.fromRGB(45, 30, 30)
-		nose.Material = Enum.Material.SmoothPlastic
-		nose.CanCollide = false
-		nose.Parent = model
-		weldParts(root, nose)
-
-		-- Halo Aura above head
-		local halo = Instance.new("Part")
-		halo.Name = "HaloAura"
-		halo.Size = Vector3.new(1.8, 0.12, 1.8)
-		halo.CFrame = root.CFrame * CFrame.new(0, 1.6, 0)
-		halo.Color = rarityColor
-		halo.Material = Enum.Material.Neon
-		halo.CanCollide = false
-		halo.Parent = model
-		weldParts(root, halo)
-
-		local hMesh = Instance.new("SpecialMesh")
-		hMesh.MeshType = Enum.MeshType.Cylinder
-		hMesh.Parent = halo
+		-- 3D Stylized Pet Companion
+		local petDef = if reward.petId and PetConfig.PETS then PetConfig.PETS[reward.petId] else PetConfig.PETS.CrystalDoge
+		local pModel = PetModelBuilder.createModel(petDef or PetConfig.PETS.CrystalDoge, 1.0, true)
+		pModel.Name = "RewardProp_Pet"
+		pModel:PivotTo(spawnCF)
+		return pModel
 	end
 
 	return model

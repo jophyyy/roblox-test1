@@ -524,6 +524,75 @@ local function spawnHitPopup(pos: Vector3, damage: number, isLocalPlayer: boolea
 	end)
 end
 
+-- Plays massive, sparkling client-side visual shatter debris burst and shockwave
+local function playMeteorShatterFX(centerPos: Vector3)
+	-- 1. Ensure any lingering client models are wiped
+	local activeFolder = Workspace:FindFirstChild("ActiveMeteorEvent")
+	if activeFolder then activeFolder:Destroy() end
+	local activeMonolith = Workspace:FindFirstChild("CelestialMeteorMonolith")
+	if activeMonolith then activeMonolith:Destroy() end
+
+	-- 2. Expanding radiant ground shockwave
+	local shockwave = Instance.new("Part")
+	shockwave.Name = "ShatterShockwave"
+	shockwave.Size = Vector3.new(6, 0.5, 6)
+	shockwave.CFrame = CFrame.new(centerPos + Vector3.new(0, 0.5, 0))
+	shockwave.Color = Color3.fromRGB(255, 215, 60)
+	shockwave.Material = Enum.Material.Neon
+	shockwave.Transparency = 0.15
+	shockwave.Anchored = true
+	shockwave.CanCollide = false
+	shockwave.Parent = Workspace
+
+	local sMesh = Instance.new("SpecialMesh")
+	sMesh.MeshType = Enum.MeshType.Cylinder
+	sMesh.Parent = shockwave
+
+	TweenService:Create(shockwave, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(75, 0.5, 75),
+		Transparency = 1,
+	}):Play()
+	task.delay(0.85, function() shockwave:Destroy() end)
+
+	-- 3. Prismatic crystal and slate debris burst
+	local colors = {
+		Color3.fromRGB(255, 215, 60), -- Cosmic Gold
+		Color3.fromRGB(0, 240, 255),   -- Stellar Cyan
+		Color3.fromRGB(255, 90, 20),   -- Molten Lava
+		Color3.fromRGB(180, 50, 255),  -- Void Purple
+		Color3.fromRGB(240, 240, 255), -- Starlight White
+	}
+
+	local DebrisService = game:GetService("Debris")
+	for i = 1, 36 do
+		local chunk = Instance.new("Part")
+		local sz = (0.8 + math.random() * 1.8)
+		chunk.Size = Vector3.new(sz, sz, sz)
+		chunk.Position = centerPos + Vector3.new(math.random(-3, 3), math.random(1, 5), math.random(-3, 3))
+		chunk.Color = colors[math.random(1, #colors)]
+		chunk.Material = if i % 2 == 0 then Enum.Material.Neon else Enum.Material.Slate
+		chunk.CanCollide = false
+		chunk.Anchored = false
+		chunk.Parent = Workspace
+
+		local phi = math.random() * math.pi * 2
+		local costheta = (math.random() - 0.5) * 2
+		local speed = math.random(35, 75)
+		local dir = Vector3.new(math.cos(phi) * 0.9, math.abs(costheta) + 0.6, math.sin(phi) * 0.9).Unit
+		chunk.AssemblyLinearVelocity = dir * speed
+		chunk.AssemblyAngularVelocity = Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
+
+		task.delay(0.8, function()
+			TweenService:Create(chunk, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Transparency = 1,
+				Size = Vector3.new(0.1, 0.1, 0.1),
+			}):Play()
+		end)
+
+		DebrisService:AddItem(chunk, 1.3)
+	end
+end
+
 -- =========================================================================
 -- INITIALIZATION
 -- =========================================================================
@@ -642,12 +711,15 @@ function MeteorClient.init()
 		if data.success then
 			print("🎉 [MeteorClient] Meteor Shattered! Jackpot celebration triggered!")
 
+			-- Play full client-side visual shatter explosion & shockwave
+			playMeteorShatterFX(data.position or Vector3.zero)
+
 			-- Shatter sound & victory fanfare
 			playSound("rbxassetid://9114223849", 1.0, 1.0) -- Heavy crystal shatter
 			playSound("rbxassetid://5153737200", 1.1, 0.9) -- Fanfare
 
 			-- Camera shake on shatter
-			shakeCamera(1.5, 0.9)
+			shakeCamera(1.8, 1.0)
 
 			victoryTitle.Text = "🎉 METEOR SHATTERED! JACKPOT GRANTED! 🎉"
 			victorySubtitle.Text = string.format("+$%s Cash  •  +%s Gems  •  3 Rare Crates", FormatNumber.format(data.jackpotCash or 25_000_000), FormatNumber.format(data.jackpotGems or 15_000))
@@ -668,6 +740,8 @@ function MeteorClient.init()
 		else
 			-- Cooled down / failed
 			print("💨 [MeteorClient] Meteor cooled down and dissipated")
+			local activeFolder = Workspace:FindFirstChild("ActiveMeteorEvent")
+			if activeFolder then activeFolder:Destroy() end
 		end
 	end)
 

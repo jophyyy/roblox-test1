@@ -267,7 +267,7 @@ local function buildMeteorMonolith(location: MeteorConfig.CrashLocation): (Model
 	hpText.Name = "HPText"
 	hpText.Size = UDim2.new(1, 0, 1, 0)
 	hpText.BackgroundTransparency = 1
-	hpText.Text = "25,000 / 25,000 HP (100%)"
+	hpText.Text = string.format("%s / %s HP (100%%)", FormatNumber.format(maxHealth), FormatNumber.format(maxHealth))
 	hpText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	hpText.Font = Enum.Font.GothamBlack
 	hpText.TextSize = 12
@@ -397,6 +397,11 @@ function MeteorService.performCrash()
 	if eventFolder then
 		eventFolder:Destroy()
 		eventFolder = nil
+	end
+	for _, child in ipairs(Workspace:GetChildren()) do
+		if child.Name == "ActiveMeteorEvent" or child.Name == "CelestialMeteorMonolith" then
+			child:Destroy()
+		end
 	end
 
 	eventFolder = Instance.new("Folder")
@@ -531,6 +536,7 @@ end
 function MeteorService.endEvent(isVictory: boolean)
 	if currentState ~= "ACTIVE" and currentState ~= "FALLING" then return end
 	currentState = "IDLE"
+	currentHealth = 0
 	MeteorService.broadcastStatus()
 
 	if eventExpiryThread then
@@ -544,29 +550,39 @@ function MeteorService.endEvent(isVictory: boolean)
 	Lighting.OutdoorAmbient = Color3.fromRGB(135, 140, 155)
 
 	local jackpot = MeteorConfig.REWARDS.Jackpot
-	local centerPos = if corePart then corePart.Position else (if currentLocation then currentLocation.position else Vector3.zero)
+	local centerPos = if corePart and corePart.Parent then corePart.Position else (if currentLocation then currentLocation.position else Vector3.zero)
+
+	-- 1. IMMEDIATELY & SYNCHRONOUSLY DESTROY THE PHYSICAL METEOR MODEL & ALL BILLBOARDS
+	if eventFolder then
+		eventFolder:Destroy()
+		eventFolder = nil
+	end
+	if meteorModel then
+		meteorModel:Destroy()
+		meteorModel = nil
+	end
+	corePart = nil
+	healthFillFrame = nil
+	healthLabel = nil
+	timerLabel = nil
+
+	-- Guaranteed sweep for any stray/duplicate meteor models in Workspace
+	for _, child in ipairs(Workspace:GetChildren()) do
+		if child.Name == "ActiveMeteorEvent" or child.Name == "CelestialMeteorMonolith" then
+			child:Destroy()
+		end
+	end
 
 	if isVictory then
 		print("🎉 [MeteorService] Celestial Meteor Shattered! Distributing Jackpot Rewards...")
 
-		-- 1. Immediately disable collisions, prompts, and billboard so it cannot be hit anymore
-		if meteorModel then
-			for _, part in ipairs(meteorModel:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				elseif part:IsA("ClickDetector") or part:IsA("BillboardGui") then
-					part:Destroy()
-				end
-			end
-		end
-
-		-- 2. Spawn physical flying debris chunks blasting out of the core
-		for i = 1, 28 do
+		-- 2. Spawn physical flying debris chunks blasting out of the core into Workspace
+		for i = 1, 32 do
 			local chunk = Instance.new("Part")
 			chunk.Name = "MeteorDebrisChunk"
-			local sz = math.random(14, 32) / 10
+			local sz = math.random(14, 34) / 10
 			chunk.Size = Vector3.new(sz, sz, sz)
-			chunk.Position = centerPos + Vector3.new(math.random(-3, 3), math.random(1, 6), math.random(-3, 3))
+			chunk.Position = centerPos + Vector3.new(math.random(-4, 4), math.random(2, 7), math.random(-4, 4))
 			chunk.Material = if i % 3 == 0 then Enum.Material.Neon else Enum.Material.Slate
 			chunk.Color = if i % 4 == 0 then Color3.fromRGB(255, 215, 60) elseif i % 2 == 0 then Color3.fromRGB(255, 80, 10) else Color3.fromRGB(30, 26, 36)
 			chunk.CanCollide = true
@@ -575,23 +591,11 @@ function MeteorService.endEvent(isVictory: boolean)
 
 			local phi = math.random() * math.pi * 2
 			local costheta = (math.random() - 0.5) * 2
-			local speed = math.random(40, 85)
-			local dir = Vector3.new(math.cos(phi) * 0.85, math.abs(costheta) + 0.45, math.sin(phi) * 0.85).Unit
+			local speed = math.random(45, 95)
+			local dir = Vector3.new(math.cos(phi) * 0.85, math.abs(costheta) + 0.5, math.sin(phi) * 0.85).Unit
 			chunk.AssemblyLinearVelocity = dir * speed
-			chunk.AssemblyAngularVelocity = Vector3.new(math.random(-18, 18), math.random(-18, 18), math.random(-18, 18))
+			chunk.AssemblyAngularVelocity = Vector3.new(math.random(-22, 22), math.random(-22, 22), math.random(-22, 22))
 			Debris:AddItem(chunk, 3.5)
-		end
-
-		-- 3. Tween all monolith parts shrinking rapidly
-		if meteorModel then
-			for _, part in ipairs(meteorModel:GetDescendants()) do
-				if part:IsA("BasePart") then
-					TweenService:Create(part, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-						Size = Vector3.new(0.1, 0.1, 0.1),
-						Transparency = 1,
-					}):Play()
-				end
-			end
 		end
 
 		-- Broadcast victory to all clients
@@ -618,7 +622,7 @@ function MeteorService.endEvent(isVictory: boolean)
 					DataService.addGems(contribPlayer, finalGems)
 					DataService.addPower(contribPlayer, finalPower)
 
-					-- Award 3 rare/exclusive loot boxes
+					-- Award guaranteed loot boxes
 					for _, crateType in ipairs(jackpot.CrateTypes) do
 						DataService.addLootBox(contribPlayer, crateType, 1)
 					end
@@ -641,32 +645,7 @@ function MeteorService.endEvent(isVictory: boolean)
 			success = false,
 			position = centerPos,
 		})
-
-		-- Fade out model on timeout
-		if meteorModel then
-			for _, part in ipairs(meteorModel:GetDescendants()) do
-				if part:IsA("BasePart") then
-					TweenService:Create(part, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-						Transparency = 1,
-					}):Play()
-				end
-			end
-		end
 	end
-
-	-- Clean up visual model after swift shatter/dissipate animation
-	local cleanupDelay = if isVictory then 0.45 else 0.85
-	task.delay(cleanupDelay, function()
-		if eventFolder then
-			eventFolder:Destroy()
-			eventFolder = nil
-		end
-		meteorModel = nil
-		corePart = nil
-		healthFillFrame = nil
-		healthLabel = nil
-		timerLabel = nil
-	end)
 
 	-- Schedule next automated meteor strike
 	MeteorService.scheduleNextAutoEvent()
@@ -710,14 +689,18 @@ function MeteorService.init()
 	local devFn = Remotes.getFunction("DevTriggerMeteor")
 	devFn.OnServerInvoke = function(player)
 		print(string.format("⚡ [MeteorService] DevTriggerMeteor invoked by %s!", player.Name))
-		-- If in progress, reset and launch fresh countdown
-		if currentState ~= "IDLE" then
-			if eventFolder then eventFolder:Destroy(); eventFolder = nil end
-			currentState = "IDLE"
-			Lighting.ClockTime = 17.5
-			Lighting.Brightness = 2.4
-			Lighting.OutdoorAmbient = Color3.fromRGB(135, 140, 155)
+		-- Clean up any active/lingering meteor models
+		if eventFolder then eventFolder:Destroy(); eventFolder = nil end
+		for _, child in ipairs(Workspace:GetChildren()) do
+			if child.Name == "ActiveMeteorEvent" or child.Name == "CelestialMeteorMonolith" then
+				child:Destroy()
+			end
 		end
+		currentState = "IDLE"
+		Lighting.ClockTime = 17.5
+		Lighting.Brightness = 2.4
+		Lighting.OutdoorAmbient = Color3.fromRGB(135, 140, 155)
+
 		local ok, msg = MeteorService.startCountdown()
 		return ok, msg
 	end

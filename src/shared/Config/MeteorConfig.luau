@@ -70,7 +70,7 @@ MeteorConfig.REWARDS = {
 		PowerBase = 5_000,
 		MasteryXP = 500, -- granted to all tracks
 		CratesCount = 3, -- 3 guaranteed loot boxes
-		CrateTypes = { "Obsidian", "Celestial", "Prismatic" },
+		CrateTypes = { "magma_chest", "void_chest", "cyber_chest" },
 	},
 }
 

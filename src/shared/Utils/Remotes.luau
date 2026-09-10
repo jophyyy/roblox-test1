@@ -38,6 +38,8 @@ local REGISTERED_EVENTS = {
 	"LeaderboardSync",
 	"PromptDailyRewardModal",
 	"OpenDailyRewardModal",
+	"PetMerchantPriceSync",
+	"OpenPetMerchantModal",
 }
 
 local REGISTERED_FUNCTIONS = {
@@ -77,6 +79,10 @@ local REGISTERED_FUNCTIONS = {
 	"ClaimDailyReward",
 	"GetDailyRewardStatus",
 	"DevAdvanceDailyReward",
+	"SellPet",
+	"SellAllUnusedPets",
+	"GetPetMerchantState",
+	"DevForceMerchantMindChange",
 }
 
 local function getRemotesFolder(): Folder

@@ -22,6 +22,7 @@ local LootBoxConfig = require(ReplicatedStorage.Shared.Config.LootBoxConfig)
 local CodeConfig = require(ReplicatedStorage.Shared.Config.CodeConfig)
 local LeaderboardConfig = require(ReplicatedStorage.Shared.Config.LeaderboardConfig)
 local DailyRewardConfig = require(ReplicatedStorage.Shared.Config.DailyRewardConfig)
+local PetMerchantConfig = require(ReplicatedStorage.Shared.Config.PetMerchantConfig)
 local AudioController = require(script.Parent.AudioController)
 local PetHatchAnimation = require(script.Parent.PetHatchAnimation)
 local PetModelBuilder = require(ReplicatedStorage.Shared.Utils.PetModelBuilder)
@@ -51,6 +52,7 @@ local isSpinningWheel = false
 local wheelFreeBadge: Frame? = nil
 local dailyRewardBadge: Frame? = nil
 local currentSelectedDailyWeek = 1
+local cachedMerchantState: any = nil
 
 -- Typewriter and RPG Dialogue State
 local dialogueTypingThread: thread? = nil
@@ -4073,6 +4075,602 @@ local function openDailyRewardModal(isRefresh: boolean?)
 	tween:Play()
 end
 
+local function openPetMerchantModal(isRefresh: boolean?)
+	if activeModal and activeModal.Name == "PetMerchantModal" then
+		if isRefresh == true then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+			return
+		else
+			closeModal()
+			return
+		end
+	end
+
+	closeModal()
+	closeDialogue()
+
+	if not cachedData then
+		local getFn = Remotes.getFunction("GetPlayerData")
+		local ok, data = pcall(function()
+			return getFn:InvokeServer()
+		end)
+		if ok and data then
+			cachedData = data
+		else
+			return
+		end
+	end
+
+	if not cachedMerchantState or isRefresh ~= true then
+		local stateFn = Remotes.getFunction("GetPetMerchantState")
+		local ok, state = pcall(function()
+			return stateFn:InvokeServer()
+		end)
+		if ok and state then
+			cachedMerchantState = state
+		else
+			cachedMerchantState = {
+				currentMultiplier = 1.0,
+				cycleTimeRemaining = 60,
+				mood = PetMerchantConfig.getMood(1.0),
+				perPetMultipliers = {},
+			}
+		end
+	end
+
+	local modal = createStyledFrame(screenGui, "PetMerchantModal", UDim2.new(0, 720, 0, 580), UDim2.new(0.5, 0, 1.5, 0), Color3.fromRGB(16, 22, 28))
+	modal.AnchorPoint = Vector2.new(0.5, 0.5)
+	activeModal = modal
+
+	local modalStroke = modal:FindFirstChildOfClass("UIStroke")
+	if modalStroke then
+		modalStroke.Color = Color3.fromRGB(0, 215, 175)
+		modalStroke.Thickness = 2.0
+	end
+
+	-- Header Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 32)
+	title.Position = UDim2.new(0, 0, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "🐾 FINNEAS'S ECCENTRIC PET EXCHANGE 🐾"
+	title.TextColor3 = Color3.fromRGB(0, 240, 200)
+	title.Font = Enum.Font.GothamBlack
+	title.TextSize = 20
+	title.TextStrokeTransparency = 0.2
+	title.Parent = modal
+
+	-- Subtitle
+	local subTitle = Instance.new("TextLabel")
+	subTitle.Size = UDim2.new(1, 0, 0, 18)
+	subTitle.Position = UDim2.new(0, 0, 0, 42)
+	subTitle.BackgroundTransparency = 1
+	subTitle.Text = "Finneas pays cash for unused pets! His mood & prices fluctuate between 0.50x and 5.00x!"
+	subTitle.TextColor3 = Color3.fromRGB(180, 220, 235)
+	subTitle.Font = Enum.Font.GothamBold
+	subTitle.TextSize = 12
+	subTitle.TextStrokeTransparency = 0.3
+	subTitle.Parent = modal
+
+	-- Live Market Mood & Countdown Card
+	local marketCard = Instance.new("Frame")
+	marketCard.Name = "MarketCard"
+	marketCard.Size = UDim2.new(1, -40, 0, 54)
+	marketCard.Position = UDim2.new(0.5, 0, 0, 68)
+	marketCard.AnchorPoint = Vector2.new(0.5, 0)
+	marketCard.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+	marketCard.BorderSizePixel = 0
+	marketCard.Parent = modal
+
+	local mcCorner = Instance.new("UICorner")
+	mcCorner.CornerRadius = UDim.new(0, 10)
+	mcCorner.Parent = marketCard
+
+	local mcStroke = Instance.new("UIStroke")
+	mcStroke.Thickness = 1.5
+	mcStroke.Parent = marketCard
+
+	local moodBadge = Instance.new("Frame")
+	moodBadge.Name = "MoodBadge"
+	moodBadge.Size = UDim2.new(0, 120, 0, 26)
+	moodBadge.Position = UDim2.new(0, 12, 0, 8)
+	moodBadge.BorderSizePixel = 0
+	moodBadge.Parent = marketCard
+
+	local mbc = Instance.new("UICorner")
+	mbc.CornerRadius = UDim.new(0, 6)
+	mbc.Parent = moodBadge
+
+	local moodBadgeText = Instance.new("TextLabel")
+	moodBadgeText.Size = UDim2.new(1, 0, 1, 0)
+	moodBadgeText.BackgroundTransparency = 1
+	moodBadgeText.Font = Enum.Font.GothamBlack
+	moodBadgeText.TextSize = 12
+	moodBadgeText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	moodBadgeText.Parent = moodBadge
+
+	local multText = Instance.new("TextLabel")
+	multText.Name = "MultText"
+	multText.Size = UDim2.new(0, 180, 0, 26)
+	multText.Position = UDim2.new(0, 140, 0, 8)
+	multText.BackgroundTransparency = 1
+	multText.Font = Enum.Font.GothamBlack
+	multText.TextSize = 16
+	multText.TextXAlignment = Enum.TextXAlignment.Left
+	multText.Parent = marketCard
+
+	local moodDesc = Instance.new("TextLabel")
+	moodDesc.Name = "MoodDesc"
+	moodDesc.Size = UDim2.new(1, -260, 0, 16)
+	moodDesc.Position = UDim2.new(0, 12, 0, 34)
+	moodDesc.BackgroundTransparency = 1
+	moodDesc.Font = Enum.Font.GothamMedium
+	moodDesc.TextSize = 10.5
+	moodDesc.TextColor3 = Color3.fromRGB(160, 185, 215)
+	moodDesc.TextXAlignment = Enum.TextXAlignment.Left
+	moodDesc.Parent = marketCard
+
+	local timerText = Instance.new("TextLabel")
+	timerText.Name = "TimerText"
+	timerText.Size = UDim2.new(0, 220, 1, 0)
+	timerText.Position = UDim2.new(1, -230, 0, 0)
+	timerText.BackgroundTransparency = 1
+	timerText.Font = Enum.Font.GothamBlack
+	timerText.TextSize = 15
+	timerText.TextColor3 = Color3.fromRGB(0, 240, 255)
+	timerText.TextXAlignment = Enum.TextXAlignment.Right
+	timerText.Parent = marketCard
+
+	-- Quick Action Bar (Bulk Sell & Dev Button)
+	local actionBar = Instance.new("Frame")
+	actionBar.Name = "ActionBar"
+	actionBar.Size = UDim2.new(1, -40, 0, 42)
+	actionBar.Position = UDim2.new(0.5, 0, 0, 130)
+	actionBar.AnchorPoint = Vector2.new(0.5, 0)
+	actionBar.BackgroundTransparency = 1
+	actionBar.Parent = modal
+
+	local bulkSellBtn = Instance.new("TextButton")
+	bulkSellBtn.Name = "BulkSellBtn"
+	bulkSellBtn.Size = UDim2.new(0.68, -6, 1, 0)
+	bulkSellBtn.Position = UDim2.new(0, 0, 0, 0)
+	bulkSellBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	bulkSellBtn.Font = Enum.Font.GothamBlack
+	bulkSellBtn.TextSize = 13.5
+	bulkSellBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	bulkSellBtn.BorderSizePixel = 0
+	bulkSellBtn.AutoButtonColor = true
+	bulkSellBtn.Parent = actionBar
+
+	local bsc = Instance.new("UICorner")
+	bsc.CornerRadius = UDim.new(0, 8)
+	bsc.Parent = bulkSellBtn
+
+	local bsStroke = Instance.new("UIStroke")
+	bsStroke.Color = Color3.fromRGB(255, 255, 255)
+	bsStroke.Thickness = 1.2
+	bsStroke.Transparency = 0.5
+	bsStroke.Parent = bulkSellBtn
+
+	local devMindBtn = Instance.new("TextButton")
+	devMindBtn.Name = "DevMindBtn"
+	devMindBtn.Size = UDim2.new(0.32, -6, 1, 0)
+	devMindBtn.Position = UDim2.new(0.68, 6, 0, 0)
+	devMindBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+	devMindBtn.Text = "⚡ Change Mind (Dev)"
+	devMindBtn.Font = Enum.Font.GothamBold
+	devMindBtn.TextSize = 12
+	devMindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	devMindBtn.BorderSizePixel = 0
+	devMindBtn.AutoButtonColor = true
+	devMindBtn.Parent = actionBar
+
+	local dmc = Instance.new("UICorner")
+	dmc.CornerRadius = UDim.new(0, 8)
+	dmc.Parent = devMindBtn
+
+	-- Owned Pets Scrolling Container
+	local scrollFrame = Instance.new("ScrollingFrame")
+	scrollFrame.Name = "PetListScroll"
+	scrollFrame.Size = UDim2.new(1, -40, 0, 380)
+	scrollFrame.Position = UDim2.new(0.5, 0, 0, 180)
+	scrollFrame.AnchorPoint = Vector2.new(0.5, 0)
+	scrollFrame.BackgroundColor3 = Color3.fromRGB(12, 16, 24)
+	scrollFrame.BorderSizePixel = 0
+	scrollFrame.ScrollBarThickness = 5
+	scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollFrame.Parent = modal
+
+	local sfc = Instance.new("UICorner")
+	sfc.CornerRadius = UDim.new(0, 10)
+	sfc.Parent = scrollFrame
+
+	local sfStroke = Instance.new("UIStroke")
+	sfStroke.Color = Color3.fromRGB(35, 45, 60)
+	sfStroke.Thickness = 1
+	sfStroke.Parent = scrollFrame
+
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.Padding = UDim.new(0, 8)
+	listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	listLayout.Parent = scrollFrame
+
+	local sfPad = Instance.new("UIPadding")
+	sfPad.PaddingTop = UDim.new(0, 8)
+	sfPad.PaddingBottom = UDim.new(0, 8)
+	sfPad.PaddingLeft = UDim.new(0, 8)
+	sfPad.PaddingRight = UDim.new(0, 8)
+	sfPad.Parent = scrollFrame
+
+	local renderMerchantUI: () -> ()
+
+	renderMerchantUI = function()
+		if not activeModal or activeModal ~= modal then return end
+
+		local state = cachedMerchantState or {
+			currentMultiplier = 1.0,
+			cycleTimeRemaining = 60,
+			mood = PetMerchantConfig.getMood(1.0),
+			perPetMultipliers = {},
+		}
+
+		local mult = state.currentMultiplier or 1.0
+		local mood = state.mood or PetMerchantConfig.getMood(mult)
+		local perPet = state.perPetMultipliers or {}
+
+		-- Update Market Card
+		mcStroke.Color = mood.color
+		moodBadge.BackgroundColor3 = mood.color
+		moodBadgeText.Text = mood.badge
+		multText.Text = string.format("%.2fx Multiplier", mult)
+		multText.TextColor3 = mood.color
+		moodDesc.Text = mood.description
+		timerText.Text = string.format("🧠 Mind changes in: %ds", math.max(0, state.cycleTimeRemaining or 0))
+
+		-- Calculate Bulk Sell totals
+		local totalUnusedPets = 0
+		local totalBulkPayout = 0
+		local ownedPetsMap = (cachedData and cachedData.OwnedPets) or {}
+		local equippedPetsMap = (cachedData and cachedData.EquippedPets) or {}
+
+		for petId, ownedCount in pairs(ownedPetsMap) do
+			local isEq = equippedPetsMap[petId] == true
+			local eqCount = if isEq then 1 else 0
+			local unused = math.max(0, ownedCount - eqCount)
+			if unused > 0 then
+				local petMult = perPet[petId] or mult
+				local unitPrice = PetMerchantConfig.calculatePrice(petId, petMult)
+				totalUnusedPets += unused
+				totalBulkPayout += unitPrice * unused
+			end
+		end
+
+		if totalUnusedPets > 0 then
+			bulkSellBtn.Text = string.format("💰 SELL ALL %d UNUSED PETS (+$%s)", totalUnusedPets, FormatNumber.formatCompact(totalBulkPayout))
+			bulkSellBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+			bulkSellBtn.AutoButtonColor = true
+		else
+			bulkSellBtn.Text = "🔒 No Unused Pets to Sell (All Equipped or None)"
+			bulkSellBtn.BackgroundColor3 = Color3.fromRGB(45, 55, 65)
+			bulkSellBtn.AutoButtonColor = false
+		end
+
+		-- Clear Pet Cards
+		for _, child in ipairs(scrollFrame:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		-- Sort pets by rarity / price
+		local petEntries = {}
+		for petId, ownedCount in pairs(ownedPetsMap) do
+			if ownedCount > 0 then
+				local def = PetConfig.PETS[petId]
+				if def then
+					table.insert(petEntries, { id = petId, count = ownedCount, def = def })
+				end
+			end
+		end
+
+		if #petEntries == 0 then
+			local emptyMsg = Instance.new("TextLabel")
+			emptyMsg.Size = UDim2.new(1, 0, 0, 80)
+			emptyMsg.BackgroundTransparency = 1
+			emptyMsg.Text = "🐾 You don't have any pets in your inventory!\nHatch some at the Pet Hatchery Sanctuary, then return here to trade."
+			emptyMsg.TextColor3 = Color3.fromRGB(150, 170, 195)
+			emptyMsg.Font = Enum.Font.GothamMedium
+			emptyMsg.TextSize = 13
+			emptyMsg.Parent = scrollFrame
+		else
+			for _, entry in ipairs(petEntries) do
+				local petId = entry.id
+				local count = entry.count
+				local def = entry.def
+
+				local isEq = equippedPetsMap[petId] == true
+				local eqCount = if isEq then 1 else 0
+				local unusedCount = math.max(0, count - eqCount)
+
+				local petMult = perPet[petId] or mult
+				local unitPrice = PetMerchantConfig.calculatePrice(petId, petMult)
+				local totalPetPayout = unitPrice * unusedCount
+
+				local card = Instance.new("Frame")
+				card.Name = "PetCard_" .. petId
+				card.Size = UDim2.new(1, -8, 0, 68)
+				card.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+				card.BorderSizePixel = 0
+				card.Parent = scrollFrame
+
+				local cc = Instance.new("UICorner")
+				cc.CornerRadius = UDim.new(0, 8)
+				cc.Parent = card
+
+				local cStroke = Instance.new("UIStroke")
+				cStroke.Color = Color3.fromRGB(38, 48, 65)
+				cStroke.Thickness = 1
+				cStroke.Parent = card
+
+				-- Pet Icon Box
+				local iconBox = Instance.new("Frame")
+				iconBox.Size = UDim2.new(0, 52, 0, 52)
+				iconBox.Position = UDim2.new(0, 8, 0.5, 0)
+				iconBox.AnchorPoint = Vector2.new(0, 0.5)
+				iconBox.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+				iconBox.BorderSizePixel = 0
+				iconBox.Parent = card
+
+				local ibc = Instance.new("UICorner")
+				ibc.CornerRadius = UDim.new(0, 8)
+				ibc.Parent = iconBox
+
+				local petIcon = Instance.new("TextLabel")
+				petIcon.Size = UDim2.new(1, 0, 1, 0)
+				petIcon.BackgroundTransparency = 1
+				petIcon.Text = def.icon
+				petIcon.Font = Enum.Font.GothamBold
+				petIcon.TextSize = 28
+				petIcon.Parent = iconBox
+
+				-- Name & Count Info
+				local nameLbl = Instance.new("TextLabel")
+				nameLbl.Size = UDim2.new(0, 200, 0, 20)
+				nameLbl.Position = UDim2.new(0, 68, 0, 10)
+				nameLbl.BackgroundTransparency = 1
+				nameLbl.Text = def.name
+				nameLbl.TextColor3 = def.color
+				nameLbl.Font = Enum.Font.GothamBlack
+				nameLbl.TextSize = 13.5
+				nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+				nameLbl.Parent = card
+
+				local countLbl = Instance.new("TextLabel")
+				countLbl.Size = UDim2.new(0, 200, 0, 16)
+				countLbl.Position = UDim2.new(0, 68, 0, 32)
+				countLbl.BackgroundTransparency = 1
+				countLbl.Text = string.format("%d Owned (%s, %d Unused)", count, if isEq then "1 Equipped" else "0 Equipped", unusedCount)
+				countLbl.TextColor3 = if unusedCount > 0 then Color3.fromRGB(180, 205, 230) else Color3.fromRGB(130, 140, 160)
+				countLbl.Font = Enum.Font.GothamMedium
+				countLbl.TextSize = 11
+				countLbl.TextXAlignment = Enum.TextXAlignment.Left
+				countLbl.Parent = card
+
+				-- Price Details
+				local priceBox = Instance.new("Frame")
+				priceBox.Size = UDim2.new(0, 170, 1, 0)
+				priceBox.Position = UDim2.new(0, 275, 0, 0)
+				priceBox.BackgroundTransparency = 1
+				priceBox.Parent = card
+
+				local baseLbl = Instance.new("TextLabel")
+				baseLbl.Size = UDim2.new(1, 0, 0, 16)
+				baseLbl.Position = UDim2.new(0, 0, 0, 12)
+				baseLbl.BackgroundTransparency = 1
+				baseLbl.Text = "Base: $" .. FormatNumber.formatCompact(PetMerchantConfig.getBasePrice(petId))
+				baseLbl.TextColor3 = Color3.fromRGB(140, 155, 175)
+				baseLbl.Font = Enum.Font.Gotham
+				baseLbl.TextSize = 11
+				baseLbl.TextXAlignment = Enum.TextXAlignment.Left
+				baseLbl.Parent = priceBox
+
+				local offerLbl = Instance.new("TextLabel")
+				offerLbl.Size = UDim2.new(1, 0, 0, 22)
+				offerLbl.Position = UDim2.new(0, 0, 0, 28)
+				offerLbl.BackgroundTransparency = 1
+				offerLbl.Text = string.format("Offer: $%s (%.2fx)", FormatNumber.formatCompact(unitPrice), petMult)
+				offerLbl.TextColor3 = mood.color
+				offerLbl.Font = Enum.Font.GothamBlack
+				offerLbl.TextSize = 13.5
+				offerLbl.TextXAlignment = Enum.TextXAlignment.Left
+				offerLbl.Parent = priceBox
+
+				-- Action Buttons Container
+				local btnContainer = Instance.new("Frame")
+				btnContainer.Size = UDim2.new(0, 200, 1, 0)
+				btnContainer.Position = UDim2.new(1, -210, 0, 0)
+				btnContainer.BackgroundTransparency = 1
+				btnContainer.Parent = card
+
+				if unusedCount > 0 then
+					local sellOneBtn = Instance.new("TextButton")
+					sellOneBtn.Size = UDim2.new(0, 92, 0, 34)
+					sellOneBtn.Position = UDim2.new(0, 0, 0.5, 0)
+					sellOneBtn.AnchorPoint = Vector2.new(0, 0.5)
+					sellOneBtn.BackgroundColor3 = Color3.fromRGB(35, 110, 75)
+					sellOneBtn.Text = "Sell 1\n($" .. FormatNumber.formatCompact(unitPrice) .. ")"
+					sellOneBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+					sellOneBtn.Font = Enum.Font.GothamBold
+					sellOneBtn.TextSize = 10.5
+					sellOneBtn.BorderSizePixel = 0
+					sellOneBtn.AutoButtonColor = true
+					sellOneBtn.Parent = btnContainer
+
+					local s1c = Instance.new("UICorner")
+					s1c.CornerRadius = UDim.new(0, 6)
+					s1c.Parent = sellOneBtn
+
+					sellOneBtn.Activated:Connect(function()
+						sellOneBtn.AutoButtonColor = false
+						sellOneBtn.Text = "SELLING..."
+						local sellFn = Remotes.getFunction("SellPet")
+						local ok, success, msg = pcall(function()
+							return sellFn:InvokeServer(petId, 1)
+						end)
+						if ok and success then
+							showFloatingPopup("💰 " .. tostring(msg), Color3.fromRGB(0, 255, 180), -20)
+							UIController.updateHUD()
+							renderMerchantUI()
+						else
+							showFloatingPopup(tostring(msg or "Failed to sell pet!"), Color3.fromRGB(255, 100, 100), 0)
+							renderMerchantUI()
+						end
+					end)
+
+					local sellAllBtn = Instance.new("TextButton")
+					sellAllBtn.Size = UDim2.new(0, 100, 0, 34)
+					sellAllBtn.Position = UDim2.new(1, 0, 0.5, 0)
+					sellAllBtn.AnchorPoint = Vector2.new(1, 0.5)
+					sellAllBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+					sellAllBtn.Text = string.format("All %d\n($%s)", unusedCount, FormatNumber.formatCompact(totalPetPayout))
+					sellAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+					sellAllBtn.Font = Enum.Font.GothamBlack
+					sellAllBtn.TextSize = 10.5
+					sellAllBtn.BorderSizePixel = 0
+					sellAllBtn.AutoButtonColor = true
+					sellAllBtn.Parent = btnContainer
+
+					local sac = Instance.new("UICorner")
+					sac.CornerRadius = UDim.new(0, 6)
+					sac.Parent = sellAllBtn
+
+					sellAllBtn.Activated:Connect(function()
+						sellAllBtn.AutoButtonColor = false
+						sellAllBtn.Text = "SELLING..."
+						local sellFn = Remotes.getFunction("SellPet")
+						local ok, success, msg = pcall(function()
+							return sellFn:InvokeServer(petId, unusedCount)
+						end)
+						if ok and success then
+							showFloatingPopup("💰 " .. tostring(msg), Color3.fromRGB(0, 255, 180), -20)
+							UIController.updateHUD()
+							renderMerchantUI()
+						else
+							showFloatingPopup(tostring(msg or "Failed to sell pets!"), Color3.fromRGB(255, 100, 100), 0)
+							renderMerchantUI()
+						end
+					end)
+				else
+					local equippedTag = Instance.new("TextLabel")
+					equippedTag.Size = UDim2.new(1, 0, 0, 32)
+					equippedTag.Position = UDim2.new(0, 0, 0.5, 0)
+					equippedTag.AnchorPoint = Vector2.new(0, 0.5)
+					equippedTag.BackgroundColor3 = Color3.fromRGB(30, 36, 48)
+					equippedTag.Text = "✓ EQUIPPED\n(Unequip to Sell)"
+					equippedTag.TextColor3 = Color3.fromRGB(140, 160, 190)
+					equippedTag.Font = Enum.Font.GothamBold
+					equippedTag.TextSize = 10.5
+					equippedTag.BorderSizePixel = 0
+					equippedTag.Parent = btnContainer
+
+					local etc = Instance.new("UICorner")
+					etc.CornerRadius = UDim.new(0, 6)
+					etc.Parent = equippedTag
+				end
+			end
+		end
+	end
+
+	-- Bulk Sell Button connection
+	bulkSellBtn.Activated:Connect(function()
+		local sellAllFn = Remotes.getFunction("SellAllUnusedPets")
+		local ok, success, msg = pcall(function()
+			return sellAllFn:InvokeServer()
+		end)
+		if ok and success then
+			showFloatingPopup("💰 " .. tostring(msg), Color3.fromRGB(0, 255, 180), -20)
+			UIController.updateHUD()
+			renderMerchantUI()
+		else
+			showFloatingPopup(tostring(msg or "No unused pets to sell!"), Color3.fromRGB(255, 120, 120), 0)
+		end
+	end)
+
+	-- Dev Button connection
+	devMindBtn.Activated:Connect(function()
+		devMindBtn.Text = "CHANGING..."
+		local devFn = Remotes.getFunction("DevForceMerchantMindChange")
+		local ok, success, msg = pcall(function()
+			return devFn:InvokeServer()
+		end)
+		if ok and success then
+			showFloatingPopup(tostring(msg), Color3.fromRGB(255, 215, 0), -20)
+			local stateFn = Remotes.getFunction("GetPetMerchantState")
+			pcall(function()
+				cachedMerchantState = stateFn:InvokeServer()
+			end)
+			devMindBtn.Text = "⚡ Change Mind (Dev)"
+			renderMerchantUI()
+		else
+			showFloatingPopup(tostring(msg or "Failed dev mind change!"), Color3.fromRGB(255, 100, 100), 0)
+			devMindBtn.Text = "⚡ Change Mind (Dev)"
+		end
+	end)
+
+	renderMerchantUI()
+
+	activeModalUpdater = function()
+		if activeModal and activeModal == modal then
+			renderMerchantUI()
+		end
+	end
+
+	-- Live countdown ticker loop
+	task.spawn(function()
+		while activeModal == modal do
+			task.wait(1)
+			if not activeModal or activeModal ~= modal then break end
+			if cachedMerchantState and cachedMerchantState.cycleTimeRemaining then
+				cachedMerchantState.cycleTimeRemaining = math.max(0, cachedMerchantState.cycleTimeRemaining - 1)
+				timerText.Text = string.format("🧠 Mind changes in: %ds", cachedMerchantState.cycleTimeRemaining)
+				if cachedMerchantState.cycleTimeRemaining <= 0 then
+					local stateFn = Remotes.getFunction("GetPetMerchantState")
+					pcall(function()
+						cachedMerchantState = stateFn:InvokeServer()
+					end)
+					renderMerchantUI()
+				end
+			end
+		end
+	end)
+
+	-- Close Button
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 32, 0, 32)
+	closeBtn.Position = UDim2.new(1, -40, 0, 10)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 70)
+	closeBtn.Text = "✕"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 14
+	closeBtn.BorderSizePixel = 0
+	closeBtn.AutoButtonColor = true
+	closeBtn.Parent = modal
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 8)
+	closeCorner.Parent = closeBtn
+	closeBtn.Activated:Connect(closeModal)
+
+	local tween = TweenService:Create(modal, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+	})
+	tween:Play()
+end
+
 local function openEquipmentShopModal(isRefresh: boolean?)
 	if activeModal and activeModal.Name == "EquipmentShopModal" then
 		if isRefresh == true then
@@ -7607,6 +8205,10 @@ function UIController.buildHUD()
 
 	dailyRewardBadge = dBadge
 
+	createMenuButton("SellPetsBtn", "🐾 Sell Pets", Color3.fromRGB(0, 190, 140), function()
+		openPetMerchantModal()
+	end)
+
 	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
 	local harvestBtn = createMenuButton("HarvestBtn", "⛏️ Mine (+$$/💎)", Color3.fromRGB(0, 180, 120), function()
 		MiningClient.performSwing()
@@ -7897,6 +8499,12 @@ function UIController.buildHUD()
 			elseif not activeModal and not activeDialogue then
 				openDailyRewardModal()
 			end
+		elseif input.KeyCode == Enum.KeyCode.K then
+			if activeModal and activeModal.Name == "PetMerchantModal" then
+				closeModal()
+			elseif not activeModal and not activeDialogue then
+				openPetMerchantModal()
+			end
 		elseif input.KeyCode == Enum.KeyCode.F6 then
 			triggerShowroomTeleport()
 		end
@@ -7918,6 +8526,21 @@ function UIController.buildHUD()
 	local openDailyEvent = Remotes.getEvent("OpenDailyRewardModal")
 	openDailyEvent.OnClientEvent:Connect(function()
 		openDailyRewardModal()
+	end)
+
+	local openMerchantEvent = Remotes.getEvent("OpenPetMerchantModal")
+	openMerchantEvent.OnClientEvent:Connect(function()
+		openPetMerchantModal()
+	end)
+
+	local priceSyncEvent = Remotes.getEvent("PetMerchantPriceSync")
+	priceSyncEvent.OnClientEvent:Connect(function(newState)
+		cachedMerchantState = newState
+		if activeModal and activeModal.Name == "PetMerchantModal" then
+			if activeModalUpdater then
+				activeModalUpdater()
+			end
+		end
 	end)
 
 	local dialogueEvent = Remotes.getEvent("OpenShopDialogue")

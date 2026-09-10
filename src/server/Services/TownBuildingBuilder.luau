@@ -1298,4 +1298,179 @@ function TownBuildingBuilder.buildVIPPavilion(parent: Instance): Model
 	return buildingModel
 end
 
+-- =========================================================================
+-- 6. THE PET EXCHANGE (Finneas the Eccentric Pet Merchant)
+-- =========================================================================
+function TownBuildingBuilder.buildPetMerchantStall(parent: Instance): Model
+	local buildingModel = Instance.new("Model")
+	buildingModel.Name = "PetMerchantStall"
+
+	-- Positioned on East courtyard at (38, 0, 0), facing -X (toward Town Plaza / Spawn)
+	local bCF = CFrame.new(38, 0, 0) * CFrame.Angles(0, math.rad(-90), 0)
+
+	local stoneDark = Color3.fromRGB(48, 52, 60)
+	local stonePlinth = Color3.fromRGB(68, 72, 82)
+	local woodDark = Color3.fromRGB(72, 45, 25)
+	local woodCounter = Color3.fromRGB(110, 68, 38)
+	local goldBrass = Color3.fromRGB(255, 215, 60)
+	local awningGreen = Color3.fromRGB(35, 155, 86)
+	local awningGold = Color3.fromRGB(241, 196, 15)
+
+	-- 1. Cobblestone Foundation Plinth
+	createStudPart(buildingModel, "Foundation", Vector3.new(16, 1.0, 14), bCF * CFrame.new(0, 0.5, 0), stoneDark)
+	createStudPart(buildingModel, "FloorDeck", Vector3.new(15, 0.4, 13), bCF * CFrame.new(0, 1.1, 0), stonePlinth)
+
+	-- 2. Four Timber Posts Supporting Awning
+	local postOffsets = {
+		Vector3.new(-6.8, 6.0, -5.8),
+		Vector3.new(6.8, 6.0, -5.8),
+		Vector3.new(-6.8, 6.0, 5.8),
+		Vector3.new(6.8, 6.0, 5.8),
+	}
+	for _, pOff in ipairs(postOffsets) do
+		local post = createStudPart(buildingModel, "TimberPost", Vector3.new(1.4, 10.0, 1.4), bCF * CFrame.new(pOff.X, pOff.Y, pOff.Z), woodDark)
+		post.Material = Enum.Material.Wood
+	end
+
+	-- 3. Striped Canopy Awning (Teal / Emerald & Gold stripes)
+	for s = -6, 6 do
+		local stripeColor = (math.abs(s) % 2 == 0) and awningGreen or awningGold
+		local stripe = createStudPart(buildingModel, "CanopyStripe_" .. s, Vector3.new(1.2, 0.6, 14), bCF * CFrame.new(s * 1.1, 11.2, 0) * CFrame.Angles(math.rad(-4), 0, 0), stripeColor)
+		stripe.Material = Enum.Material.Fabric
+	end
+
+	-- 4. Front Merchant Counter
+	local counter = createStudPart(buildingModel, "Counter", Vector3.new(12, 3.2, 2.4), bCF * CFrame.new(0, 2.6, 4.2), woodCounter)
+	counter.Material = Enum.Material.WoodPlanks
+	createStudPart(buildingModel, "CounterTop", Vector3.new(13.2, 0.4, 3.2), bCF * CFrame.new(0, 4.3, 4.2), woodDark)
+
+	-- 5. Counter Props: Brass Scales, Coin Bag & Pet Basket
+	-- Brass Balance Scale
+	createStudPart(buildingModel, "ScaleBase", Vector3.new(1.2, 0.3, 1.2), bCF * CFrame.new(-3.8, 4.6, 4.2), goldBrass)
+	createStudPart(buildingModel, "ScalePillar", Vector3.new(0.3, 1.5, 0.3), bCF * CFrame.new(-3.8, 5.4, 4.2), goldBrass)
+	createStudPart(buildingModel, "ScaleBeam", Vector3.new(2.4, 0.2, 0.2), bCF * CFrame.new(-3.8, 6.1, 4.2), goldBrass)
+
+	-- Gold Coin Pouch
+	local coinBag = createStudPart(buildingModel, "CoinBag", Vector3.new(1.2, 1.0, 1.2), bCF * CFrame.new(-1.8, 4.9, 4.2), Color3.fromRGB(180, 140, 50))
+	coinBag.Material = Enum.Material.Fabric
+
+	-- Wicker Pet Bed with Sleeping Mini Doge
+	local petBed = createStudPart(buildingModel, "PetBed", Vector3.new(2.8, 0.6, 2.8), bCF * CFrame.new(3.8, 4.7, 4.2), Color3.fromRGB(160, 110, 60))
+	petBed.Material = Enum.Material.Wood
+	local miniPet = createStudPart(buildingModel, "MiniPup", Vector3.new(1.4, 1.2, 1.6), bCF * CFrame.new(3.8, 5.3, 4.2), Color3.fromRGB(240, 200, 80))
+	miniPet.Material = Enum.Material.SmoothPlastic
+
+	-- 6. Background Pet Crates and Shelves
+	createStudPart(buildingModel, "BackShelves", Vector3.new(12, 7.0, 1.4), bCF * CFrame.new(0, 5.0, -5.2), woodDark)
+	for cx = -4, 4, 4 do
+		local petCrate = createStudPart(buildingModel, "PetCrate", Vector3.new(2.5, 2.2, 2.5), bCF * CFrame.new(cx, 2.2, -3.2), Color3.fromRGB(140, 95, 55))
+		petCrate.Material = Enum.Material.Wood
+	end
+
+	-- 7. FINNEAS THE PET MERCHANT NPC (Behind the Counter)
+	local npcModel = Instance.new("Model")
+	npcModel.Name = "FinneasMerchant"
+
+	local npcCF = bCF * CFrame.new(0, 1.2, 1.8) -- Standing behind counter facing +Z local
+
+	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 3.0, 0), awningGreen)
+	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 1.0, 0), Color3.fromRGB(38, 42, 50))
+	createStudPart(npcModel, "RightLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(0.5, 1.0, 0), Color3.fromRGB(38, 42, 50))
+
+	local head = createStudPart(npcModel, "Head", Vector3.new(1.25, 1.25, 1.25), npcCF * CFrame.new(0, 4.4, 0), Color3.fromRGB(255, 215, 175), true, Enum.SurfaceType.Smooth)
+	local face = Instance.new("Decal")
+	face.Name = "Face"
+	face.Texture = "rbxasset://textures/face.png"
+	face.Face = Enum.NormalId.Front
+	face.Parent = head
+
+	-- Stylish Merchant Top Hat with Gold Band
+	createStudPart(npcModel, "HatBrim", Vector3.new(2.6, 0.35, 2.6), npcCF * CFrame.new(0, 5.1, 0), Color3.fromRGB(30, 35, 45))
+	createStudPart(npcModel, "HatBand", Vector3.new(1.7, 0.4, 1.7), npcCF * CFrame.new(0, 5.4, 0), awningGold)
+	createStudPart(npcModel, "HatCrown", Vector3.new(1.6, 1.2, 1.6), npcCF * CFrame.new(0, 6.0, 0), Color3.fromRGB(30, 35, 45))
+
+	-- Arms resting eagerly on counter
+	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 3.0, 0.4) * CFrame.Angles(math.rad(28), 0, 0), awningGreen)
+	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 3.0, 0.4) * CFrame.Angles(math.rad(28), 0, 0), awningGreen)
+
+	-- 8. Signboard Overhead Title Billboard (With Live "Mind Changes" Counter)
+	local titleGui = Instance.new("BillboardGui")
+	titleGui.Name = "FinneasBillboard"
+	titleGui.Size = UDim2.new(0, 300, 0, 85)
+	titleGui.StudsOffset = Vector3.new(0, 4.8, 0)
+	titleGui.AlwaysOnTop = false
+	titleGui.MaxDistance = 75
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "TitleLabel"
+	titleLabel.Size = UDim2.new(1, 0, 0, 26)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "🐾 FINNEAS THE PET MERCHANT 🐾"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 16
+	titleLabel.TextStrokeTransparency = 0.2
+	titleLabel.Parent = titleGui
+
+	local timerLabel = Instance.new("TextLabel")
+	timerLabel.Name = "TimerLabel"
+	timerLabel.Size = UDim2.new(1, 0, 0, 24)
+	timerLabel.Position = UDim2.new(0, 0, 0, 26)
+	timerLabel.BackgroundTransparency = 1
+	timerLabel.Text = "🧠 Mind changes in: 60s"
+	timerLabel.TextColor3 = Color3.fromRGB(0, 240, 255)
+	timerLabel.Font = Enum.Font.GothamBold
+	timerLabel.TextSize = 13
+	timerLabel.TextStrokeTransparency = 0.2
+	timerLabel.Parent = titleGui
+
+	local rateLabel = Instance.new("TextLabel")
+	rateLabel.Name = "RateLabel"
+	rateLabel.Size = UDim2.new(1, 0, 0, 22)
+	rateLabel.Position = UDim2.new(0, 0, 0, 50)
+	rateLabel.BackgroundTransparency = 1
+	rateLabel.Text = "Market: ⚖️ 1.00x FAIR RATES"
+	rateLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+	rateLabel.Font = Enum.Font.GothamBlack
+	rateLabel.TextSize = 12
+	rateLabel.TextStrokeTransparency = 0.2
+	rateLabel.Parent = titleGui
+
+	titleGui.Parent = head
+	npcModel.Parent = buildingModel
+
+	-- 9. Invisible Interaction Part & Proximity Prompt
+	local interactionPart = Instance.new("Part")
+	interactionPart.Name = "FinneasInteractionPart"
+	interactionPart.Size = Vector3.new(12, 6, 6)
+	interactionPart.CFrame = bCF * CFrame.new(0, 3.6, 6.0)
+	interactionPart.Transparency = 1
+	interactionPart.CanCollide = false
+	interactionPart.CanTouch = true
+	interactionPart.CanQuery = true
+	interactionPart.Anchored = true
+	interactionPart.Parent = buildingModel
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "TradePrompt"
+	prompt.ActionText = "Sell Pets"
+	prompt.ObjectText = "Finneas's Pet Exchange"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 16
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = interactionPart
+
+	prompt.Triggered:Connect(function(player)
+		print(string.format("🐾 [TownBuildingBuilder] Finneas triggered by %s", player.Name))
+		local openEvent = Remotes.getEvent("OpenPetMerchantModal")
+		openEvent:FireClient(player)
+	end)
+
+	buildingModel.Parent = parent
+	return buildingModel
+end
+
 return TownBuildingBuilder

@@ -780,6 +780,11 @@ function MapService.buildPetFusionMachine(folder: Folder)
 	TownBuildingBuilder.buildFusionLab(folder)
 end
 
+-- 12c. The Pet Exchange Stall (Finneas the Pet Merchant)
+function MapService.buildPetMerchant(folder: Folder)
+	TownBuildingBuilder.buildPetMerchantStall(folder)
+end
+
 -- 13. Grand Magma Gate to Zone 2 (At Z = -140, requiring 5 Rebirths)
 function MapService.buildMagmaGate(folder: Folder)
 	local gateModel = Instance.new("Model")
@@ -1450,6 +1455,7 @@ function MapService.init()
 		{ name = "Pet Hatchery Sanctuary", fn = function() MapService.buildEggStand(mapFolder) end },
 		{ name = "VIP Pavilion", fn = function() MapService.buildVIPThrone(mapFolder) end },
 		{ name = "Alchemy Fusion Lab", fn = function() MapService.buildPetFusionMachine(mapFolder) end },
+		{ name = "Pet Merchant Exchange", fn = function() MapService.buildPetMerchant(mapFolder) end },
 		{ name = "Dungeon Ruins", fn = function() MapService.buildDungeonRuins(mapFolder) end },
 		{ name = "Zone 2 Magma Terrain", fn = function() MapService.buildZone2Terrain(mapFolder) end },
 		{ name = "Magma Gate", fn = function() MapService.buildMagmaGate(mapFolder) end },

@@ -967,10 +967,17 @@ local function playSequentialAwardsAnimation(data: any)
 	}
 
 	-- Layout calculation for 4 side-by-side floating 3D slots
-	local slotCount = #awardDefs
-	local slotStep = 180
-	local totalSpan = (slotCount - 1) * slotStep -- 540 px
-	local startX = -totalSpan / 2 -- -270 px
+	-- Symmetrical layout configurations for k active items on screen:
+	-- k=1: 1 item centered in the middle (0), scale 1.15
+	-- k=2: 2 items split symmetrically (-115, +115), scale 1.05
+	-- k=3: 3 items split into 1/3s (-195, 0, +195), scale 0.95
+	-- k=4: 4 items split into 4 balanced slots (-260, -87, +87, +260), scale 0.86
+	local LAYOUT_CONFIGS = {
+		[1] = { scale = 1.15, positions = { 0 } },
+		[2] = { scale = 1.05, positions = { -115, 115 } },
+		[3] = { scale = 0.95, positions = { -195, 0, 195 } },
+		[4] = { scale = 0.86, positions = { -260, -87, 87, 260 } },
+	}
 	local centerScreenY = 0.48
 
 	type ActiveSlot = {
@@ -979,6 +986,7 @@ local function playSequentialAwardsAnimation(data: any)
 		model: Model,
 		rayContainer: Frame,
 		targetX: number,
+		baseScale: number,
 	}
 	local activeSlots: { ActiveSlot } = {}
 
@@ -998,7 +1006,9 @@ local function playSequentialAwardsAnimation(data: any)
 		end
 	end)
 
-	-- Sequential presentation loop
+	-- Dynamic symmetrical reveal loop:
+	-- Item 1 starts in middle, reveals -> pushes to left so Item 2 can reveal on right (2 symmetrical sides) ->
+	-- then splits into 1/3s, descales old ones, and reveals Item 3 -> then splits into 4ths and reveals Item 4!
 	for index, award in ipairs(awardDefs) do
 		if not showcase or not showcase.Parent then
 			if rotConn then rotConn:Disconnect() end
@@ -1006,13 +1016,45 @@ local function playSequentialAwardsAnimation(data: any)
 			return
 		end
 
-		local targetSlotX = startX + (index - 1) * slotStep
+		local k = index
+		local currentLayout = LAYOUT_CONFIGS[k] or LAYOUT_CONFIGS[4]
+		local newSlotX = currentLayout.positions[k]
+		local targetScale = currentLayout.scale
 
-		-- 1. Create transparent Slot Holder directly at its assigned tray slot position
+		-- 1. If there are previous items already revealed, smoothly push and descale them into the new symmetrical split
+		if k > 1 then
+			playSound("rbxassetid://9114223170", 1.9, 0.3) -- Subtle slide whoosh
+			for i = 1, k - 1 do
+				local existing = activeSlots[i]
+				if existing and existing.holder and existing.holder.Parent then
+					local rebalancedX = currentLayout.positions[i]
+					existing.targetX = rebalancedX
+					existing.baseScale = targetScale
+
+					TweenService:Create(existing.holder, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+						Position = UDim2.new(0.5, rebalancedX, centerScreenY, 0),
+					}):Play()
+
+					TweenService:Create(existing.scale, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Scale = targetScale,
+					}):Play()
+				end
+			end
+			-- Small breath while previous items glide into their rebalanced symmetrical positions
+			task.wait(0.24)
+		end
+
+		if not showcase or not showcase.Parent then
+			if rotConn then rotConn:Disconnect() end
+			if vpConn then vpConn:Disconnect() end
+			return
+		end
+
+		-- 2. Create the new item directly at its assigned symmetrical slot position
 		local slotHolder = Instance.new("Frame")
 		slotHolder.Name = "RewardSlot_" .. award.id
 		slotHolder.Size = UDim2.new(0, 165, 0, 215)
-		slotHolder.Position = UDim2.new(0.5, targetSlotX, centerScreenY, 0) -- Reveals directly in place!
+		slotHolder.Position = UDim2.new(0.5, newSlotX, centerScreenY, 0)
 		slotHolder.AnchorPoint = Vector2.new(0.5, 0.5)
 		slotHolder.BackgroundTransparency = 1
 		slotHolder.BorderSizePixel = 0
@@ -1020,10 +1062,10 @@ local function playSequentialAwardsAnimation(data: any)
 		slotHolder.Parent = showcase
 
 		local slotScale = Instance.new("UIScale")
-		slotScale.Scale = 0 -- Starts at 0 for pop-up
+		slotScale.Scale = 0 -- Starts scaled down for pop-up
 		slotScale.Parent = slotHolder
 
-		-- 2. Rotating Sunburst Rays (Starts hidden during black silhouette phase)
+		-- Rotating Sunburst Rays (Starts hidden during black silhouette phase)
 		local rayContainer = Instance.new("Frame")
 		rayContainer.Name = "SunburstContainer"
 		rayContainer.Size = UDim2.new(0, 195, 0, 195)
@@ -1050,7 +1092,7 @@ local function playSequentialAwardsAnimation(data: any)
 			rCorner.Parent = ray
 		end
 
-		-- 3. Transparent ViewportFrame for physical 3D Model
+		-- Transparent ViewportFrame for physical 3D Model
 		local viewport = Instance.new("ViewportFrame")
 		viewport.Name = "PropViewport"
 		viewport.Size = UDim2.new(1, 0, 0, 140)
@@ -1098,7 +1140,7 @@ local function playSequentialAwardsAnimation(data: any)
 			end
 		end
 
-		-- 4. Floating Labels (starts with mystery question marks)
+		-- Floating Labels (starts with mystery question marks)
 		local titleLbl = Instance.new("TextLabel")
 		titleLbl.Name = "Title"
 		titleLbl.Size = UDim2.new(1, 30, 0, 16)
@@ -1134,24 +1176,24 @@ local function playSequentialAwardsAnimation(data: any)
 			scale = slotScale,
 			model = model3D,
 			rayContainer = rayContainer,
-			targetX = targetSlotX,
+			targetX = newSlotX,
+			baseScale = targetScale,
 		}
 		table.insert(activeSlots, activeSlotRecord)
 
 		-- =====================================================================
-		-- PHASE 1: BLACK SILHOUETTE ENTRANCE & SUSPENSE WOBBLE IN PLACE
+		-- PHASE 1: BLACK SILHOUETTE ENTRANCE & SUSPENSE WOBBLE IN SLOT
 		-- =====================================================================
-		-- Pops into its assigned position as a pitch black spinning silhouette
 		playSound("rbxassetid://6895079853", 1.5, 0.65) -- Mystery thud / click
 
 		local silhouettePop = TweenService:Create(slotScale, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Scale = 1.15,
+			Scale = targetScale * 1.15,
 		})
 		silhouettePop:Play()
 		silhouettePop.Completed:Wait()
 
 		TweenService:Create(slotScale, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Scale = 1.0,
+			Scale = targetScale,
 		}):Play()
 
 		-- Suspense anticipation wobble in place while spinning in pitch black
@@ -1230,32 +1272,32 @@ local function playSequentialAwardsAnimation(data: any)
 
 		-- Big physical pop scale-bounce overshoot
 		local popTween = TweenService:Create(slotScale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Scale = 1.40,
+			Scale = targetScale * 1.38,
 		})
 		popTween:Play()
 		popTween.Completed:Wait()
 
 		TweenService:Create(slotScale, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Scale = 1.0,
+			Scale = targetScale,
 		}):Play()
 
 		-- =====================================================================
-		-- PHASE 3: HOVER & SETTLE IN PLACE (No sliding across screen)
+		-- PHASE 3: HOVER & SETTLE IN PLACE
 		-- =====================================================================
 		local hoverUp = TweenService:Create(slotHolder, TweenInfo.new(0.24, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0.5, targetSlotX, centerScreenY, -8),
+			Position = UDim2.new(0.5, newSlotX, centerScreenY, -8),
 		})
 		hoverUp:Play()
 		hoverUp.Completed:Wait()
 
 		local hoverDown = TweenService:Create(slotHolder, TweenInfo.new(0.20, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
-			Position = UDim2.new(0.5, targetSlotX, centerScreenY, 0),
+			Position = UDim2.new(0.5, newSlotX, centerScreenY, 0),
 		})
 		hoverDown:Play()
 		hoverDown.Completed:Wait()
 
-		-- Short settle pause before next reward appears in its own slot position
-		task.wait(0.18)
+		-- Short settle pause before next reward appears
+		task.wait(0.22)
 	end
 
 	-- 5. Grand Finale: All 4 3D models spinning together!

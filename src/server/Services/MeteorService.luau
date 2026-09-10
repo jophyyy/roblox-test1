@@ -24,6 +24,7 @@ local currentState: EventState = "IDLE"
 local currentLocation: MeteorConfig.CrashLocation? = nil
 local currentHealth: number = 0
 local maxHealth: number = 0
+local nextEventTime: number = 0
 local contributors: { [Player]: number } = {} -- player -> damage
 local playerHitCooldowns: { [Player]: number } = {}
 local eventFolder: Folder? = nil
@@ -36,6 +37,24 @@ local timerLabel: TextLabel? = nil
 local eventExpiryThread: thread? = nil
 local countdownThread: thread? = nil
 local autoScheduleThread: thread? = nil
+
+-- Broadcasts current event status and next timer timestamp to all clients
+function MeteorService.broadcastStatus(targetPlayer: Player?)
+	local syncEvent = Remotes.getEvent("MeteorTimerSync")
+	local payload = {
+		state = currentState,
+		nextEventTime = nextEventTime,
+		zoneName = if currentLocation then currentLocation.zoneName else nil,
+		zoneIcon = if currentLocation then currentLocation.zoneIcon else nil,
+		currentHealth = currentHealth,
+		maxHealth = maxHealth,
+	}
+	if targetPlayer then
+		syncEvent:FireClient(targetPlayer, payload)
+	else
+		syncEvent:FireAllClients(payload)
+	end
+end
 
 -- Utility to create authentic retro stud-textured parts
 local function createStudPart(
@@ -306,8 +325,11 @@ function MeteorService.startCountdown(forcedLocation: MeteorConfig.CrashLocation
 
 	local loc = currentLocation :: MeteorConfig.CrashLocation
 	currentState = "COUNTDOWN"
+	nextEventTime = os.time() + MeteorConfig.COUNTDOWN_DURATION
 	contributors = {}
 	playerHitCooldowns = {}
+
+	MeteorService.broadcastStatus()
 
 	print(string.format("☄️ [MeteorService] Celestial Meteor Strike announced at %s! Impact in %ds", loc.zoneName, MeteorConfig.COUNTDOWN_DURATION))
 
@@ -388,6 +410,8 @@ function MeteorService.performCrash()
 	model.Parent = eventFolder
 
 	currentState = "ACTIVE"
+	nextEventTime = os.time() + MeteorConfig.EVENT_DURATION
+	MeteorService.broadcastStatus()
 	print(string.format("☄️ [MeteorService] Meteor crashed at %s! Max HP: %d", loc.zoneName, maxHealth))
 
 	-- Start 120-second event expiration timer
@@ -507,6 +531,7 @@ end
 function MeteorService.endEvent(isVictory: boolean)
 	if currentState ~= "ACTIVE" and currentState ~= "FALLING" then return end
 	currentState = "IDLE"
+	MeteorService.broadcastStatus()
 
 	if eventExpiryThread then
 		task.cancel(eventExpiryThread)
@@ -655,7 +680,10 @@ function MeteorService.scheduleNextAutoEvent()
 	end
 
 	local delaySeconds = math.random(MeteorConfig.AUTO_INTERVAL_MIN, MeteorConfig.AUTO_INTERVAL_MAX)
+	nextEventTime = os.time() + delaySeconds
 	print(string.format("🕒 [MeteorService] Next Meteor Strike automatically scheduled in %d minutes (%ds)", math.floor(delaySeconds / 60), delaySeconds))
+
+	MeteorService.broadcastStatus()
 
 	autoScheduleThread = task.spawn(function()
 		task.wait(delaySeconds)
@@ -694,7 +722,28 @@ function MeteorService.init()
 		return ok, msg
 	end
 
-	-- 3. Schedule first automatic meteor strike
+	-- 3. Hook GetMeteorStatus RemoteFunction
+	local statusFn = Remotes.getFunction("GetMeteorStatus")
+	statusFn.OnServerInvoke = function(player)
+		return {
+			state = currentState,
+			nextEventTime = nextEventTime,
+			zoneName = if currentLocation then currentLocation.zoneName else nil,
+			zoneIcon = if currentLocation then currentLocation.zoneIcon else nil,
+			currentHealth = currentHealth,
+			maxHealth = maxHealth,
+		}
+	end
+
+	-- 4. Sync status on player join
+	Players.PlayerAdded:Connect(function(player)
+		task.wait(1.0)
+		if player and player.Parent then
+			MeteorService.broadcastStatus(player)
+		end
+	end)
+
+	-- 5. Schedule first automatic meteor strike
 	MeteorService.scheduleNextAutoEvent()
 
 	print("✅ [MeteorService] Meteor World Event Service Initialized!")

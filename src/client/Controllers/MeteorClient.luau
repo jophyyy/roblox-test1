@@ -25,6 +25,20 @@ local victoryBanner: Frame
 local victoryTitle: TextLabel
 local victorySubtitle: TextLabel
 
+-- Right-Side Timer Widget References
+local timerWidget: Frame
+local widgetStroke: UIStroke
+local widgetHeaderLabel: TextLabel
+local widgetTimeLabel: TextLabel
+local widgetSubLabel: TextLabel
+local widgetIcon: TextLabel
+
+-- State tracking
+local currentServerState: string = "IDLE"
+local targetNextEventTime: number = 0
+local currentZoneName: string? = nil
+local currentZoneIcon: string? = nil
+
 -- Active visual instances
 local activeBeaconFolder: Folder? = nil
 local activeCountdownThread: thread? = nil
@@ -168,6 +182,160 @@ local function buildHUD()
 	victorySubtitle.TextSize = 14
 	victorySubtitle.TextStrokeTransparency = 0.2
 	victorySubtitle.Parent = victoryBanner
+
+	-- 3. Right-Side Meteor Event Countdown & Status Widget
+	timerWidget = Instance.new("Frame")
+	timerWidget.Name = "MeteorTimerWidget"
+	timerWidget.Size = UDim2.new(0, 142, 0, 58)
+	timerWidget.Position = UDim2.new(1, -16, 0.5, -75)
+	timerWidget.AnchorPoint = Vector2.new(1, 1)
+	timerWidget.BackgroundColor3 = Color3.fromRGB(18, 16, 26)
+	timerWidget.BackgroundTransparency = 0.15
+	timerWidget.BorderSizePixel = 0
+	timerWidget.Parent = screenGui
+
+	local tCorner = Instance.new("UICorner")
+	tCorner.CornerRadius = UDim.new(0, 14)
+	tCorner.Parent = timerWidget
+
+	widgetStroke = Instance.new("UIStroke")
+	widgetStroke.Name = "BorderStroke"
+	widgetStroke.Thickness = 2.0
+	widgetStroke.Color = Color3.fromRGB(75, 125, 215)
+	widgetStroke.Parent = timerWidget
+
+	local tGrad = Instance.new("UIGradient")
+	tGrad.Rotation = 90
+	tGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 28, 48)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 14, 24)),
+	})
+	tGrad.Parent = timerWidget
+
+	local headerRow = Instance.new("Frame")
+	headerRow.Name = "HeaderRow"
+	headerRow.Size = UDim2.new(1, -16, 0, 16)
+	headerRow.Position = UDim2.new(0, 8, 0, 5)
+	headerRow.BackgroundTransparency = 1
+	headerRow.Parent = timerWidget
+
+	widgetIcon = Instance.new("TextLabel")
+	widgetIcon.Name = "Icon"
+	widgetIcon.Size = UDim2.new(0, 16, 1, 0)
+	widgetIcon.Position = UDim2.new(0, 0, 0, 0)
+	widgetIcon.BackgroundTransparency = 1
+	widgetIcon.Text = "☄️"
+	widgetIcon.TextSize = 12
+	widgetIcon.Parent = headerRow
+
+	widgetHeaderLabel = Instance.new("TextLabel")
+	widgetHeaderLabel.Name = "HeaderTitle"
+	widgetHeaderLabel.Size = UDim2.new(1, -20, 1, 0)
+	widgetHeaderLabel.Position = UDim2.new(0, 20, 0, 0)
+	widgetHeaderLabel.BackgroundTransparency = 1
+	widgetHeaderLabel.Text = "NEXT METEOR"
+	widgetHeaderLabel.TextColor3 = Color3.fromRGB(255, 205, 80)
+	widgetHeaderLabel.Font = Enum.Font.GothamBlack
+	widgetHeaderLabel.TextSize = 10
+	widgetHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
+	widgetHeaderLabel.TextStrokeTransparency = 0.3
+	widgetHeaderLabel.Parent = headerRow
+
+	widgetTimeLabel = Instance.new("TextLabel")
+	widgetTimeLabel.Name = "MainTimeLabel"
+	widgetTimeLabel.Size = UDim2.new(1, -16, 0, 22)
+	widgetTimeLabel.Position = UDim2.new(0, 8, 0, 20)
+	widgetTimeLabel.BackgroundTransparency = 1
+	widgetTimeLabel.Text = "--:--"
+	widgetTimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	widgetTimeLabel.Font = Enum.Font.GothamBlack
+	widgetTimeLabel.TextSize = 18
+	widgetTimeLabel.TextXAlignment = Enum.TextXAlignment.Center
+	widgetTimeLabel.TextStrokeTransparency = 0.2
+	widgetTimeLabel.Parent = timerWidget
+
+	widgetSubLabel = Instance.new("TextLabel")
+	widgetSubLabel.Name = "SubLabel"
+	widgetSubLabel.Size = UDim2.new(1, -16, 0, 13)
+	widgetSubLabel.Position = UDim2.new(0, 8, 0, 42)
+	widgetSubLabel.BackgroundTransparency = 1
+	widgetSubLabel.Text = "Starfall Incoming"
+	widgetSubLabel.TextColor3 = Color3.fromRGB(165, 190, 230)
+	widgetSubLabel.Font = Enum.Font.GothamBold
+	widgetSubLabel.TextSize = 9
+	widgetSubLabel.TextXAlignment = Enum.TextXAlignment.Center
+	widgetSubLabel.TextStrokeTransparency = 0.4
+	widgetSubLabel.Parent = timerWidget
+
+	local interactBtn = Instance.new("TextButton")
+	interactBtn.Name = "InteractBtn"
+	interactBtn.Size = UDim2.new(1, 0, 1, 0)
+	interactBtn.BackgroundTransparency = 1
+	interactBtn.Text = ""
+	interactBtn.Parent = timerWidget
+
+	interactBtn.MouseEnter:Connect(function()
+		TweenService:Create(timerWidget, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 146, 0, 60),
+			BackgroundTransparency = 0.05,
+		}):Play()
+	end)
+
+	interactBtn.MouseLeave:Connect(function()
+		TweenService:Create(timerWidget, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 142, 0, 58),
+			BackgroundTransparency = 0.15,
+		}):Play()
+	end)
+end
+
+-- Refreshes the right-side timer widget text, colors, and countdown value
+local function updateTimerWidgetUI()
+	if not widgetTimeLabel or not widgetTimeLabel.Parent then return end
+
+	local now = os.time()
+	local remaining = math.max(0, targetNextEventTime - now)
+
+	if currentServerState == "COUNTDOWN" then
+		widgetStroke.Color = Color3.fromRGB(255, 80, 20)
+		widgetHeaderLabel.Text = "⚠️ IMPACT IMMINENT"
+		widgetHeaderLabel.TextColor3 = Color3.fromRGB(255, 110, 40)
+		widgetIcon.Text = "☄️"
+		widgetTimeLabel.Text = string.format("IMPACT %02ds", remaining)
+		widgetTimeLabel.TextColor3 = Color3.fromRGB(255, 80, 20)
+		widgetSubLabel.Text = if currentZoneName then currentZoneName else "Watch the Skies!"
+		widgetSubLabel.TextColor3 = Color3.fromRGB(255, 215, 90)
+	elseif currentServerState == "FALLING" or currentServerState == "ACTIVE" then
+		widgetStroke.Color = Color3.fromRGB(0, 240, 255)
+		widgetHeaderLabel.Text = "⛏️ STARFALL ACTIVE"
+		widgetHeaderLabel.TextColor3 = Color3.fromRGB(0, 240, 255)
+		widgetIcon.Text = "🌟"
+		widgetTimeLabel.Text = if remaining > 0 then string.format("MINE! %02d:%02d", math.floor(remaining / 60), remaining % 60) else "MINE NOW!"
+		widgetTimeLabel.TextColor3 = Color3.fromRGB(255, 225, 60)
+		widgetSubLabel.Text = if currentZoneName then currentZoneName else "Crater Site Active!"
+		widgetSubLabel.TextColor3 = Color3.fromRGB(150, 235, 255)
+	else
+		local mins = math.floor(remaining / 60)
+		local secs = remaining % 60
+
+		if remaining <= 30 and remaining > 0 then
+			widgetStroke.Color = Color3.fromRGB(255, 140, 40)
+			widgetHeaderLabel.Text = "STRIKE APPROACHING"
+			widgetHeaderLabel.TextColor3 = Color3.fromRGB(255, 160, 50)
+			widgetTimeLabel.TextColor3 = Color3.fromRGB(255, 140, 50)
+			widgetSubLabel.Text = "Prepare Pickaxes!"
+			widgetSubLabel.TextColor3 = Color3.fromRGB(255, 220, 120)
+		else
+			widgetStroke.Color = Color3.fromRGB(75, 125, 215)
+			widgetHeaderLabel.Text = "NEXT METEOR"
+			widgetHeaderLabel.TextColor3 = Color3.fromRGB(255, 205, 80)
+			widgetTimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			widgetSubLabel.Text = "Starfall Incoming"
+			widgetSubLabel.TextColor3 = Color3.fromRGB(165, 190, 230)
+		end
+		widgetIcon.Text = "☄️"
+		widgetTimeLabel.Text = string.format("%02d:%02d", mins, secs)
+	end
 end
 
 -- Renders the glowing beacon beam and ground targeting reticle
@@ -368,6 +536,13 @@ function MeteorClient.init()
 	announceEvent.OnClientEvent:Connect(function(data)
 		print(string.format("☄️ [MeteorClient] Meteor Strike Announced in %s! %ds until crash", data.zoneName, data.countdown))
 
+		-- Update state
+		currentServerState = "COUNTDOWN"
+		targetNextEventTime = os.time() + (data.countdown or 15)
+		currentZoneName = data.zoneName
+		currentZoneIcon = data.zoneIcon
+		updateTimerWidgetUI()
+
 		-- Sound fanfare alert
 		playSound("rbxassetid://9114223170", 1.1, 0.7)
 
@@ -403,6 +578,12 @@ function MeteorClient.init()
 	local crashEvent = Remotes.getEvent("MeteorCrashed")
 	crashEvent.OnClientEvent:Connect(function(data)
 		print("☄️ [MeteorClient] Meteor descending upon " .. tostring(data.zoneName))
+
+		-- Update state
+		currentServerState = "ACTIVE"
+		targetNextEventTime = os.time() + 120
+		currentZoneName = data.zoneName
+		updateTimerWidgetUI()
 
 		-- Smoothly transition sky to night time as the meteor begins to fall
 		TweenService:Create(Lighting, TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
@@ -446,6 +627,10 @@ function MeteorClient.init()
 			activeBeaconFolder = nil
 		end
 
+		-- Update state
+		currentServerState = "IDLE"
+		updateTimerWidgetUI()
+
 		-- Smoothly transition sky back to daytime dusk
 		TweenService:Create(Lighting, TweenInfo.new(3.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
 			ClockTime = 17.5,
@@ -486,7 +671,40 @@ function MeteorClient.init()
 		end
 	end)
 
-	print("✅ [MeteorClient] Meteor World Event Client Initialized!")
+	-- 5. MeteorTimerSync Handler (Real-time server sync for next meteor event)
+	local timerSyncEvent = Remotes.getEvent("MeteorTimerSync")
+	timerSyncEvent.OnClientEvent:Connect(function(data)
+		currentServerState = data.state or "IDLE"
+		targetNextEventTime = data.nextEventTime or (os.time() + 300)
+		currentZoneName = data.zoneName
+		currentZoneIcon = data.zoneIcon
+		updateTimerWidgetUI()
+	end)
+
+	-- 6. Initial Status Query on startup
+	task.spawn(function()
+		local ok, status = pcall(function()
+			local statusFn = Remotes.getFunction("GetMeteorStatus")
+			return statusFn:InvokeServer()
+		end)
+		if ok and status and type(status) == "table" then
+			currentServerState = status.state or "IDLE"
+			targetNextEventTime = status.nextEventTime or (os.time() + 300)
+			currentZoneName = status.zoneName
+			currentZoneIcon = status.zoneIcon
+			updateTimerWidgetUI()
+		end
+	end)
+
+	-- 7. Continuous 1-second right-side timer widget ticker loop
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			updateTimerWidgetUI()
+		end
+	end)
+
+	print("✅ [MeteorClient] Meteor World Event Client Initialized with Right-Side Timer!")
 end
 
 return MeteorClient

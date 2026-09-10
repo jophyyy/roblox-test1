@@ -21,9 +21,7 @@ local alertBanner: Frame
 local alertTitle: TextLabel
 local alertSubtitle: TextLabel
 local alertTimer: TextLabel
-local victoryBanner: Frame
-local victoryTitle: TextLabel
-local victorySubtitle: TextLabel
+local activeShowcaseFrame: Frame? = nil
 
 -- Right-Side Timer Widget References
 local timerWidget: Frame
@@ -140,50 +138,7 @@ local function buildHUD()
 	alertTimer.TextStrokeTransparency = 0.2
 	alertTimer.Parent = alertBanner
 
-	-- 2. Victory Banner (Top-Center Celebration)
-	victoryBanner = Instance.new("Frame")
-	victoryBanner.Name = "MeteorVictoryBanner"
-	victoryBanner.Size = UDim2.new(0, 520, 0, 85)
-	victoryBanner.Position = UDim2.new(0.5, 0, -0.2, 0) -- Hidden above
-	victoryBanner.AnchorPoint = Vector2.new(0.5, 0.5)
-	victoryBanner.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
-	victoryBanner.BorderSizePixel = 0
-	victoryBanner.Parent = screenGui
-
-	local vCorner = Instance.new("UICorner")
-	vCorner.CornerRadius = UDim.new(0, 16)
-	vCorner.Parent = victoryBanner
-
-	local vStroke = Instance.new("UIStroke")
-	vStroke.Color = Color3.fromRGB(255, 215, 60)
-	vStroke.Thickness = 2.5
-	vStroke.Parent = victoryBanner
-
-	victoryTitle = Instance.new("TextLabel")
-	victoryTitle.Name = "Title"
-	victoryTitle.Size = UDim2.new(1, -20, 0.42, 0)
-	victoryTitle.Position = UDim2.new(0, 10, 0.08, 0)
-	victoryTitle.BackgroundTransparency = 1
-	victoryTitle.Text = "🎉 METEOR SHATTERED! JACKPOT GRANTED! 🎉"
-	victoryTitle.TextColor3 = Color3.fromRGB(255, 215, 60)
-	victoryTitle.Font = Enum.Font.GothamBlack
-	victoryTitle.TextSize = 18
-	victoryTitle.TextStrokeTransparency = 0.15
-	victoryTitle.Parent = victoryBanner
-
-	victorySubtitle = Instance.new("TextLabel")
-	victorySubtitle.Name = "Subtitle"
-	victorySubtitle.Size = UDim2.new(1, -20, 0.45, 0)
-	victorySubtitle.Position = UDim2.new(0, 10, 0.50, 0)
-	victorySubtitle.BackgroundTransparency = 1
-	victorySubtitle.Text = "+$25,000,000 Cash • +15,000 Gems • 3 Rare Crates"
-	victorySubtitle.TextColor3 = Color3.fromRGB(0, 240, 255)
-	victorySubtitle.Font = Enum.Font.GothamBold
-	victorySubtitle.TextSize = 14
-	victorySubtitle.TextStrokeTransparency = 0.2
-	victorySubtitle.Parent = victoryBanner
-
-	-- 3. Right-Side Meteor Event Countdown & Status Widget
+	-- 2. Right-Side Meteor Event Countdown & Status Widget
 	timerWidget = Instance.new("Frame")
 	timerWidget.Name = "MeteorTimerWidget"
 	timerWidget.Size = UDim2.new(0, 142, 0, 58)
@@ -593,6 +548,398 @@ local function playMeteorShatterFX(centerPos: Vector3)
 	end
 end
 
+-- Plays dynamic sequential jackpot awards showcase animation
+-- Each reward pops up in the center with scale-bounce & audio, hovers in the spotlight,
+-- then slides smoothly into its assigned slot on the left/tray before the next one appears.
+local function playSequentialAwardsAnimation(data: any)
+	if activeShowcaseFrame then
+		activeShowcaseFrame:Destroy()
+		activeShowcaseFrame = nil
+	end
+
+	local gui = screenGui
+	if not gui or not gui.Parent then
+		local pGui = player:WaitForChild("PlayerGui")
+		gui = pGui:FindFirstChild("MeteorEventHUDGui") :: ScreenGui?
+	end
+	if not gui then return end
+
+	-- 1. Main Showcase Modal Frame
+	local showcase = Instance.new("Frame")
+	showcase.Name = "MeteorJackpotShowcase"
+	showcase.Size = UDim2.new(0, 680, 0, 250)
+	showcase.Position = UDim2.new(0.5, 0, 0.42, 0)
+	showcase.AnchorPoint = Vector2.new(0.5, 0.5)
+	showcase.BackgroundColor3 = Color3.fromRGB(16, 13, 24)
+	showcase.BackgroundTransparency = 0.15
+	showcase.BorderSizePixel = 0
+	showcase.ClipsDescendants = false
+	showcase.Parent = gui
+	activeShowcaseFrame = showcase
+
+	-- Responsive scale for mobile & smaller viewports
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = showcase
+	local function updateScale()
+		if camera and camera.ViewportSize.X > 0 then
+			local vpW = camera.ViewportSize.X
+			if vpW < 720 then
+				uiScale.Scale = math.clamp(vpW / 720, 0.52, 1.0)
+			else
+				uiScale.Scale = 1.0
+			end
+		end
+	end
+	updateScale()
+
+	local vpConn = camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 18)
+	sCorner.Parent = showcase
+
+	local sStroke = Instance.new("UIStroke")
+	sStroke.Thickness = 2.5
+	sStroke.Color = Color3.fromRGB(255, 195, 55)
+	sStroke.Transparency = 0.15
+	sStroke.Parent = showcase
+
+	local sGrad = Instance.new("UIGradient")
+	sGrad.Rotation = 90
+	sGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(36, 26, 52)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(14, 11, 20)),
+	})
+	sGrad.Parent = showcase
+
+	-- Header Title
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "ShowcaseTitle"
+	titleLabel.Size = UDim2.new(1, 0, 0, 32)
+	titleLabel.Position = UDim2.new(0.5, 0, 0, 14)
+	titleLabel.AnchorPoint = Vector2.new(0.5, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "☄️ METEOR SHATTERED! ☄️"
+	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 60)
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 22
+	titleLabel.TextStrokeTransparency = 0.15
+	titleLabel.Parent = showcase
+
+	local subtitleLabel = Instance.new("TextLabel")
+	subtitleLabel.Name = "ShowcaseSubtitle"
+	subtitleLabel.Size = UDim2.new(1, 0, 0, 18)
+	subtitleLabel.Position = UDim2.new(0.5, 0, 0, 48)
+	subtitleLabel.AnchorPoint = Vector2.new(0.5, 0)
+	subtitleLabel.BackgroundTransparency = 1
+	subtitleLabel.Text = "JACKPOT REWARDS UNLOCKED"
+	subtitleLabel.TextColor3 = Color3.fromRGB(195, 190, 230)
+	subtitleLabel.Font = Enum.Font.GothamBold
+	subtitleLabel.TextSize = 12
+	subtitleLabel.TextStrokeTransparency = 0.35
+	subtitleLabel.Parent = showcase
+
+	-- Entrance tween
+	showcase.Position = UDim2.new(0.5, 0, 0.38, 0)
+	TweenService:Create(showcase, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, 0, 0.42, 0),
+	}):Play()
+
+	-- 2. Define Award Cards
+	local awards = {
+		{
+			id = "cash",
+			title = "CASH JACKPOT",
+			value = string.format("+$%s", FormatNumber.formatCompact(data.jackpotCash or 25_000_000)),
+			icon = "💰",
+			colorTop = Color3.fromRGB(46, 204, 113),
+			strokeColor = Color3.fromRGB(80, 230, 130),
+			valueColor = Color3.fromRGB(125, 255, 165),
+			soundId = "rbxassetid://9117970732",
+			soundSpeed = 1.0,
+		},
+		{
+			id = "gems",
+			title = "DIAMOND CACHE",
+			value = string.format("+%s Gems", FormatNumber.formatComma(data.jackpotGems or 15_000)),
+			icon = "💎",
+			colorTop = Color3.fromRGB(0, 195, 255),
+			strokeColor = Color3.fromRGB(80, 220, 255),
+			valueColor = Color3.fromRGB(160, 240, 255),
+			soundId = "rbxassetid://9114223170",
+			soundSpeed = 1.25,
+		},
+		{
+			id = "power",
+			title = "COSMIC POWER",
+			value = string.format("+%s Power", FormatNumber.formatComma(data.jackpotPower or 5_000)),
+			icon = "⚡",
+			colorTop = Color3.fromRGB(210, 80, 255),
+			strokeColor = Color3.fromRGB(230, 120, 255),
+			valueColor = Color3.fromRGB(245, 180, 255),
+			soundId = "rbxassetid://9114223849",
+			soundSpeed = 1.15,
+		},
+		{
+			id = "crates",
+			title = "RARE CRATES",
+			value = string.format("+%d Mystery Crates", data.cratesCount or 3),
+			icon = "🎁",
+			colorTop = Color3.fromRGB(255, 175, 40),
+			strokeColor = Color3.fromRGB(255, 205, 75),
+			valueColor = Color3.fromRGB(255, 235, 140),
+			soundId = "rbxassetid://5153737200",
+			soundSpeed = 1.2,
+		},
+	}
+
+	-- Calculate horizontal tray positioning
+	local cardCount = #awards
+	local cardWidth = 142
+	local cardHeight = 118
+	local gap = 14
+	local step = cardWidth + gap -- 156
+	local totalSpan = (cardCount - 1) * step -- 468
+	local startX = -totalSpan / 2 -- -234
+	local cardCenterY = 138
+
+	local spawnedCards = {}
+
+	-- 3. Animate each card one-by-one: Pop up in center -> Hover -> Slide to left/slot
+	for index, award in ipairs(awards) do
+		if not showcase or not showcase.Parent then
+			if vpConn then vpConn:Disconnect() end
+			return
+		end
+
+		local targetSlotX = startX + (index - 1) * step
+
+		-- Create Card frame
+		local card = Instance.new("Frame")
+		card.Name = "AwardCard_" .. award.id
+		card.AnchorPoint = Vector2.new(0.5, 0.5)
+		-- Dead center in showcase
+		card.Position = UDim2.new(0.5, 0, 0, cardCenterY)
+		card.Size = UDim2.new(0, 0, 0, 0)
+		card.BackgroundColor3 = Color3.fromRGB(24, 20, 34)
+		card.BorderSizePixel = 0
+		card.ZIndex = 10 + index
+		card.Parent = showcase
+
+		local cardCorner = Instance.new("UICorner")
+		cardCorner.CornerRadius = UDim.new(0, 14)
+		cardCorner.Parent = card
+
+		local cardStroke = Instance.new("UIStroke")
+		cardStroke.Name = "CardStroke"
+		cardStroke.Thickness = 2.2
+		cardStroke.Color = award.strokeColor
+		cardStroke.Parent = card
+
+		local cardGrad = Instance.new("UIGradient")
+		cardGrad.Rotation = 90
+		cardGrad.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(38, 30, 52)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(18, 15, 26)),
+		})
+		cardGrad.Parent = card
+
+		-- Top accent stripe
+		local accentBar = Instance.new("Frame")
+		accentBar.Name = "TopAccent"
+		accentBar.Size = UDim2.new(1, -12, 0, 3)
+		accentBar.Position = UDim2.new(0.5, 0, 0, 6)
+		accentBar.AnchorPoint = Vector2.new(0.5, 0)
+		accentBar.BackgroundColor3 = award.colorTop
+		accentBar.BorderSizePixel = 0
+		accentBar.Parent = card
+		local aCorner = Instance.new("UICorner")
+		aCorner.CornerRadius = UDim.new(1, 0)
+		aCorner.Parent = accentBar
+
+		-- Icon Label
+		local iconLabel = Instance.new("TextLabel")
+		iconLabel.Name = "Icon"
+		iconLabel.Size = UDim2.new(0, 42, 0, 38)
+		iconLabel.Position = UDim2.new(0.5, 0, 0, 14)
+		iconLabel.AnchorPoint = Vector2.new(0.5, 0)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Text = award.icon
+		iconLabel.TextSize = 28
+		iconLabel.Parent = card
+
+		-- Title Label
+		local itemTitle = Instance.new("TextLabel")
+		itemTitle.Name = "Title"
+		itemTitle.Size = UDim2.new(1, -10, 0, 14)
+		itemTitle.Position = UDim2.new(0.5, 0, 0, 56)
+		itemTitle.AnchorPoint = Vector2.new(0.5, 0)
+		itemTitle.BackgroundTransparency = 1
+		itemTitle.Text = award.title
+		itemTitle.TextColor3 = Color3.fromRGB(185, 190, 210)
+		itemTitle.Font = Enum.Font.GothamBlack
+		itemTitle.TextSize = 10
+		itemTitle.TextStrokeTransparency = 0.3
+		itemTitle.Parent = card
+
+		-- Value Label
+		local itemValue = Instance.new("TextLabel")
+		itemValue.Name = "Value"
+		itemValue.Size = UDim2.new(1, -10, 0, 22)
+		itemValue.Position = UDim2.new(0.5, 0, 0, 74)
+		itemValue.AnchorPoint = Vector2.new(0.5, 0)
+		itemValue.BackgroundTransparency = 1
+		itemValue.Text = award.value
+		itemValue.TextColor3 = award.valueColor
+		itemValue.Font = Enum.Font.GothamBlack
+		itemValue.TextSize = 13
+		itemValue.TextStrokeTransparency = 0.2
+		itemValue.Parent = card
+
+		table.insert(spawnedCards, card)
+
+		-- PHASE A: Pop up in the center with scale bounce & sound
+		playSound(award.soundId, award.soundSpeed, 0.85)
+
+		local popTween = TweenService:Create(card, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 158, 0, 130),
+		})
+		popTween:Play()
+		popTween.Completed:Wait()
+
+		TweenService:Create(card, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, cardWidth, 0, cardHeight),
+		}):Play()
+
+		-- PHASE B: Hover in place in the spotlight
+		local hoverTween = TweenService:Create(card, TweenInfo.new(0.42, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+			Position = UDim2.new(0.5, 0, 0, cardCenterY - 8),
+		})
+		hoverTween:Play()
+		hoverTween.Completed:Wait()
+
+		-- PHASE C: Slide smoothly to the left (to its assigned slot)
+		playSound("rbxassetid://9114223170", 1.8, 0.4)
+
+		local slideTween = TweenService:Create(card, TweenInfo.new(0.36, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, targetSlotX, 0, cardCenterY),
+		})
+		slideTween:Play()
+		slideTween.Completed:Wait()
+
+		-- Pause before next award pops up
+		task.wait(0.12)
+	end
+
+	-- 4. Grand Finale fanfare once all cards have settled
+	if not showcase or not showcase.Parent then
+		if vpConn then vpConn:Disconnect() end
+		return
+	end
+
+	playSound("rbxassetid://5153737200", 1.0, 0.95)
+
+	-- Celebratory pulse on all card strokes
+	for _, card in ipairs(spawnedCards) do
+		local strk = card:FindFirstChild("CardStroke") :: UIStroke?
+		if strk then
+			local origThick = strk.Thickness
+			TweenService:Create(strk, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Thickness = 4.0,
+			}):Play()
+			task.delay(0.25, function()
+				if strk and strk.Parent then
+					TweenService:Create(strk, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Thickness = origThick,
+					}):Play()
+				end
+			end)
+		end
+	end
+
+	-- Display confirmation pill at bottom of showcase
+	local claimPill = Instance.new("Frame")
+	claimPill.Name = "ClaimPill"
+	claimPill.Size = UDim2.new(0, 320, 0, 26)
+	claimPill.Position = UDim2.new(0.5, 0, 0, cardCenterY + 74)
+	claimPill.AnchorPoint = Vector2.new(0.5, 0.5)
+	claimPill.BackgroundColor3 = Color3.fromRGB(30, 75, 45)
+	claimPill.BackgroundTransparency = 1
+	claimPill.BorderSizePixel = 0
+	claimPill.Parent = showcase
+
+	local pCorner = Instance.new("UICorner")
+	pCorner.CornerRadius = UDim.new(1, 0)
+	pCorner.Parent = claimPill
+
+	local pStroke = Instance.new("UIStroke")
+	pStroke.Color = Color3.fromRGB(80, 230, 130)
+	pStroke.Thickness = 1.6
+	pStroke.Transparency = 1
+	pStroke.Parent = claimPill
+
+	local pLabel = Instance.new("TextLabel")
+	pLabel.Size = UDim2.new(1, 0, 1, 0)
+	pLabel.BackgroundTransparency = 1
+	pLabel.Text = "✨ ALL REWARDS CLAIMED & DEPOSITED ✨"
+	pLabel.TextColor3 = Color3.fromRGB(150, 255, 180)
+	pLabel.Font = Enum.Font.GothamBlack
+	pLabel.TextSize = 11
+	pLabel.TextStrokeTransparency = 0.3
+	pLabel.TextTransparency = 1
+	pLabel.Parent = claimPill
+
+	TweenService:Create(claimPill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.25,
+	}):Play()
+	TweenService:Create(pStroke, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Transparency = 0.2,
+	}):Play()
+	TweenService:Create(pLabel, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		TextTransparency = 0,
+	}):Play()
+
+	-- 5. Hold showcase for 5 seconds, then smoothly glide up & fade out
+	task.wait(5.0)
+
+	if vpConn then
+		vpConn:Disconnect()
+		vpConn = nil
+	end
+
+	if showcase and showcase.Parent then
+		TweenService:Create(showcase, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, 0, 0.34, 0),
+			BackgroundTransparency = 1,
+		}):Play()
+
+		for _, c in ipairs(showcase:GetDescendants()) do
+			if c:IsA("TextLabel") then
+				TweenService:Create(c, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					TextTransparency = 1,
+					TextStrokeTransparency = 1,
+				}):Play()
+			elseif c:IsA("Frame") then
+				TweenService:Create(c, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					BackgroundTransparency = 1,
+				}):Play()
+			elseif c:IsA("UIStroke") then
+				TweenService:Create(c, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Transparency = 1,
+				}):Play()
+			end
+		end
+
+		task.wait(0.48)
+		if showcase and showcase.Parent then
+			showcase:Destroy()
+		end
+		if activeShowcaseFrame == showcase then
+			activeShowcaseFrame = nil
+		end
+	end
+end
+
 -- =========================================================================
 -- INITIALIZATION
 -- =========================================================================
@@ -604,6 +951,12 @@ function MeteorClient.init()
 	local announceEvent = Remotes.getEvent("MeteorEventAnnounced")
 	announceEvent.OnClientEvent:Connect(function(data)
 		print(string.format("☄️ [MeteorClient] Meteor Strike Announced in %s! %ds until crash", data.zoneName, data.countdown))
+
+		-- Clear any active reward showcase
+		if activeShowcaseFrame then
+			activeShowcaseFrame:Destroy()
+			activeShowcaseFrame = nil
+		end
 
 		-- Update state
 		currentServerState = "COUNTDOWN"
@@ -714,32 +1067,21 @@ function MeteorClient.init()
 			-- Play full client-side visual shatter explosion & shockwave
 			playMeteorShatterFX(data.position or Vector3.zero)
 
-			-- Shatter sound & victory fanfare
+			-- Shatter sound & camera shake
 			playSound("rbxassetid://9114223849", 1.0, 1.0) -- Heavy crystal shatter
-			playSound("rbxassetid://5153737200", 1.1, 0.9) -- Fanfare
-
-			-- Camera shake on shatter
 			shakeCamera(1.8, 1.0)
 
-			victoryTitle.Text = "🎉 METEOR SHATTERED! JACKPOT GRANTED! 🎉"
-			victorySubtitle.Text = string.format("+$%s Cash  •  +%s Gems  •  3 Rare Crates", FormatNumber.formatComma(data.jackpotCash or 25_000_000), FormatNumber.formatComma(data.jackpotGems or 15_000))
-
-			-- Slide victory banner down into view
-			victoryBanner.Position = UDim2.new(0.5, 0, -0.2, 0)
-			victoryBanner.Visible = true
-			TweenService:Create(victoryBanner, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				Position = UDim2.new(0.5, 0, 0.08, 0),
-			}):Play()
-
-			-- Hide victory banner after 6 seconds
-			task.delay(6.0, function()
-				TweenService:Create(victoryBanner, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					Position = UDim2.new(0.5, 0, -0.2, 0),
-				}):Play()
+			-- Play sequential award pop-up & slide-to-left showcase animation
+			task.spawn(function()
+				playSequentialAwardsAnimation(data)
 			end)
 		else
 			-- Cooled down / failed
 			print("💨 [MeteorClient] Meteor cooled down and dissipated")
+			if activeShowcaseFrame then
+				activeShowcaseFrame:Destroy()
+				activeShowcaseFrame = nil
+			end
 			local activeFolder = Workspace:FindFirstChild("ActiveMeteorEvent")
 			if activeFolder then activeFolder:Destroy() end
 		end

@@ -5,7 +5,8 @@ local SUFFIXES = {
 	"", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"
 }
 
-function FormatNumber.formatCompact(value: number): string
+function FormatNumber.formatCompact(value: number?): string
+	if not value then return "0" end
 	if value < 1000 then
 		return string.format("%d", math.floor(value))
 	end

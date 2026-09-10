@@ -613,6 +613,9 @@ function MeteorService.endEvent(isVictory: boolean)
 			position = centerPos,
 			jackpotCash = jackpot.CashBase,
 			jackpotGems = jackpot.GemsBase,
+			jackpotPower = jackpot.PowerBase,
+			cratesCount = jackpot.CratesCount or 3,
+			crateTypes = jackpot.CrateTypes,
 		})
 
 		-- Distribute jackpot rewards to every player who contributed (safely wrapped in pcall)

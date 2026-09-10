@@ -217,12 +217,12 @@ OreConfig.ORES = {
 	},
 } :: { [string]: OreDef }
 
--- Spawning boundaries for Zone 1 (Meadow quadrants surrounding plaza)
+-- Spawning boundaries for Zone 1 (Meadow quadrants surrounding town plaza & buildings)
 OreConfig.SPAWN_ZONES_1 = {
-	{ minX = -125, maxX = -28, minZ = -125, maxZ = -28 },
-	{ minX = 28, maxX = 125, minZ = -125, maxZ = -28 },
-	{ minX = -125, maxX = -28, minZ = 28, maxZ = 125 },
-	{ minX = 28, maxX = 125, minZ = 28, maxZ = 125 },
+	{ minX = -125, maxX = -48, minZ = -125, maxZ = -48 },
+	{ minX = 48, maxX = 125, minZ = -125, maxZ = -48 },
+	{ minX = -125, maxX = -48, minZ = 48, maxZ = 125 },
+	{ minX = 48, maxX = 125, minZ = 48, maxZ = 125 },
 }
 
 -- Spawning boundaries for Zone 2 (Magma Caverns: Z = -165 to -275)

@@ -11,6 +11,7 @@ local MarketplaceServiceHandler = require(script.Parent.MarketplaceServiceHandle
 local TrainingConfig = require(ReplicatedStorage.Shared.Config.TrainingConfig)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
 local OreModelBuilder = require(ReplicatedStorage.Shared.Utils.OreModelBuilder)
+local TownBuildingBuilder = require(ReplicatedStorage.Shared.Utils.TownBuildingBuilder)
 
 local MapService = {}
 local brazierLights: { PointLight } = {}
@@ -213,127 +214,135 @@ function MapService.buildMountains(folder: Folder)
 	end
 end
 
--- 3. Central Spawn Plaza & Pathways Connecting to Mining Fields
+-- 3. Central Lofty Hexagonal Spawn Plaza & Avenues Connecting to Exploration Zones
 function MapService.buildPlazaAndPaths(folder: Folder)
 	local pathsFolder = Instance.new("Folder")
 	pathsFolder.Name = "PlazaAndPaths"
 	pathsFolder.Parent = folder
 
-	local stoneColor = Color3.fromRGB(85, 90, 98)
-	local stoneDark = Color3.fromRGB(52, 56, 64)
+	local stoneColor = Color3.fromRGB(80, 85, 92)
+	local stoneDark = Color3.fromRGB(48, 52, 58)
+	local stoneTrim = Color3.fromRGB(62, 66, 74)
+	local goldTrim = Color3.fromRGB(255, 215, 60)
 
-	-- Central Plaza Roundabout resting at Y = 0.2 (top at Y = 0.4)
-	createStudPart(pathsFolder, "PlazaCenter", Vector3.new(28, 0.4, 28), CFrame.new(0, 0.2, 0), stoneColor)
-	createStudPart(pathsFolder, "PlazaBorder", Vector3.new(32, 0.3, 32), CFrame.new(0, 0.15, 0), stoneDark)
+	-- =========================================================================
+	-- A. ELEVATED REGULAR HEXAGONAL PLAZA (Floor at Y = 3.0, Radius R = 36 studs)
+	-- =========================================================================
+	local R = 36
+	local d = R * math.cos(math.rad(30)) -- 31.177 studs to each of the 6 flat edges
+	local floorY = 3.0
+	local floorThickness = 3.0 -- Extends from ground level up to Y = 3.0
 
-	-- 4 Carved Dungeon Stone Braziers at Plaza Corners with Real Fire & Embers
-	local brazierOffsets = {
-		Vector3.new(-12, 0, -12),
-		Vector3.new(12, 0, -12),
-		Vector3.new(-12, 0, 12),
-		Vector3.new(12, 0, 12),
+	-- 1. Stepped Foundation Sub-Plinth (Y = 0 to 1.5, slightly wider R = 38)
+	createStudPart(pathsFolder, "HexSubPlinth1", Vector3.new(38, 1.5, 66), CFrame.new(0, 0.75, 0), stoneDark)
+	createStudPart(pathsFolder, "HexSubPlinth2", Vector3.new(22, 1.5, 56), CFrame.new(0, 0.75, 0) * CFrame.Angles(0, math.rad(60), 0), stoneDark)
+	createStudPart(pathsFolder, "HexSubPlinth3", Vector3.new(22, 1.5, 56), CFrame.new(0, 0.75, 0) * CFrame.Angles(0, math.rad(-60), 0), stoneDark)
+
+	-- 2. Primary Hexagonal Stone Plaza Floor (Y = 0 to 3.0)
+	-- Formed cleanly with 1 broad center slab + 2 angled wing slabs (zero gaps, zero flickering)
+	createStudPart(pathsFolder, "HexPlazaCore", Vector3.new(36, floorThickness, 62.4), CFrame.new(0, floorY * 0.5, 0), stoneColor)
+	createStudPart(pathsFolder, "HexPlazaWing1", Vector3.new(20, floorThickness, 52.0), CFrame.new(0, floorY * 0.5, 0) * CFrame.Angles(0, math.rad(60), 0), stoneColor)
+	createStudPart(pathsFolder, "HexPlazaWing2", Vector3.new(20, floorThickness, 52.0), CFrame.new(0, floorY * 0.5, 0) * CFrame.Angles(0, math.rad(-60), 0), stoneColor)
+
+	-- 3. Decorative Hexagonal Perimeter Kerb Balustrade along all 6 sides
+	-- 6 perimeter sides at distance d = 31.18 from origin
+	local hexEdges = {
+		{ name = "Edge_N",  cf = CFrame.new(0, floorY + 0.5, -d) * CFrame.Angles(0, 0, 0), len = 36 },
+		{ name = "Edge_S",  cf = CFrame.new(0, floorY + 0.5, d) * CFrame.Angles(0, 0, 0), len = 36 },
+		{ name = "Edge_NE", cf = CFrame.new(d * 0.866, floorY + 0.5, -d * 0.5) * CFrame.Angles(0, math.rad(-60), 0), len = 36 },
+		{ name = "Edge_NW", cf = CFrame.new(-d * 0.866, floorY + 0.5, -d * 0.5) * CFrame.Angles(0, math.rad(60), 0), len = 36 },
+		{ name = "Edge_SE", cf = CFrame.new(d * 0.866, floorY + 0.5, d * 0.5) * CFrame.Angles(0, math.rad(60), 0), len = 36 },
+		{ name = "Edge_SW", cf = CFrame.new(-d * 0.866, floorY + 0.5, d * 0.5) * CFrame.Angles(0, math.rad(-60), 0), len = 36 },
 	}
-	for bIdx, offset in ipairs(brazierOffsets) do
-		createDungeonBrazier(pathsFolder, "PlazaBrazier_" .. bIdx, CFrame.new(offset))
+	for _, edge in ipairs(hexEdges) do
+		createStudPart(pathsFolder, edge.name, Vector3.new(edge.len, 1.0, 2.4), edge.cf, stoneTrim)
 	end
 
-	-- 4 Main Exploration Pathways Leading from Plaza outward into the Exploration Zones
-	local pathTargets = {
-		{ name = "Path_North", target = Vector3.new(0, 0.2, -140) },
-		{ name = "Path_South", target = Vector3.new(0, 0.2, 140) },
-		{ name = "Path_West", target = Vector3.new(-60, 0.2, 0) },
-		{ name = "Path_East", target = Vector3.new(60, 0.2, 0) },
-	}
-
-	for _, pt in ipairs(pathTargets) do
-		local origin = Vector3.new(0, 0.2, 0)
-		local diff = pt.target - origin
-		local length = diff.Magnitude
-		local midpoint = origin + (diff / 2)
-		local angle = math.atan2(diff.X, diff.Z)
-
-		createStudPart(
-			pathsFolder,
-			pt.name,
-			Vector3.new(10, 0.35, length),
-			CFrame.new(midpoint) * CFrame.Angles(0, angle, 0),
-			stoneColor
-		)
+	-- 4. Six Roaring Dungeon Braziers at the 6 Hexagon Vertices (Elevated, Roaring Flame)
+	for i = 0, 5 do
+		local rad = math.rad(i * 60 + 30) -- vertices at 30, 90, 150, 210, 270, 330 deg
+		local vx = R * math.cos(rad)
+		local vz = R * math.sin(rad)
+		createDungeonBrazier(pathsFolder, "HexBrazier_" .. i, CFrame.new(vx, floorY, vz))
 	end
 
-	-- Pathway Dungeon Braziers lighting the way to the exploration zones
-	local pathMidBraziers = {
-		Vector3.new(0, 0, -35),
-		Vector3.new(0, 0, -75),
-		Vector3.new(0, 0, -110),
-		Vector3.new(0, 0, 35),
-		Vector3.new(0, 0, 75),
-		Vector3.new(0, 0, 110),
-		Vector3.new(-35, 0, 0),
-		Vector3.new(35, 0, 0),
+	-- 5. Grand Stepped Stone Stairways leading smoothly down on all 4 Cardinal Paths
+	-- Each stairway has 4 wide, low stone steps (step height 0.7, depth 2.6, width 14)
+	local stairDirections = {
+		{ name = "Stairs_North", dir = Vector3.new(0, 0, -1), startPos = Vector3.new(0, floorY, -d), yaw = 0 },
+		{ name = "Stairs_South", dir = Vector3.new(0, 0, 1),  startPos = Vector3.new(0, floorY, d),  yaw = 180 },
+		{ name = "Stairs_West",  dir = Vector3.new(-1, 0, 0), startPos = Vector3.new(-d * 0.866, floorY, 0), yaw = 90 },
+		{ name = "Stairs_East",  dir = Vector3.new(1, 0, 0),  startPos = Vector3.new(d * 0.866, floorY, 0),  yaw = -90 },
 	}
-	for pIdx, pPos in ipairs(pathMidBraziers) do
-		createDungeonBrazier(pathsFolder, "PathBrazier_" .. pIdx, CFrame.new(pPos))
-	end
 
-	-- GOLDEN DEV CHEAT PAD ON PLAZA (Resting on plaza at Y = 0.5)
-	local devPad = Instance.new("Part")
-	devPad.Name = "DevCheatPad"
-	devPad.Size = Vector3.new(7, 0.6, 7)
-	devPad.CFrame = CFrame.new(0, 0.7, 10)
-	devPad.Color = Color3.fromRGB(255, 215, 0)
-	devPad.Material = Enum.Material.Neon
-	devPad.TopSurface = Enum.SurfaceType.Studs
-	devPad.BottomSurface = Enum.SurfaceType.Inlet
-	devPad.Anchored = true
-	devPad.CanCollide = true
-	devPad.CanTouch = true
-	devPad.Parent = pathsFolder
+	for _, sDef in ipairs(stairDirections) do
+		for stepIdx = 1, 4 do
+			local sY = floorY - (stepIdx * 0.7)
+			local sDist = (stepIdx - 0.5) * 2.6
+			local stepPos = sDef.startPos + (sDef.dir * sDist)
+			stepPos = Vector3.new(stepPos.X, sY, stepPos.Z)
 
-	local padGui = Instance.new("BillboardGui")
-	padGui.Name = "DevPadGui"
-	padGui.Size = UDim2.new(0, 240, 0, 60)
-	padGui.StudsOffset = Vector3.new(0, 4.0, 0)
-	padGui.AlwaysOnTop = false
-	padGui.MaxDistance = 45
-
-	local padTitle = Instance.new("TextLabel")
-	padTitle.Size = UDim2.new(1, 0, 0.5, 0)
-	padTitle.BackgroundTransparency = 1
-	padTitle.Text = "⚡ DEV CHEAT PAD ⚡"
-	padTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
-	padTitle.Font = Enum.Font.GothamBlack
-	padTitle.TextSize = 16
-	padTitle.TextStrokeTransparency = 0.2
-	padTitle.Parent = padGui
-
-	local padSubtitle = Instance.new("TextLabel")
-	padSubtitle.Size = UDim2.new(1, 0, 0.5, 0)
-	padSubtitle.Position = UDim2.new(0, 0, 0.5, 0)
-	padSubtitle.BackgroundTransparency = 1
-	padSubtitle.Text = "Touch for +$10,000,000 & +50K 💎"
-	padSubtitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-	padSubtitle.Font = Enum.Font.GothamBold
-	padSubtitle.TextSize = 13
-	padSubtitle.TextStrokeTransparency = 0.2
-	padSubtitle.Parent = padGui
-	padGui.Parent = devPad
-
-	local lastTouched: { [Player]: number } = {}
-	devPad.Touched:Connect(function(hit)
-		local char = hit.Parent
-		if not char then return end
-		local player = Players:GetPlayerFromCharacter(char)
-		if player then
-			local now = os.clock()
-			if not lastTouched[player] or (now - lastTouched[player]) > 1.0 then
-				lastTouched[player] = now
-				DataService.addCash(player, 10_000_000)
-				DataService.addGems(player, 50_000)
-				print(string.format("⚡ [DevCheatPad] Granted $10,000,000 and 50,000 Gems to %s!", player.Name))
-			end
+			createStudPart(
+				pathsFolder,
+				sDef.name .. "_Step" .. stepIdx,
+				Vector3.new(14, 0.7, 2.6),
+				CFrame.new(stepPos) * CFrame.Angles(0, math.rad(sDef.yaw), 0),
+				stoneTrim
+			)
 		end
-	end)
+	end
+
+	-- =========================================================================
+	-- B. ELEVATED CENTRAL HEXAGONAL SPAWN DAIS (The Grand Spawn Emblem)
+	-- =========================================================================
+	local daisY = 3.6
+	createStudPart(pathsFolder, "SpawnDaisBase", Vector3.new(18, 0.6, 18), CFrame.new(0, daisY - 0.3, 0), stoneDark)
+	local daisTop = createStudPart(pathsFolder, "SpawnDaisTop", Vector3.new(15, 0.4, 15), CFrame.new(0, daisY + 0.2, 0), stoneTrim)
+	daisTop.Material = Enum.Material.SmoothPlastic
+
+	-- Inlaid Glowing Golden Sun Compass Star
+	local starCore = createStudPart(pathsFolder, "SpawnStarCore", Vector3.new(4.5, 0.15, 4.5), CFrame.new(0, daisY + 0.42, 0), goldTrim)
+	starCore.Material = Enum.Material.Neon
+	for _, deg in ipairs({ 0, 45, 90, 135 }) do
+		local starRay = createStudPart(pathsFolder, "StarRay_" .. deg, Vector3.new(10, 0.12, 2.2), CFrame.new(0, daisY + 0.42, 0) * CFrame.Angles(0, math.rad(deg), 0), goldTrim)
+		starRay.Material = Enum.Material.Neon
+	end
+
+	-- Ensure Workspace.SpawnLocation sits perfectly on the dais
+	local spawnLoc = Workspace:FindFirstChild("SpawnLocation") :: SpawnLocation?
+	if spawnLoc then
+		spawnLoc.CFrame = CFrame.new(0, daisY + 0.2, 0)
+		spawnLoc.Size = Vector3.new(14, 0.4, 14)
+		spawnLoc.Transparency = 1
+		spawnLoc.CanCollide = false
+	end
+
+	-- =========================================================================
+	-- C. CONNECTING AVENUES & COURTYARD PAVEMENTS
+	-- =========================================================================
+	-- 1. North Avenue (leading to Magma Gate & Rebirth Quarry)
+	createStudPart(pathsFolder, "Path_North", Vector3.new(12, 0.35, 100), CFrame.new(0, 0.2, -88), stoneColor)
+	-- 2. South Avenue (leading to Cosmic Gate & Boss Arena)
+	createStudPart(pathsFolder, "Path_South", Vector3.new(12, 0.35, 100), CFrame.new(0, 0.2, 88), stoneColor)
+	-- 3. West Town Courtyard (connecting Blacksmith & Trail Artisan)
+	createStudPart(pathsFolder, "Courtyard_West", Vector3.new(24, 0.35, 48), CFrame.new(-38, 0.2, 0), stoneColor)
+	-- 4. East Sanctuary Courtyard (connecting Hatchery, Fusion Lab, & VIP Pavilion)
+	createStudPart(pathsFolder, "Courtyard_East", Vector3.new(24, 0.35, 48), CFrame.new(38, 0.2, 0), stoneColor)
+
+	-- Pathway Braziers along North & South Avenues
+	local avenueBraziers = {
+		Vector3.new(8, 0, -65),
+		Vector3.new(-8, 0, -65),
+		Vector3.new(8, 0, -105),
+		Vector3.new(-8, 0, -105),
+		Vector3.new(8, 0, 65),
+		Vector3.new(-8, 0, 65),
+		Vector3.new(8, 0, 105),
+		Vector3.new(-8, 0, 105),
+	}
+	for bIdx, bPos in ipairs(avenueBraziers) do
+		createDungeonBrazier(pathsFolder, "AvenueBrazier_" .. bIdx, CFrame.new(bPos))
+	end
 end
 
 -- 4. Classic Retro Roblox Trees (2-3 tiered foliage blocks with studs)
@@ -397,21 +406,32 @@ function MapService.buildTrees(folder: Folder)
 		treeModel.Parent = treesFolder
 	end
 
-	-- Coordinates chosen to frame the meadow without intruding on ore fields or paths
+	-- Coordinates chosen strictly in outer buffer greenbelts, with ZERO overlap near buildings or plaza
 	local treePositions = {
-		-- Central meadow clusters (between the paths)
-		Vector3.new(0, 0, -50),
-		Vector3.new(-8, 0, -68),
-		Vector3.new(8, 0, -68),
-		Vector3.new(0, 0, 50),
-		Vector3.new(-8, 0, 68),
-		Vector3.new(8, 0, 68),
-		Vector3.new(-50, 0, 0),
-		Vector3.new(-68, 0, -8),
-		Vector3.new(-68, 0, 8),
-		Vector3.new(50, 0, 0),
-		Vector3.new(68, 0, -8),
-		Vector3.new(68, 0, 8),
+		-- West Town Outer Garden (behind Blacksmith & Trail Artisan)
+		Vector3.new(-60, 0, -35),
+		Vector3.new(-65, 0, -18),
+		Vector3.new(-62, 0, 0),
+		Vector3.new(-65, 0, 18),
+		Vector3.new(-60, 0, 35),
+
+		-- East Sanctuary Outer Garden (behind Sanctuary & Fusion Lab)
+		Vector3.new(62, 0, -35),
+		Vector3.new(65, 0, -18),
+		Vector3.new(62, 0, 18),
+		Vector3.new(65, 0, 35),
+
+		-- North Avenue Flanking Groves (Spaced >= 20 studs from path)
+		Vector3.new(-24, 0, -68),
+		Vector3.new(24, 0, -68),
+		Vector3.new(-26, 0, -102),
+		Vector3.new(26, 0, -102),
+
+		-- South Avenue Flanking Groves (Spaced >= 20 studs from path)
+		Vector3.new(-24, 0, 68),
+		Vector3.new(24, 0, 68),
+		Vector3.new(-26, 0, 102),
+		Vector3.new(26, 0, 102),
 
 		-- Foothill groves along North & South borders
 		Vector3.new(-120, 0, -125),
@@ -519,32 +539,28 @@ function MapService.buildFlora(folder: Folder)
 		)
 	end
 
-	-- Spawn flower meadows and shrub clusters around the spawn plaza and along tree groves
+	-- Spawn flowerbeds and shrub clusters neatly framing pathways and town corners
 	local clusterCenters = {
-		Vector3.new(-18, 0, -18),
-		Vector3.new(18, 0, -18),
-		Vector3.new(-18, 0, 18),
-		Vector3.new(18, 0, 18),
-		Vector3.new(-32, 0, -38),
-		Vector3.new(32, 0, -38),
-		Vector3.new(-32, 0, 38),
-		Vector3.new(32, 0, 38),
-		Vector3.new(0, 0, -36),
-		Vector3.new(0, 0, 36),
-		Vector3.new(-36, 0, 0),
-		Vector3.new(36, 0, 0),
+		Vector3.new(-24, 0, -38),
+		Vector3.new(24, 0, -38),
+		Vector3.new(-24, 0, 38),
+		Vector3.new(24, 0, 38),
+		Vector3.new(-18, 0, -52),
+		Vector3.new(18, 0, -52),
+		Vector3.new(-18, 0, 52),
+		Vector3.new(18, 0, 52),
+		Vector3.new(-54, 0, 0),
+		Vector3.new(54, 0, 0),
 	}
 
 	for idx, center in ipairs(clusterCenters) do
-		-- Bush in center
 		spawnBush(center, 0.85 + ((idx % 3) * 0.15))
 
-		-- Ring of 4 flowers around each bush
 		local offsets = {
-			Vector3.new(-3, 0, -2.5),
-			Vector3.new(3.2, 0, -1.8),
-			Vector3.new(-2.2, 0, 3.1),
-			Vector3.new(2.8, 0, 2.6),
+			Vector3.new(-2.8, 0, -2.4),
+			Vector3.new(2.8, 0, -1.8),
+			Vector3.new(-2.0, 0, 2.8),
+			Vector3.new(2.6, 0, 2.4),
 		}
 		for fIdx, off in ipairs(offsets) do
 			spawnFlower(center + off, idx + fIdx)
@@ -552,7 +568,7 @@ function MapService.buildFlora(folder: Folder)
 	end
 end
 
--- 6. Ancient Crumbling Dungeon Ruins, Mystical Runestones & Northern Dungeon Gate (Studs Design)
+-- 6. Ancient Crumbling Dungeon Ruins, Mystical Runestones & Gateway Arches (Studs Design)
 function MapService.buildDungeonRuins(folder: Folder)
 	local ruinsFolder = Instance.new("Folder")
 	ruinsFolder.Name = "DungeonRuins"
@@ -600,20 +616,22 @@ function MapService.buildDungeonRuins(folder: Folder)
 		pillarModel.Parent = ruinsFolder
 	end
 
-	-- Pillar groupings around the plaza outskirts and path crossroads
-	local pillarLocations = {
-		{ pos = Vector3.new(-24, 0, -24), h = 18, broken = false },
-		{ pos = Vector3.new(24, 0, -24), h = 14, broken = true },
-		{ pos = Vector3.new(-24, 0, 24), h = 14, broken = true },
-		{ pos = Vector3.new(24, 0, 24), h = 18, broken = false },
+	-- Gateway pillars strictly framing the Avenue portals (No overlap with town buildings!)
+	local avenueGatePillars = {
+		-- North Avenue Portal
+		{ pos = Vector3.new(-14, 0, -44), h = 16, broken = false },
+		{ pos = Vector3.new(14, 0, -44), h = 16, broken = false },
+		-- South Avenue Portal
+		{ pos = Vector3.new(-14, 0, 44), h = 16, broken = false },
+		{ pos = Vector3.new(14, 0, 44), h = 16, broken = false },
 
-		-- Ancient gateway pillars framing path crossroads
-		{ pos = Vector3.new(-32, 0, -6), h = 12, broken = false },
-		{ pos = Vector3.new(-32, 0, 6), h = 10, broken = true },
-		{ pos = Vector3.new(32, 0, -6), h = 10, broken = true },
-		{ pos = Vector3.new(32, 0, 6), h = 12, broken = false },
+		-- Distant scenic meadow ruins
+		{ pos = Vector3.new(-92, 0, -92), h = 14, broken = true },
+		{ pos = Vector3.new(92, 0, -92), h = 16, broken = false },
+		{ pos = Vector3.new(-92, 0, 92), h = 16, broken = false },
+		{ pos = Vector3.new(92, 0, 92), h = 14, broken = true },
 	}
-	for _, p in ipairs(pillarLocations) do
+	for _, p in ipairs(avenueGatePillars) do
 		spawnRuinPillar(p.pos, p.h, p.broken)
 	end
 
@@ -661,12 +679,13 @@ function MapService.buildDungeonRuins(folder: Folder)
 		runeModel.Parent = ruinsFolder
 	end
 
-	spawnRunestone(Vector3.new(0, 0, -32), runeCyan, "North")
-	spawnRunestone(Vector3.new(0, 0, 32), runeCyan, "South")
-	spawnRunestone(Vector3.new(-32, 0, 0), runePurple, "West")
-	spawnRunestone(Vector3.new(32, 0, 0), runePurple, "East")
+	-- Runestones placed along the avenues away from all buildings
+	spawnRunestone(Vector3.new(0, 0, -60), runeCyan, "NorthAvenue")
+	spawnRunestone(Vector3.new(0, 0, 60), runeCyan, "SouthAvenue")
+	spawnRunestone(Vector3.new(-75, 0, 0), runePurple, "FarWest")
+	spawnRunestone(Vector3.new(75, 0, 0), runePurple, "FarEast")
 
-	-- Northern gateway pillars
+	-- Northern gateway pillars (Zone 2 Magma approach)
 	spawnRuinPillar(Vector3.new(-18, 0, -132), 16, false)
 	spawnRuinPillar(Vector3.new(18, 0, -132), 16, false)
 end
@@ -736,927 +755,29 @@ function MapService.setupAtmosphere()
 	end)
 end
 
--- 9. Merchant Market Stall & Interactive Shopkeeper NPC ("Barnaby")
+---- 9. The Blacksmith Forge (Barnaby the Equipment Merchant)
 function MapService.buildShopStall(folder: Folder)
-	local stallModel = Instance.new("Model")
-	stallModel.Name = "MerchantStall"
-
-	local stallCF = CFrame.new(-13.5, 0.4, 0) * CFrame.Angles(0, math.rad(90), 0)
-
-	local woodDark = Color3.fromRGB(85, 55, 35)
-	local woodLight = Color3.fromRGB(115, 75, 45)
-	local clothRed = Color3.fromRGB(180, 45, 45)
-	local clothCream = Color3.fromRGB(235, 225, 200)
-
-	-- Counter Table (Front desk)
-	createStudPart(stallModel, "CounterBase", Vector3.new(8, 2.6, 2.4), stallCF * CFrame.new(0, 1.3, 0), woodDark)
-	createStudPart(stallModel, "CounterTop", Vector3.new(9, 0.6, 3.2), stallCF * CFrame.new(0, 2.8, 0), woodLight)
-
-	-- 4 Canopy Support Corner Posts
-	local postOffsets = {
-		Vector3.new(-3.8, 0, -2.4),
-		Vector3.new(3.8, 0, -2.4),
-		Vector3.new(-3.8, 0, 1.2),
-		Vector3.new(3.8, 0, 1.2),
-	}
-	for _, pOff in ipairs(postOffsets) do
-		createStudPart(stallModel, "Post", Vector3.new(0.8, 8, 0.8), stallCF * CFrame.new(pOff.X, 4.4, pOff.Z), woodDark)
-	end
-
-	-- Overhead Striped Canopy Roof (Alternating Red and Cream Slats with Studs)
-	for s = -3, 3 do
-		local slatCol = if s % 2 == 0 then clothRed else clothCream
-		createStudPart(stallModel, "CanopySlat", Vector3.new(1.4, 0.5, 5.0), stallCF * CFrame.new(s * 1.35, 8.4, -0.6) * CFrame.Angles(math.rad(-8), 0, 0), slatCol)
-	end
-
-	-- Back display shelf
-	createStudPart(stallModel, "BackShelf", Vector3.new(8, 4.5, 1.0), stallCF * CFrame.new(0, 2.25, -2.6), woodDark)
-
-	-- Display props on counter
-	local spadeProp = createStudPart(stallModel, "DisplaySpade", Vector3.new(0.5, 1.6, 0.5), stallCF * CFrame.new(-2.6, 3.8, 0) * CFrame.Angles(math.rad(25), 0, math.rad(15)), Color3.fromRGB(0, 210, 255))
-	spadeProp.Material = Enum.Material.Neon
-	local packProp = createStudPart(stallModel, "DisplayPack", Vector3.new(1.2, 1.4, 0.9), stallCF * CFrame.new(2.6, 3.7, 0), Color3.fromRGB(150, 90, 50))
-	packProp.Material = Enum.Material.SmoothPlastic
-
-	-- Hanging Lantern under canopy
-	local lantern = createStudPart(stallModel, "StallLantern", Vector3.new(1.0, 1.2, 1.0), stallCF * CFrame.new(0, 7.2, 0.8), Color3.fromRGB(255, 200, 100))
-	lantern.Material = Enum.Material.Neon
-
-	local stallLight = Instance.new("PointLight")
-	stallLight.Color = Color3.fromRGB(255, 190, 90)
-	stallLight.Brightness = 2.0
-	stallLight.Range = 20
-	stallLight.Parent = lantern
-
-	-- SHOPKEEPER NPC ("Barnaby the Merchant")
-	local npcModel = Instance.new("Model")
-	npcModel.Name = "BarnabyMerchant"
-
-	local npcCF = stallCF * CFrame.new(0, 1.2, -1.2) -- Standing behind the counter
-
-	-- Torso (Interactive root part for ProximityPrompt)
-	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 2.0, 0), Color3.fromRGB(45, 70, 115))
-
-	-- Legs
-	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 0.0, 0), Color3.fromRGB(38, 42, 50))
-	createStudPart(npcModel, "RightLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(0.5, 0.0, 0), Color3.fromRGB(38, 42, 50))
-
-	-- Head & Face
-	local head = createStudPart(npcModel, "Head", Vector3.new(1.25, 1.25, 1.25), npcCF * CFrame.new(0, 3.4, 0), Color3.fromRGB(255, 215, 175), true, Enum.SurfaceType.Smooth)
-	local face = Instance.new("Decal")
-	face.Name = "Face"
-	face.Texture = "rbxasset://textures/face.png"
-	face.Face = Enum.NormalId.Front
-	face.Parent = head
-
-	-- Merchant Fedora / Wide-Brimmed Hat
-	createStudPart(npcModel, "HatBrim", Vector3.new(2.4, 0.35, 2.4), npcCF * CFrame.new(0, 4.0, 0), Color3.fromRGB(80, 45, 25))
-	createStudPart(npcModel, "HatCrown", Vector3.new(1.5, 0.75, 1.5), npcCF * CFrame.new(0, 4.4, 0), Color3.fromRGB(95, 55, 30))
-
-	-- Arms (Resting on counter)
-	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(45, 70, 115))
-	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(45, 70, 115))
-
-	-- Overhead Title Billboard
-	local titleGui = Instance.new("BillboardGui")
-	titleGui.Name = "MerchantTitleGui"
-	titleGui.Size = UDim2.new(0, 200, 0, 50)
-	titleGui.StudsOffset = Vector3.new(0, 3.2, 0)
-	titleGui.AlwaysOnTop = false
-	titleGui.MaxDistance = 60
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "🛒 BARNABY 🛒"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	titleLabel.Font = Enum.Font.Antique
-	titleLabel.TextSize = 19
-	titleLabel.TextStrokeTransparency = 0.2
-	titleLabel.Parent = titleGui
-
-	local subtitleLabel = Instance.new("TextLabel")
-	subtitleLabel.Size = UDim2.new(1, 0, 0.45, 0)
-	subtitleLabel.Position = UDim2.new(0, 0, 0.55, 0)
-	subtitleLabel.BackgroundTransparency = 1
-	subtitleLabel.Text = "[Equipment Merchant]"
-	subtitleLabel.TextColor3 = Color3.fromRGB(200, 230, 255)
-	subtitleLabel.Font = Enum.Font.Antique
-	subtitleLabel.TextSize = 14
-	subtitleLabel.TextStrokeTransparency = 0.2
-	subtitleLabel.Parent = titleGui
-	titleGui.Parent = head
-
-	-- INVISIBLE INTERACTION PART & PROXIMITY PROMPT
-	-- Placed right at the front counter facing the player plaza for 100% reliable prompt detection
-	local interactionPart = Instance.new("Part")
-	interactionPart.Name = "BarnabyInteractionPart"
-	interactionPart.Size = Vector3.new(9, 5, 4)
-	interactionPart.CFrame = stallCF * CFrame.new(0, 2.8, 1.2)
-	interactionPart.Transparency = 1
-	interactionPart.CanCollide = false
-	interactionPart.CanTouch = true
-	interactionPart.CanQuery = true
-	interactionPart.Anchored = true
-	interactionPart.Parent = stallModel
-
-	-- PROXIMITY PROMPT: "Press E to Talk"
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "TalkPrompt"
-	prompt.ActionText = "Talk"
-	prompt.ObjectText = "Barnaby (Merchant)"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0 -- Instantaneous on tap / press
-	prompt.MaxActivationDistance = 16
-	prompt.RequiresLineOfSight = false
-	prompt.ClickablePrompt = true
-	prompt.Parent = interactionPart
-
-	prompt.Triggered:Connect(function(player)
-		print("🗣️ [MapService] Server ProximityPrompt triggered by " .. player.Name)
-		local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
-		dialogueEvent:FireClient(player, "Barnaby")
-	end)
-
-	npcModel.Parent = stallModel
-	stallModel.Parent = folder
+	TownBuildingBuilder.buildBlacksmith(folder)
 end
 
--- 10. Ancient Pet Egg Hatching Shrine ("Prism Egg")
+-- 10. The Pet Hatchery Sanctuary (Prism Egg Shrine & Exclusive Robux King Egg Shrine)
 function MapService.buildEggStand(folder: Folder)
-	local eggShrine = Instance.new("Model")
-	eggShrine.Name = "EggHatchShrine"
-
-	-- Positioned on the East side of the plaza (Z = 4.5)
-	local shrineCF = CFrame.new(13.5, 0.4, 4.5) * CFrame.Angles(0, math.rad(-90), 0)
-
-	local stoneDark = Color3.fromRGB(48, 52, 58)
-	local stoneMid = Color3.fromRGB(68, 72, 80)
-	local goldAccent = Color3.fromRGB(240, 190, 60)
-	local runeCyan = Color3.fromRGB(0, 220, 255)
-
-	-- 1. Tiered Carved Stone Pedestal Base
-	createStudPart(eggShrine, "PedestalBase", Vector3.new(7.0, 0.6, 7.0), shrineCF * CFrame.new(0, 0.3, 0), stoneDark)
-	createStudPart(eggShrine, "PedestalStep", Vector3.new(5.6, 0.6, 5.6), shrineCF * CFrame.new(0, 0.9, 0), stoneMid)
-
-	-- 2. Carved Central Pillar Column with Studs
-	createStudPart(eggShrine, "PedestalColumn", Vector3.new(3.6, 2.2, 3.6), shrineCF * CFrame.new(0, 2.3, 0), stoneDark)
-
-	-- 3. Inscribed Gold Trim Capital
-	local capital = createStudPart(eggShrine, "PedestalCapital", Vector3.new(4.8, 0.6, 4.8), shrineCF * CFrame.new(0, 3.7, 0), goldAccent)
-	capital.Material = Enum.Material.SmoothPlastic
-
-	-- 4. Dark Obsidian Nest Bowl
-	local bowl = createStudPart(eggShrine, "NestBowl", Vector3.new(4.2, 0.4, 4.2), shrineCF * CFrame.new(0, 4.1, 0), Color3.fromRGB(28, 30, 36))
-	bowl.Material = Enum.Material.SmoothPlastic
-
-	-- 5. Glowing Cyan Rune Core Disc beneath the egg
-	local runeCore = createStudPart(eggShrine, "RuneCore", Vector3.new(3.0, 0.25, 3.0), shrineCF * CFrame.new(0, 4.35, 0), runeCyan)
-	runeCore.Material = Enum.Material.Neon
-
-	-- 6. 3D Physical Egg
-	local eggPart = Instance.new("Part")
-	eggPart.Name = "PrismEggPart"
-	eggPart.Size = Vector3.new(2.4, 3.45, 2.4)
-	eggPart.CFrame = shrineCF * CFrame.new(0, 5.9, 0)
-	eggPart.Color = Color3.fromRGB(245, 248, 255)
-	eggPart.Material = Enum.Material.SmoothPlastic
-	eggPart.Anchored = true
-	eggPart.CanCollide = true
-	eggPart.CanTouch = true
-	eggPart.Parent = eggShrine
-
-	local eggMesh = Instance.new("SpecialMesh")
-	eggMesh.MeshType = Enum.MeshType.Sphere
-	eggMesh.Scale = Vector3.new(1.0, 1.0, 1.0)
-	eggMesh.Parent = eggPart
-
-	-- Luminous decorative waist band around the egg
-	local eggBand = Instance.new("Part")
-	eggBand.Name = "EggWaistBand"
-	eggBand.Size = Vector3.new(2.5, 0.35, 2.5)
-	eggBand.CFrame = shrineCF * CFrame.new(0, 5.75, 0)
-	eggBand.Color = runeCyan
-	eggBand.Material = Enum.Material.Neon
-	eggBand.Anchored = true
-	eggBand.CanCollide = false
-	eggBand.Parent = eggShrine
-
-	local bandMesh = Instance.new("SpecialMesh")
-	bandMesh.MeshType = Enum.MeshType.Sphere
-	bandMesh.Scale = Vector3.new(1.02, 0.18, 1.02)
-	bandMesh.Parent = eggBand
-
-	-- PointLight radiating from the egg
-	local eggLight = Instance.new("PointLight")
-	eggLight.Color = runeCyan
-	eggLight.Brightness = 2.2
-	eggLight.Range = 16
-	eggLight.Parent = eggPart
-
-	-- Soft mystical sparkles
-	local eggAttach = Instance.new("Attachment")
-	eggAttach.Parent = eggPart
-
-	local eggSparkles = Instance.new("ParticleEmitter")
-	eggSparkles.Name = "EggSparkles"
-	eggSparkles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 235, 255)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 240, 150)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 200, 255)),
-	})
-	eggSparkles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.35),
-		NumberSequenceKeypoint.new(0.5, 0.5),
-		NumberSequenceKeypoint.new(1, 0.1),
-	})
-	eggSparkles.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.2),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	eggSparkles.LightEmission = 0.9
-	eggSparkles.Lifetime = NumberRange.new(1.0, 1.8)
-	eggSparkles.Rate = 7
-	eggSparkles.Speed = NumberRange.new(0.8, 2.0)
-	eggSparkles.SpreadAngle = Vector2.new(30, 30)
-	eggSparkles.Acceleration = Vector3.new(0, 2.0, 0)
-	eggSparkles.Parent = eggAttach
-
-	-- Overhead Info Billboard
-	local eggGui = Instance.new("BillboardGui")
-	eggGui.Name = "EggTitleGui"
-	eggGui.Size = UDim2.new(0, 260, 0, 75)
-	eggGui.StudsOffset = Vector3.new(0, 3.4, 0)
-	eggGui.AlwaysOnTop = false
-	eggGui.MaxDistance = 60
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
-	titleLabel.Position = UDim2.new(0, 0, 0, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "✨ PRISM EGG ✨"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 18
-	titleLabel.TextStrokeTransparency = 0.2
-	titleLabel.Parent = eggGui
-
-	local costLabel = Instance.new("TextLabel")
-	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
-	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
-	costLabel.BackgroundTransparency = 1
-	costLabel.Text = "[E] 1x (100 💎)  •  [F] 3x (300 💎)"
-	costLabel.TextColor3 = Color3.fromRGB(0, 230, 255)
-	costLabel.Font = Enum.Font.GothamBold
-	costLabel.TextSize = 13
-	costLabel.TextStrokeTransparency = 0.2
-	costLabel.Parent = eggGui
-
-	local chancesLabel = Instance.new("TextLabel")
-	chancesLabel.Size = UDim2.new(1, 0, 0.28, 0)
-	chancesLabel.Position = UDim2.new(0, 0, 0.68, 0)
-	chancesLabel.BackgroundTransparency = 1
-	chancesLabel.Text = "🐶 55%  •  🐱 35%  •  🐰 10%"
-	chancesLabel.TextColor3 = Color3.fromRGB(220, 230, 245)
-	chancesLabel.Font = Enum.Font.GothamMedium
-	chancesLabel.TextSize = 12
-	chancesLabel.TextStrokeTransparency = 0.25
-	chancesLabel.Parent = eggGui
-
-	eggGui.Parent = eggPart
-
-	-- Visual rune indicator pads on the pedestal step (Cyan for 1x on Left, Gold for 3x on Right)
-	local padLeft = createStudPart(eggShrine, "HatchPad_1x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(-3.0, 0.45, 1.2), Color3.fromRGB(0, 200, 255))
-	padLeft.Material = Enum.Material.Neon
-	padLeft.CanCollide = false
-
-	local padRight = createStudPart(eggShrine, "HatchPad_3x", Vector3.new(2.2, 0.1, 2.2), shrineCF * CFrame.new(3.0, 0.45, 1.2), Color3.fromRGB(255, 215, 0))
-	padRight.Material = Enum.Material.Neon
-	padRight.CanCollide = false
-
-	-- Distinct Interaction Parts to place [E] on the LEFT and [F] on the RIGHT with zero overlap
-	local leftPart = Instance.new("Part")
-	leftPart.Name = "EggInteractionPart_Left"
-	leftPart.Size = Vector3.new(3.5, 5, 4.5)
-	leftPart.CFrame = shrineCF * CFrame.new(-3.0, 3.0, 1.0)
-	leftPart.Transparency = 1
-	leftPart.CanCollide = false
-	leftPart.CanTouch = true
-	leftPart.CanQuery = true
-	leftPart.Anchored = true
-	leftPart.Parent = eggShrine
-
-	local rightPart = Instance.new("Part")
-	rightPart.Name = "EggInteractionPart_Right"
-	rightPart.Size = Vector3.new(3.5, 5, 4.5)
-	rightPart.CFrame = shrineCF * CFrame.new(3.0, 3.0, 1.0)
-	rightPart.Transparency = 1
-	rightPart.CanCollide = false
-	rightPart.CanTouch = true
-	rightPart.CanQuery = true
-	rightPart.Anchored = true
-	rightPart.Parent = eggShrine
-
-	-- Prompt 1: [E] Hatch 1x (Anchored on the LEFT)
-	local prompt1 = Instance.new("ProximityPrompt")
-	prompt1.Name = "Hatch1Prompt"
-	prompt1.ActionText = "Hatch 1x"
-	prompt1.ObjectText = "Prism Egg (100 💎)"
-	prompt1.KeyboardKeyCode = Enum.KeyCode.E
-	prompt1.HoldDuration = 0
-	prompt1.MaxActivationDistance = 14
-	prompt1.RequiresLineOfSight = false
-	prompt1.ClickablePrompt = true
-	prompt1.UIOffset = Vector2.new(-25, 0)
-	prompt1.Parent = leftPart
-
-	-- Prompt 2: [F] Hatch 3x (Anchored on the RIGHT)
-	local prompt3 = Instance.new("ProximityPrompt")
-	prompt3.Name = "Hatch3Prompt"
-	prompt3.ActionText = "Hatch 3x"
-	prompt3.ObjectText = "Prism Egg (300 💎)"
-	prompt3.KeyboardKeyCode = Enum.KeyCode.F
-	prompt3.HoldDuration = 0
-	prompt3.MaxActivationDistance = 14
-	prompt3.RequiresLineOfSight = false
-	prompt3.ClickablePrompt = true
-	prompt3.UIOffset = Vector2.new(25, 0)
-	prompt3.Parent = rightPart
-
-	local lastHatchTime: { [Player]: number } = {}
-	prompt1.Triggered:Connect(function(player)
-		local now = os.clock()
-		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
-			return
-		end
-		lastHatchTime[player] = now
-
-		print("🥚 [MapService] ProximityPrompt 1x Hatch triggered by " .. player.Name)
-		local ok, petIds, errReason = PetService.hatchEgg(player, "BasicEgg", 1)
-		if ok and petIds then
-			print("✨ [MapService] " .. player.Name .. " hatched 1x: " .. tostring(petIds[1]))
-		else
-			print("⚠️ [MapService] 1x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
-		end
-	end)
-
-	prompt3.Triggered:Connect(function(player)
-		local now = os.clock()
-		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.35 then
-			return
-		end
-		lastHatchTime[player] = now
-
-		print("🥚 [MapService] ProximityPrompt 3x Hatch triggered by " .. player.Name)
-		local ok, petIds, errReason = PetService.hatchEgg(player, "BasicEgg", 3)
-		if ok and petIds then
-			print("✨ [MapService] " .. player.Name .. " hatched 3x: " .. table.concat(petIds, ", "))
-		else
-			print("⚠️ [MapService] 3x Hatch failed for " .. player.Name .. ": " .. tostring(errReason))
-		end
-	end)
-
-	eggShrine.Parent = folder
+	TownBuildingBuilder.buildPetSanctuary(folder)
 end
 
--- 11. Exclusive 1,000 Robux Egg Hatching Shrine ("Exclusive Robux Egg")
+-- 11. Exclusive Robux Egg Shrine (Already integrated inside buildPetSanctuary)
 function MapService.buildRobuxEggStand(folder: Folder)
-	local eggShrine = Instance.new("Model")
-	eggShrine.Name = "RobuxEggHatchShrine"
-
-	-- Positioned adjacent on the East side of the plaza (Z = -4.5)
-	local shrineCF = CFrame.new(13.5, 0.4, -4.5) * CFrame.Angles(0, math.rad(-90), 0)
-
-	local obsidian = Color3.fromRGB(25, 26, 32)
-	local goldMetal = Color3.fromRGB(255, 215, 60)
-	local cosmicPurple = Color3.fromRGB(180, 50, 255)
-
-	-- 1. Tiered Gilded Obsidian Pedestal Base
-	createStudPart(eggShrine, "RobuxPedestalBase", Vector3.new(7.0, 0.6, 7.0), shrineCF * CFrame.new(0, 0.3, 0), obsidian)
-	createStudPart(eggShrine, "RobuxPedestalStep", Vector3.new(5.6, 0.6, 5.6), shrineCF * CFrame.new(0, 0.9, 0), Color3.fromRGB(40, 42, 50))
-
-	-- 2. Carved Central Pillar with Gold Studs
-	createStudPart(eggShrine, "RobuxPedestalColumn", Vector3.new(3.6, 2.2, 3.6), shrineCF * CFrame.new(0, 2.3, 0), obsidian)
-
-	-- 3. Solid Gold Capital
-	local capital = createStudPart(eggShrine, "RobuxPedestalCapital", Vector3.new(4.8, 0.6, 4.8), shrineCF * CFrame.new(0, 3.7, 0), goldMetal)
-	capital.Material = Enum.Material.SmoothPlastic
-
-	-- 4. Obsidian Nest Bowl
-	local bowl = createStudPart(eggShrine, "RobuxNestBowl", Vector3.new(4.2, 0.4, 4.2), shrineCF * CFrame.new(0, 4.1, 0), obsidian)
-	bowl.Material = Enum.Material.SmoothPlastic
-
-	-- 5. Glowing Cosmic Purple Rune Core Disc
-	local runeCore = createStudPart(eggShrine, "RobuxRuneCore", Vector3.new(3.0, 0.25, 3.0), shrineCF * CFrame.new(0, 4.35, 0), cosmicPurple)
-	runeCore.Material = Enum.Material.Neon
-
-	-- 6. Gilded 3D Egg
-	local eggPart = Instance.new("Part")
-	eggPart.Name = "RobuxEggPart"
-	eggPart.Size = Vector3.new(2.4, 3.45, 2.4)
-	eggPart.CFrame = shrineCF * CFrame.new(0, 5.9, 0)
-	eggPart.Color = goldMetal
-	eggPart.Material = Enum.Material.SmoothPlastic
-	eggPart.Anchored = true
-	eggPart.CanCollide = true
-	eggPart.CanTouch = true
-	eggPart.Parent = eggShrine
-
-	local eggMesh = Instance.new("SpecialMesh")
-	eggMesh.MeshType = Enum.MeshType.Sphere
-	eggMesh.Scale = Vector3.new(1.0, 1.0, 1.0)
-	eggMesh.Parent = eggPart
-
-	-- Cosmic Magenta Neon Waist Band
-	local eggBand = Instance.new("Part")
-	eggBand.Name = "EggWaistBand"
-	eggBand.Size = Vector3.new(2.5, 0.35, 2.5)
-	eggBand.CFrame = shrineCF * CFrame.new(0, 5.75, 0)
-	eggBand.Color = cosmicPurple
-	eggBand.Material = Enum.Material.Neon
-	eggBand.Anchored = true
-	eggBand.CanCollide = false
-	eggBand.Parent = eggShrine
-
-	local bandMesh = Instance.new("SpecialMesh")
-	bandMesh.MeshType = Enum.MeshType.Sphere
-	bandMesh.Scale = Vector3.new(1.02, 0.18, 1.02)
-	bandMesh.Parent = eggBand
-
-	-- Radiant PointLight
-	local eggLight = Instance.new("PointLight")
-	eggLight.Color = Color3.fromRGB(255, 220, 80)
-	eggLight.Brightness = 2.8
-	eggLight.Range = 18
-	eggLight.Parent = eggPart
-
-	-- Sparkling Star Particles
-	local eggAttach = Instance.new("Attachment")
-	eggAttach.Parent = eggPart
-
-	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Name = "RobuxSparkles"
-	sparkles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 150)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 180, 50)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 50, 255)),
-	})
-	sparkles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.4),
-		NumberSequenceKeypoint.new(0.5, 0.6),
-		NumberSequenceKeypoint.new(1, 0.1),
-	})
-	sparkles.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.15),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	sparkles.LightEmission = 0.95
-	sparkles.Lifetime = NumberRange.new(1.0, 1.8)
-	sparkles.Rate = 10
-	sparkles.Speed = NumberRange.new(1.0, 2.5)
-	sparkles.SpreadAngle = Vector2.new(35, 35)
-	sparkles.Acceleration = Vector3.new(0, 2.5, 0)
-	sparkles.Parent = eggAttach
-
-	-- Overhead Info Billboard
-	local eggGui = Instance.new("BillboardGui")
-	eggGui.Name = "RobuxEggTitleGui"
-	eggGui.Size = UDim2.new(0, 280, 0, 80)
-	eggGui.StudsOffset = Vector3.new(0, 3.4, 0)
-	eggGui.AlwaysOnTop = false
-	eggGui.MaxDistance = 60
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
-	titleLabel.Position = UDim2.new(0, 0, 0, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "👑 EXCLUSIVE EGG 👑"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 18
-	titleLabel.TextStrokeTransparency = 0.2
-	titleLabel.Parent = eggGui
-
-	local costLabel = Instance.new("TextLabel")
-	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
-	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
-	costLabel.BackgroundTransparency = 1
-	costLabel.Text = "Cost: 1,000 Robux R$"
-	costLabel.TextColor3 = Color3.fromRGB(0, 230, 118)
-	costLabel.Font = Enum.Font.GothamBold
-	costLabel.TextSize = 14
-	costLabel.TextStrokeTransparency = 0.2
-	costLabel.Parent = eggGui
-
-	local chancesLabel = Instance.new("TextLabel")
-	chancesLabel.Size = UDim2.new(1, 0, 0.28, 0)
-	chancesLabel.Position = UDim2.new(0, 0, 0.68, 0)
-	chancesLabel.BackgroundTransparency = 1
-	chancesLabel.Text = "🐰 Bunny 50%  •  🔥 Drake 35%  •  🌌 Phoenix 15%"
-	chancesLabel.TextColor3 = Color3.fromRGB(255, 235, 180)
-	chancesLabel.Font = Enum.Font.GothamMedium
-	chancesLabel.TextSize = 11
-	chancesLabel.TextStrokeTransparency = 0.25
-	chancesLabel.Parent = eggGui
-
-	eggGui.Parent = eggPart
-
-	-- Visual Rune Pad on Pedestal Step
-	local pad = createStudPart(eggShrine, "HatchPad_Robux", Vector3.new(3.0, 0.1, 3.0), shrineCF * CFrame.new(0, 0.45, 1.2), Color3.fromRGB(255, 215, 0))
-	pad.Material = Enum.Material.Neon
-	pad.CanCollide = false
-
-	-- Interaction Part & Proximity Prompt
-	local interactionPart = Instance.new("Part")
-	interactionPart.Name = "RobuxEggInteractionPart"
-	interactionPart.Size = Vector3.new(6, 6, 6)
-	interactionPart.CFrame = shrineCF * CFrame.new(0, 3.2, 1.0)
-	interactionPart.Transparency = 1
-	interactionPart.CanCollide = false
-	interactionPart.CanTouch = true
-	interactionPart.CanQuery = true
-	interactionPart.Anchored = true
-	interactionPart.Parent = eggShrine
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "RobuxHatchPrompt"
-	prompt.ActionText = "Hatch"
-	prompt.ObjectText = "Exclusive Egg (R$ 1,000)"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.ClickablePrompt = true
-	prompt.Parent = interactionPart
-
-	local lastHatchTime: { [Player]: number } = {}
-	prompt.Triggered:Connect(function(player)
-		local now = os.clock()
-		if lastHatchTime[player] and (now - lastHatchTime[player]) < 0.4 then
-			return
-		end
-		lastHatchTime[player] = now
-
-		print("👑 [MapService] Robux Egg ProximityPrompt triggered by " .. player.Name)
-		local openModalEvent = Remotes.getEvent("OpenRobuxPurchaseModal")
-		openModalEvent:FireClient(player)
-	end)
-
-	eggShrine.Parent = folder
+	-- Built as part of The Pet Hatchery Sanctuary in buildEggStand
 end
 
--- 12. Royal VIP Gamepass Dais & Throne
+-- 12. The Royal VIP Pavilion & Treasury (VIP Throne & Dev Cheat Pad)
 function MapService.buildVIPThrone(folder: Folder)
-	local vipModel = Instance.new("Model")
-	vipModel.Name = "VIPGamepassShrine"
-
-	-- Positioned at East plaza (Z = -13.5)
-	local shrineCF = CFrame.new(13.5, 0.4, -13.5) * CFrame.Angles(0, math.rad(-90), 0)
-
-	local goldMetal = Color3.fromRGB(255, 215, 60)
-	local royalPurple = Color3.fromRGB(110, 25, 180)
-	local darkStone = Color3.fromRGB(28, 30, 38)
-
-	-- 1. Tiered Pedestal with Royal Purple Velvet Inset
-	createStudPart(vipModel, "VIPPedestalBase", Vector3.new(7.5, 0.6, 7.5), shrineCF * CFrame.new(0, 0.3, 0), darkStone)
-	createStudPart(vipModel, "VIPPedestalStep", Vector3.new(6.2, 0.6, 6.2), shrineCF * CFrame.new(0, 0.9, 0), goldMetal)
-	createStudPart(vipModel, "VIPVelvetRune", Vector3.new(5.0, 0.2, 5.0), shrineCF * CFrame.new(0, 1.25, 0), royalPurple)
-
-	-- 2. Golden Royal Throne
-	local throneSeat = createStudPart(vipModel, "ThroneSeat", Vector3.new(3.0, 1.2, 2.6), shrineCF * CFrame.new(0, 2.0, -0.2), goldMetal)
-	throneSeat.Material = Enum.Material.SmoothPlastic
-
-	-- Velvet Cushion
-	local cushion = createStudPart(vipModel, "ThroneCushion", Vector3.new(2.6, 0.4, 2.2), shrineCF * CFrame.new(0, 2.7, -0.2), Color3.fromRGB(180, 40, 160))
-	cushion.Material = Enum.Material.Neon
-
-	-- Throne High Backrest
-	local backrest = createStudPart(vipModel, "ThroneBack", Vector3.new(3.2, 4.4, 0.6), shrineCF * CFrame.new(0, 4.3, -1.3), goldMetal)
-	backrest.Material = Enum.Material.SmoothPlastic
-
-	-- Crown Finial on Top
-	local crownTop = createStudPart(vipModel, "ThroneCrown", Vector3.new(2.4, 1.0, 0.8), shrineCF * CFrame.new(0, 6.8, -1.3), goldMetal)
-	crownTop.Material = Enum.Material.Neon
-
-	-- 3. Sparkling Golden Aura
-	local attach = Instance.new("Attachment")
-	attach.Position = Vector3.new(0, 2.5, 0)
-	attach.Parent = throneSeat
-
-	local sparkles = Instance.new("ParticleEmitter")
-	sparkles.Name = "VIPSparkles"
-	sparkles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 100)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 0)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 140, 0)),
-	})
-	sparkles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.3),
-		NumberSequenceKeypoint.new(0.5, 0.7),
-		NumberSequenceKeypoint.new(1, 0.1),
-	})
-	sparkles.Lifetime = NumberRange.new(1.2, 2.0)
-	sparkles.Rate = 12
-	sparkles.Speed = NumberRange.new(1.0, 2.5)
-	sparkles.SpreadAngle = Vector2.new(30, 30)
-	sparkles.Acceleration = Vector3.new(0, 3.0, 0)
-	sparkles.LightEmission = 0.95
-	sparkles.Parent = attach
-
-	-- 4. Overhead Billboard Gui
-	local vipGui = Instance.new("BillboardGui")
-	vipGui.Name = "VIPTitleGui"
-	vipGui.Size = UDim2.new(0, 280, 0, 80)
-	vipGui.StudsOffset = Vector3.new(0, 8.2, -1.3)
-	vipGui.AlwaysOnTop = false
-	vipGui.MaxDistance = 70
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
-	titleLabel.Position = UDim2.new(0, 0, 0, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "👑 VIP MEMBERSHIP 👑"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 18
-	titleLabel.TextStrokeTransparency = 0.2
-	titleLabel.Parent = vipGui
-
-	local costLabel = Instance.new("TextLabel")
-	costLabel.Size = UDim2.new(1, 0, 0.32, 0)
-	costLabel.Position = UDim2.new(0, 0, 0.36, 0)
-	costLabel.BackgroundTransparency = 1
-	costLabel.Text = "Cost: 400 Robux R$"
-	costLabel.TextColor3 = Color3.fromRGB(0, 230, 118)
-	costLabel.Font = Enum.Font.GothamBold
-	costLabel.TextSize = 14
-	costLabel.TextStrokeTransparency = 0.2
-	costLabel.Parent = vipGui
-
-	local perksLabel = Instance.new("TextLabel")
-	perksLabel.Size = UDim2.new(1, 0, 0.28, 0)
-	perksLabel.Position = UDim2.new(0, 0, 0.68, 0)
-	perksLabel.BackgroundTransparency = 1
-	perksLabel.Text = "💎 2x Gems Forever  •  👑 Golden [VIP] Tag"
-	perksLabel.TextColor3 = Color3.fromRGB(255, 235, 180)
-	perksLabel.Font = Enum.Font.GothamMedium
-	perksLabel.TextSize = 11
-	perksLabel.TextStrokeTransparency = 0.25
-	perksLabel.Parent = vipGui
-
-	vipGui.Parent = throneSeat
-
-	-- 5. Interaction Part & Proximity Prompt
-	local interactionPart = Instance.new("Part")
-	interactionPart.Name = "VIPInteractionPart"
-	interactionPart.Size = Vector3.new(6, 6, 6)
-	interactionPart.CFrame = shrineCF * CFrame.new(0, 2.8, 1.2)
-	interactionPart.Transparency = 1
-	interactionPart.CanCollide = false
-	interactionPart.CanTouch = true
-	interactionPart.CanQuery = true
-	interactionPart.Anchored = true
-	interactionPart.Parent = vipModel
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "VIPPurchasePrompt"
-	prompt.ActionText = "View Perks"
-	prompt.ObjectText = "VIP Pass (400 R$)"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.ClickablePrompt = true
-	prompt.Parent = interactionPart
-
-	local lastPromptTime: { [Player]: number } = {}
-	prompt.Triggered:Connect(function(player)
-		local now = os.clock()
-		if lastPromptTime[player] and (now - lastPromptTime[player]) < 0.4 then
-			return
-		end
-		lastPromptTime[player] = now
-
-		print("👑 [MapService] VIP ProximityPrompt triggered by " .. player.Name)
-		local openVipEvent = Remotes.getEvent("OpenVIPModal")
-		openVipEvent:FireClient(player)
-	end)
-
-	vipModel.Parent = folder
+	TownBuildingBuilder.buildVIPPavilion(folder)
 end
 
--- 12b. Ancient Alchemical Pet Fusion Machine (3 Pets -> Golden, 3 Golden -> Rainbow)
+-- 12b. The Alchemical Fusion Laboratory (Pet Fusion Machine)
 function MapService.buildPetFusionMachine(folder: Folder)
-	local machineModel = Instance.new("Model")
-	machineModel.Name = "PetFusionMachine"
-
-	-- Positioned at East plaza (X = 13.5, Z = 13.5)
-	local machineCF = CFrame.new(13.5, 0.4, 13.5) * CFrame.Angles(0, math.rad(-90), 0)
-
-	local obsidian = Color3.fromRGB(24, 26, 34)
-	local darkSlate = Color3.fromRGB(38, 42, 54)
-	local goldMetal = Color3.fromRGB(255, 215, 60)
-	local runeCyan = Color3.fromRGB(0, 220, 255)
-	local rainbowMagenta = Color3.fromRGB(255, 90, 210)
-
-	-- 1. Tiered Stepped Alchemical Dais
-	createStudPart(machineModel, "FusionBase", Vector3.new(8.5, 0.6, 8.5), machineCF * CFrame.new(0, 0.3, 0), obsidian)
-	createStudPart(machineModel, "FusionStep", Vector3.new(7.0, 0.5, 7.0), machineCF * CFrame.new(0, 0.85, 0), darkSlate)
-
-	-- 2. Dual Concentric Rune Inlays
-	local goldRuneRing = createStudPart(machineModel, "GoldRuneRing", Vector3.new(5.8, 0.15, 5.8), machineCF * CFrame.new(0, 1.15, 0), goldMetal)
-	goldRuneRing.Material = Enum.Material.Neon
-	goldRuneRing.CanCollide = false
-
-	local innerCyanCore = createStudPart(machineModel, "CyanRuneCore", Vector3.new(3.8, 0.18, 3.8), machineCF * CFrame.new(0, 1.2, 0), runeCyan)
-	innerCyanCore.Material = Enum.Material.Neon
-	innerCyanCore.CanCollide = false
-
-	-- 3. Left Energy Pylon: Golden Alchemical Spire
-	createStudPart(machineModel, "GoldPylonBase", Vector3.new(1.8, 4.2, 1.8), machineCF * CFrame.new(-3.0, 3.2, 0), obsidian)
-	local leftGoldTrim = createStudPart(machineModel, "GoldPylonTrim", Vector3.new(2.2, 0.5, 2.2), machineCF * CFrame.new(-3.0, 5.2, 0), goldMetal)
-	leftGoldTrim.Material = Enum.Material.SmoothPlastic
-
-	-- Floating Golden Core Orb
-	local goldOrb = Instance.new("Part")
-	goldOrb.Name = "GoldCoreOrb"
-	goldOrb.Size = Vector3.new(1.6, 1.6, 1.6)
-	goldOrb.Shape = Enum.PartType.Ball
-	goldOrb.CFrame = machineCF * CFrame.new(-3.0, 6.4, 0)
-	goldOrb.Color = Color3.fromRGB(255, 220, 60)
-	goldOrb.Material = Enum.Material.Neon
-	goldOrb.Anchored = true
-	goldOrb.CanCollide = false
-	goldOrb.Parent = machineModel
-
-	local goldLight = Instance.new("PointLight")
-	goldLight.Color = Color3.fromRGB(255, 215, 80)
-	goldLight.Brightness = 2.4
-	goldLight.Range = 18
-	goldLight.Parent = goldOrb
-
-	local goldAttach = Instance.new("Attachment")
-	goldAttach.Parent = goldOrb
-	local goldSparks = Instance.new("ParticleEmitter")
-	goldSparks.Size = NumberSequence.new(0.3, 0.05)
-	goldSparks.Rate = 12
-	goldSparks.Speed = NumberRange.new(1, 2)
-	goldSparks.Color = ColorSequence.new(Color3.fromRGB(255, 230, 90))
-	goldSparks.Parent = goldAttach
-
-	-- 4. Right Energy Pylon: Rainbow Prismatic Spire
-	createStudPart(machineModel, "RainbowPylonBase", Vector3.new(1.8, 4.2, 1.8), machineCF * CFrame.new(3.0, 3.2, 0), obsidian)
-	local rightRainbowTrim = createStudPart(machineModel, "RainbowPylonTrim", Vector3.new(2.2, 0.5, 2.2), machineCF * CFrame.new(3.0, 5.2, 0), rainbowMagenta)
-	rightRainbowTrim.Material = Enum.Material.SmoothPlastic
-
-	-- Floating Rainbow Core Orb
-	local rainbowOrb = Instance.new("Part")
-	rainbowOrb.Name = "RainbowCoreOrb"
-	rainbowOrb.Size = Vector3.new(1.6, 1.6, 1.6)
-	rainbowOrb.Shape = Enum.PartType.Ball
-	rainbowOrb.CFrame = machineCF * CFrame.new(3.0, 6.4, 0)
-	rainbowOrb.Color = rainbowMagenta
-	rainbowOrb.Material = Enum.Material.Neon
-	rainbowOrb.Anchored = true
-	rainbowOrb.CanCollide = false
-	rainbowOrb.Parent = machineModel
-
-	local rainbowLight = Instance.new("PointLight")
-	rainbowLight.Color = Color3.fromRGB(255, 110, 230)
-	rainbowLight.Brightness = 2.4
-	rainbowLight.Range = 18
-	rainbowLight.Parent = rainbowOrb
-
-	local rainbowAttach = Instance.new("Attachment")
-	rainbowAttach.Parent = rainbowOrb
-	local rainbowSparks = Instance.new("ParticleEmitter")
-	rainbowSparks.Size = NumberSequence.new(0.35, 0.05)
-	rainbowSparks.Rate = 16
-	rainbowSparks.Speed = NumberRange.new(1, 2.5)
-	rainbowSparks.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 80)),
-		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 220, 80)),
-		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(80, 240, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 240)),
-	})
-	rainbowSparks.Parent = rainbowAttach
-
-	-- 5. Center Quantum Fusion Chamber & Floating Reactor
-	createStudPart(machineModel, "ChamberAnvil", Vector3.new(2.6, 2.0, 2.6), machineCF * CFrame.new(0, 2.1, 0), obsidian)
-	local anvilRing = createStudPart(machineModel, "AnvilRing", Vector3.new(3.2, 0.4, 3.2), machineCF * CFrame.new(0, 3.0, 0), goldMetal)
-	anvilRing.Material = Enum.Material.SmoothPlastic
-
-	-- Central Floating Levitation Core
-	local reactorCore = Instance.new("Part")
-	reactorCore.Name = "ReactorCore"
-	reactorCore.Size = Vector3.new(2.0, 2.0, 2.0)
-	reactorCore.Shape = Enum.PartType.Ball
-	reactorCore.CFrame = machineCF * CFrame.new(0, 4.4, 0)
-	reactorCore.Color = Color3.fromRGB(0, 240, 255)
-	reactorCore.Material = Enum.Material.Neon
-	reactorCore.Anchored = true
-	reactorCore.CanCollide = false
-	reactorCore.Parent = machineModel
-
-	local coreLight = Instance.new("PointLight")
-	coreLight.Color = Color3.fromRGB(0, 240, 255)
-	coreLight.Brightness = 3.0
-	coreLight.Range = 22
-	coreLight.Parent = reactorCore
-
-	local coreAttach = Instance.new("Attachment")
-	coreAttach.Parent = reactorCore
-	local corePlasma = Instance.new("ParticleEmitter")
-	corePlasma.Size = NumberSequence.new(0.4, 0.1)
-	corePlasma.Rate = 20
-	corePlasma.Lifetime = NumberRange.new(0.6, 1.2)
-	corePlasma.Speed = NumberRange.new(1.5, 3.0)
-	corePlasma.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 230)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 60)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 240)),
-	})
-	corePlasma.Parent = coreAttach
-
-	-- 6. Overhead Holographic Billboard
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "FusionTitleGui"
-	billboard.Size = UDim2.new(0, 280, 0, 80)
-	billboard.StudsOffset = Vector3.new(0, 4.0, 0)
-	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 65
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0.38, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "⚗️ PET FUSION MACHINE ⚗️"
-	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 60)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 18
-	titleLabel.TextStrokeTransparency = 0.2
-	titleLabel.Parent = billboard
-
-	local actionLabel = Instance.new("TextLabel")
-	actionLabel.Size = UDim2.new(1, 0, 0.32, 0)
-	actionLabel.Position = UDim2.new(0, 0, 0.36, 0)
-	actionLabel.BackgroundTransparency = 1
-	actionLabel.Text = "[E] Open Fusion Station"
-	actionLabel.TextColor3 = Color3.fromRGB(0, 240, 180)
-	actionLabel.Font = Enum.Font.GothamBold
-	actionLabel.TextSize = 13
-	actionLabel.TextStrokeTransparency = 0.2
-	actionLabel.Parent = billboard
-
-	local subLabel = Instance.new("TextLabel")
-	subLabel.Size = UDim2.new(1, 0, 0.28, 0)
-	subLabel.Position = UDim2.new(0, 0, 0.68, 0)
-	subLabel.BackgroundTransparency = 1
-	subLabel.Text = "🌟 3 Pets ➔ Golden (3x)  •  🌈 3 Gold ➔ Rainbow (9x)"
-	subLabel.TextColor3 = Color3.fromRGB(230, 235, 250)
-	subLabel.Font = Enum.Font.GothamMedium
-	subLabel.TextSize = 11
-	subLabel.TextStrokeTransparency = 0.25
-	subLabel.Parent = billboard
-
-	billboard.Parent = reactorCore
-
-	-- 7. Interaction Trigger & ProximityPrompt
-	local interactionPart = Instance.new("Part")
-	interactionPart.Name = "FusionInteractionPart"
-	interactionPart.Size = Vector3.new(7.0, 6.0, 7.0)
-	interactionPart.CFrame = machineCF * CFrame.new(0, 3.0, 1.2)
-	interactionPart.Transparency = 1
-	interactionPart.CanCollide = false
-	interactionPart.CanTouch = true
-	interactionPart.CanQuery = true
-	interactionPart.Anchored = true
-	interactionPart.Parent = machineModel
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "FusionPrompt"
-	prompt.ActionText = "Fuse Pets"
-	prompt.ObjectText = "Pet Fusion Machine"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.ClickablePrompt = true
-	prompt.Parent = interactionPart
-
-	local lastTriggerTime: { [Player]: number } = {}
-	prompt.Triggered:Connect(function(player)
-		local now = os.clock()
-		if lastTriggerTime[player] and (now - lastTriggerTime[player]) < 0.4 then
-			return
-		end
-		lastTriggerTime[player] = now
-
-		print("⚗️ [MapService] Fusion ProximityPrompt triggered by " .. player.Name)
-		local openEvt = Remotes.getEvent("OpenFusionModal")
-		openEvt:FireClient(player)
-	end)
-
-	machineModel.Parent = folder
+	TownBuildingBuilder.buildFusionLab(folder)
 end
 
 -- 13. Grand Magma Gate to Zone 2 (At Z = -140, requiring 5 Rebirths)
@@ -2345,169 +1466,7 @@ end
 
 -- 9b. Mystical Trail Artisan Stall & NPC ("Zephyr")
 function MapService.buildTrailShopStall(folder: Folder)
-	local stallModel = Instance.new("Model")
-	stallModel.Name = "TrailArtisanStall"
-
-	local stallCF = CFrame.new(-13.5, 0.4, -14.0) * CFrame.Angles(0, math.rad(90), 0)
-
-	local woodDark = Color3.fromRGB(45, 30, 55)
-	local woodLight = Color3.fromRGB(75, 45, 95)
-	local clothCyan = Color3.fromRGB(0, 210, 255)
-	local clothViolet = Color3.fromRGB(180, 50, 240)
-	local goldTrim = Color3.fromRGB(255, 215, 60)
-
-	-- Counter Table
-	createStudPart(stallModel, "TrailCounterBase", Vector3.new(8, 2.6, 2.4), stallCF * CFrame.new(0, 1.3, 0), woodDark)
-	createStudPart(stallModel, "TrailCounterTop", Vector3.new(9, 0.6, 3.2), stallCF * CFrame.new(0, 2.8, 0), woodLight)
-
-	-- 4 Canopy Support Corner Posts
-	local postOffsets = {
-		Vector3.new(-3.8, 0, -2.4),
-		Vector3.new(3.8, 0, -2.4),
-		Vector3.new(-3.8, 0, 1.2),
-		Vector3.new(3.8, 0, 1.2),
-	}
-	for _, pOff in ipairs(postOffsets) do
-		createStudPart(stallModel, "Post", Vector3.new(0.8, 8, 0.8), stallCF * CFrame.new(pOff.X, 4.4, pOff.Z), woodDark)
-	end
-
-	-- Overhead Striped Canopy Roof (Alternating Violet and Celestial Cyan)
-	for s = -3, 3 do
-		local slatCol = if s % 2 == 0 then clothViolet else clothCyan
-		createStudPart(stallModel, "CanopySlat", Vector3.new(1.4, 0.5, 5.0), stallCF * CFrame.new(s * 1.35, 8.4, -0.6) * CFrame.Angles(math.rad(-8), 0, 0), slatCol)
-	end
-
-	-- Display props on counter: Glowing floating trail ribbon crystals
-	local crystalProp = createStudPart(stallModel, "DisplayCrystal", Vector3.new(0.9, 1.8, 0.9), stallCF * CFrame.new(-2.6, 3.8, 0) * CFrame.Angles(math.rad(15), 0, math.rad(15)), Color3.fromRGB(0, 240, 255))
-	crystalProp.Material = Enum.Material.Neon
-	local orbProp = createStudPart(stallModel, "DisplayOrb", Vector3.new(1.4, 1.4, 1.4), stallCF * CFrame.new(2.6, 3.8, 0), Color3.fromRGB(240, 50, 255))
-	orbProp.Material = Enum.Material.Neon
-
-	-- Hanging Celestial Lantern under canopy
-	local lantern = createStudPart(stallModel, "TrailLantern", Vector3.new(1.0, 1.2, 1.0), stallCF * CFrame.new(0, 7.2, 0.8), Color3.fromRGB(180, 100, 255))
-	lantern.Material = Enum.Material.Neon
-
-	local stallLight = Instance.new("PointLight")
-	stallLight.Color = Color3.fromRGB(200, 120, 255)
-	stallLight.Brightness = 2.2
-	stallLight.Range = 22
-	stallLight.Parent = lantern
-
-	-- Sparkling Wind Particles around the stall
-	local windAttach = Instance.new("Attachment")
-	windAttach.Position = Vector3.new(0, 5, 0)
-	windAttach.Parent = lantern
-
-	local windSparkles = Instance.new("ParticleEmitter")
-	windSparkles.Name = "WindSparkles"
-	windSparkles.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 240, 255)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(240, 100, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 220, 80)),
-	})
-	windSparkles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.35),
-		NumberSequenceKeypoint.new(1, 0.05),
-	})
-	windSparkles.Lifetime = NumberRange.new(1.0, 1.8)
-	windSparkles.Rate = 14
-	windSparkles.Speed = NumberRange.new(1.5, 3.5)
-	windSparkles.SpreadAngle = Vector2.new(30, 30)
-	windSparkles.LightEmission = 0.95
-	windSparkles.Parent = windAttach
-
-	-- NPC: "Zephyr the Trail Artisan"
-	local npcModel = Instance.new("Model")
-	npcModel.Name = "ZephyrArtisan"
-
-	local npcCF = stallCF * CFrame.new(0, 1.2, -1.2)
-
-	-- Torso
-	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 2.0, 0), Color3.fromRGB(70, 35, 110))
-
-	-- Legs
-	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 0.0, 0), Color3.fromRGB(35, 25, 50))
-	createStudPart(npcModel, "RightLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(0.5, 0.0, 0), Color3.fromRGB(35, 25, 50))
-
-	-- Head & Face
-	local head = createStudPart(npcModel, "Head", Vector3.new(1.25, 1.25, 1.25), npcCF * CFrame.new(0, 3.4, 0), Color3.fromRGB(255, 220, 185), true, Enum.SurfaceType.Smooth)
-	local face = Instance.new("Decal")
-	face.Name = "Face"
-	face.Texture = "rbxasset://textures/face.png"
-	face.Face = Enum.NormalId.Front
-	face.Parent = head
-
-	-- Artisan Feather Hat
-	createStudPart(npcModel, "HatBrim", Vector3.new(2.5, 0.35, 2.5), npcCF * CFrame.new(0, 4.0, 0), Color3.fromRGB(45, 20, 75))
-	createStudPart(npcModel, "HatCrown", Vector3.new(1.6, 0.8, 1.6), npcCF * CFrame.new(0, 4.45, 0), Color3.fromRGB(60, 30, 95))
-	local star = createStudPart(npcModel, "HatStar", Vector3.new(0.5, 0.5, 0.5), npcCF * CFrame.new(0, 4.5, -0.9), goldTrim)
-	star.Material = Enum.Material.Neon
-
-	-- Arms
-	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(70, 35, 110))
-	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(70, 35, 110))
-
-	-- Title Billboard
-	local titleGui = Instance.new("BillboardGui")
-	titleGui.Name = "ZephyrTitleGui"
-	titleGui.Size = UDim2.new(0, 200, 0, 50)
-	titleGui.StudsOffset = Vector3.new(0, 3.2, 0)
-	titleGui.AlwaysOnTop = false
-	titleGui.MaxDistance = 60
-
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "✨ ZEPHYR ✨"
-	titleLabel.TextColor3 = Color3.fromRGB(240, 100, 255)
-	titleLabel.Font = Enum.Font.Antique
-	titleLabel.TextSize = 19
-	titleLabel.TextStrokeTransparency = 0.2
-	titleLabel.Parent = titleGui
-
-	local subtitleLabel = Instance.new("TextLabel")
-	subtitleLabel.Size = UDim2.new(1, 0, 0.45, 0)
-	subtitleLabel.Position = UDim2.new(0, 0, 0.55, 0)
-	subtitleLabel.BackgroundTransparency = 1
-	subtitleLabel.Text = "[Trail Artisan]"
-	subtitleLabel.TextColor3 = Color3.fromRGB(160, 240, 255)
-	subtitleLabel.Font = Enum.Font.Antique
-	subtitleLabel.TextSize = 14
-	subtitleLabel.TextStrokeTransparency = 0.2
-	subtitleLabel.Parent = titleGui
-	titleGui.Parent = head
-
-	-- Invisible Interaction Part & ProximityPrompt
-	local interactionPart = Instance.new("Part")
-	interactionPart.Name = "ZephyrInteractionPart"
-	interactionPart.Size = Vector3.new(9, 5, 4)
-	interactionPart.CFrame = stallCF * CFrame.new(0, 2.8, 1.2)
-	interactionPart.Transparency = 1
-	interactionPart.CanCollide = false
-	interactionPart.CanTouch = true
-	interactionPart.CanQuery = true
-	interactionPart.Anchored = true
-	interactionPart.Parent = stallModel
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "TalkPrompt"
-	prompt.ActionText = "Talk"
-	prompt.ObjectText = "Zephyr (Trails Shop)"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 16
-	prompt.RequiresLineOfSight = false
-	prompt.ClickablePrompt = true
-	prompt.Parent = interactionPart
-
-	prompt.Triggered:Connect(function(player)
-		print("🗣️ [MapService] Zephyr ProximityPrompt triggered by " .. player.Name)
-		local dialogueEvent = Remotes.getEvent("OpenShopDialogue")
-		dialogueEvent:FireClient(player, "Zephyr")
-	end)
-
-	npcModel.Parent = stallModel
-	stallModel.Parent = folder
+	TownBuildingBuilder.buildTrailArtisan(folder)
 end
 
 -- 17. The Power Quarry: Rebirth Training Arena with Multiple Scaling Ores

@@ -6172,6 +6172,21 @@ function UIController.buildHUD()
 		showFloatingPopup("📜 +5,000 Mastery XP (All Tracks)!", Color3.fromRGB(255, 180, 40), 0)
 	end)
 
+	-- DEV TESTING 3D MODEL SHOWROOM BUTTON (Instantly teleports player to model exhibition platform)
+	createMenuButton("DevShowroomBtn", "🧪 Showroom (Dev)", Color3.fromRGB(0, 200, 240), function()
+		local devShowroomFn = Remotes.getFunction("DevTeleportToShowroom")
+		local ok, isAtShowroom = pcall(function()
+			return devShowroomFn:InvokeServer()
+		end)
+		if ok then
+			if isAtShowroom then
+				showFloatingPopup("🧪 TELEPORTED TO 3D MODEL SHOWROOM!", Color3.fromRGB(0, 240, 255), 0)
+			else
+				showFloatingPopup("🏡 TELEPORTED TO TOWN SPAWN!", Color3.fromRGB(80, 255, 140), 0)
+			end
+		end
+	end)
+
 	-- DEV TESTING METEOR EVENT BUTTON (Instantly summons a Celestial Meteor Strike)
 	createMenuButton("DevMeteorBtn", "☄️ Meteor (Dev)", Color3.fromRGB(255, 60, 20), function()
 		local devMeteorFn = Remotes.getFunction("DevTriggerMeteor")

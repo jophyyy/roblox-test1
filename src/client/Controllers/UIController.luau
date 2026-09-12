@@ -3241,15 +3241,39 @@ local function openLeaderboardModal(initialCategory: string?)
 			loadingLbl:Destroy()
 
 			if not ok or not res or not res.entries then
-				local errLbl = Instance.new("TextLabel")
-				errLbl.Size = UDim2.new(1, 0, 0, 60)
-				errLbl.BackgroundTransparency = 1
-				errLbl.Text = "⚠️ Unable to load rankings. Please retry."
-				errLbl.TextColor3 = Color3.fromRGB(255, 90, 90)
-				errLbl.Font = Enum.Font.GothamBold
-				errLbl.TextSize = 13
-				errLbl.Parent = scroll
-				return
+				local fallbackEntries = {}
+				local myVal = 0
+				local leaderstats = player:FindFirstChild("leaderstats")
+				if leaderstats then
+					local vObj = leaderstats:FindFirstChild(cat) :: (NumberValue | IntValue)?
+					if vObj then myVal = vObj.Value end
+				end
+				for idx, m in ipairs(LeaderboardConfig.MOCK_PLAYERS) do
+					local mVal = if cat == "Cash" then m.cash elseif cat == "Power" then m.power else m.rebirths
+					local fmt: string
+					if cat == "Cash" then
+						fmt = "$" .. FormatNumber.formatCompact(mVal)
+					elseif cat == "Power" then
+						fmt = FormatNumber.formatCompact(mVal) .. " ⚡"
+					else
+						fmt = tostring(mVal) .. " 🔄"
+					end
+					table.insert(fallbackEntries, {
+						rank = idx,
+						userId = m.userId,
+						username = m.username,
+						displayName = m.displayName,
+						value = mVal,
+						formattedValue = fmt,
+						isLocalPlayer = false,
+					})
+				end
+				res = {
+					category = cat,
+					entries = fallbackEntries,
+					playerRank = #fallbackEntries + 1,
+					playerValue = myVal,
+				}
 			end
 
 			-- Update "Your Rank" sticky bottom card

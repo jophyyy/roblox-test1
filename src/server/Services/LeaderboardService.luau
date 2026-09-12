@@ -14,8 +14,8 @@ type LeaderboardEntry = LeaderboardConfig.LeaderboardEntry
 
 local LeaderboardService = {}
 
-local MONUMENT_CENTER = Vector3.new(0, 0, -32)
-local UPDATE_INTERVAL = 25
+local MONUMENT_CENTER = Vector3.new(0, 3.0, -32)
+local UPDATE_INTERVAL = 15
 
 -- In-world SurfaceGui references for each category board
 local boardGuiContainers: { [LeaderboardCategory]: Frame } = {}
@@ -66,8 +66,8 @@ function LeaderboardService.getRankings(category: LeaderboardCategory, requestin
 	-- 1. Gather all currently online players and their active stats
 	for _, p in ipairs(Players:GetPlayers()) do
 		local data = DataService.get(p)
+		local val = 0
 		if data then
-			local val = 0
 			if category == "Cash" then
 				val = data.Cash or 0
 			elseif category == "Power" then
@@ -75,16 +75,28 @@ function LeaderboardService.getRankings(category: LeaderboardCategory, requestin
 			elseif category == "Rebirths" then
 				val = data.Rebirths or 0
 			end
-
-			table.insert(pool, {
-				userId = p.UserId,
-				username = p.Name,
-				displayName = p.DisplayName,
-				value = val,
-				isOnline = true,
-			})
-			seenUserIds[p.UserId] = true
 		end
+
+		table.insert(pool, {
+			userId = p.UserId,
+			username = p.Name,
+			displayName = p.DisplayName,
+			value = val,
+			isOnline = true,
+		})
+		seenUserIds[p.UserId] = true
+	end
+
+	-- Ensure requestingPlayer is in pool even if DataService cache is still loading
+	if requestingPlayer and not seenUserIds[requestingPlayer.UserId] then
+		table.insert(pool, {
+			userId = requestingPlayer.UserId,
+			username = requestingPlayer.Name,
+			displayName = requestingPlayer.DisplayName,
+			value = 0,
+			isOnline = true,
+		})
+		seenUserIds[requestingPlayer.UserId] = true
 	end
 
 	-- 2. Populate simulated hall-of-fame entries so leaderboards are vibrant in solo testing
@@ -264,6 +276,15 @@ local function updateBoardSurfaceGui(category: LeaderboardCategory)
 	end
 end
 
+-- Refreshes all 3 category display boards
+function LeaderboardService.refresh()
+	for _, catDef in ipairs(LeaderboardConfig.ORDERED_CATEGORIES) do
+		pcall(function()
+			updateBoardSurfaceGui(catDef.id)
+		end)
+	end
+end
+
 -- =========================================================================
 -- PHYSICAL IN-WORLD MONUMENT BUILDER
 -- =========================================================================
@@ -274,7 +295,7 @@ local function buildPhysicalMonument(parentFolder: Folder)
 
 	local center = MONUMENT_CENTER
 
-	-- 1. Grand Slate Foundation Pavement (38 x 1.2 x 24)
+	-- 1. Grand Slate Foundation Pavement (42 x 0.8 x 22) sitting cleanly on Plaza floor (Y = 3.0)
 	createPart(monument, "PlazaPavement", Vector3.new(42, 0.8, 22), CFrame.new(center + Vector3.new(0, 0.4, 0)), Color3.fromRGB(30, 34, 44), Enum.Material.Slate, true)
 	createPart(monument, "PlazaTrim", Vector3.new(42.8, 0.3, 22.8), CFrame.new(center + Vector3.new(0, 0.9, 0)), Color3.fromRGB(255, 215, 0), Enum.Material.Neon, false)
 
@@ -300,42 +321,44 @@ local function buildPhysicalMonument(parentFolder: Folder)
 	archTitle.TextStrokeTransparency = 0.2
 	archTitle.Parent = archBb
 
-	-- 3. The 3 Towering Leaderboard Display Boards
+	-- 3. The 3 Towering Leaderboard Display Boards (Oriented to face South +Z toward players)
 	local boardDefs = {
 		{
 			category = "Power" :: LeaderboardCategory,
 			offset = Vector3.new(-13.5, 7.5, -3.5),
-			angleY = math.rad(10),
+			rotY = math.pi - math.rad(12),
 			catDef = LeaderboardConfig.CATEGORIES.Power,
 		},
 		{
 			category = "Cash" :: LeaderboardCategory,
 			offset = Vector3.new(0, 8.0, -4.5),
-			angleY = 0,
+			rotY = math.pi,
 			catDef = LeaderboardConfig.CATEGORIES.Cash,
 		},
 		{
 			category = "Rebirths" :: LeaderboardCategory,
 			offset = Vector3.new(13.5, 7.5, -3.5),
-			angleY = math.rad(-10),
+			rotY = math.pi + math.rad(12),
 			catDef = LeaderboardConfig.CATEGORIES.Rebirths,
 		},
 	}
 
 	for _, b in ipairs(boardDefs) do
-		local boardCF = CFrame.new(center + b.offset) * CFrame.Angles(0, b.angleY, 0)
+		local boardCF = CFrame.new(center + b.offset) * CFrame.Angles(0, b.rotY, 0)
 
 		-- Board backing frame
 		createPart(monument, "BoardFrame_" .. b.category, Vector3.new(12.4, 13.8, 1.2), boardCF, Color3.fromRGB(20, 23, 32), Enum.Material.Slate, true)
-		-- Glowing perimeter trim
-		createPart(monument, "BoardTrim_" .. b.category, Vector3.new(12.8, 14.2, 0.4), boardCF * CFrame.new(0, 0, 0.5), b.catDef.color, Enum.Material.Neon, false)
+		-- Glowing perimeter trim in front (towards player)
+		createPart(monument, "BoardTrim_" .. b.category, Vector3.new(12.8, 14.2, 0.4), boardCF * CFrame.new(0, 0, -0.5), b.catDef.color, Enum.Material.Neon, false)
 
-		-- SurfaceGui Display on Front
-		local displayPart = createPart(monument, "BoardFace_" .. b.category, Vector3.new(12, 13.4, 0.2), boardCF * CFrame.new(0, 0, 0.65), Color3.fromRGB(15, 18, 25), Enum.Material.SmoothPlastic, false)
+		-- SurfaceGui Display on Front (facing South towards player!)
+		local displayPart = createPart(monument, "BoardFace_" .. b.category, Vector3.new(12, 13.4, 0.2), boardCF * CFrame.new(0, 0, -0.65), Color3.fromRGB(15, 18, 25), Enum.Material.SmoothPlastic, false)
 
 		local sGui = Instance.new("SurfaceGui")
 		sGui.Name = "LeaderboardSurfaceGui"
 		sGui.Face = Enum.NormalId.Front
+		sGui.LightInfluence = 0
+		sGui.Brightness = 1.2
 		sGui.CanvasSize = Vector2.new(480, 560)
 		sGui.AlwaysOnTop = false
 		sGui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
@@ -389,11 +412,11 @@ local function buildPhysicalMonument(parentFolder: Folder)
 		boardGuiContainers[b.category] = rowsContainer
 	end
 
-	-- 4. In-World Physical Podium Dais (🥇 1st Gold, 🥈 2nd Silver, 🥉 3rd Bronze)
+	-- 4. In-World Physical Podium Dais (🥇 1st Gold, 🥈 2nd Silver, 🥉 3rd Bronze) resting proudly on dais
 	local podiums = {
-		{ rank = 1, pos = center + Vector3.new(0, 0.8, 5), height = 2.4, color = Color3.fromRGB(255, 215, 0), label = "🥇 1ST PLACE" },
-		{ rank = 2, pos = center + Vector3.new(-7, 0.8, 4.5), height = 1.7, color = Color3.fromRGB(220, 230, 245), label = "🥈 2ND PLACE" },
-		{ rank = 3, pos = center + Vector3.new(7, 0.8, 4.5), height = 1.2, color = Color3.fromRGB(215, 135, 65), label = "🥉 3RD PLACE" },
+		{ rank = 1, pos = center + Vector3.new(0, 0.8, 5), height = 2.6, color = Color3.fromRGB(255, 215, 0), label = "🥇 1ST PLACE" },
+		{ rank = 2, pos = center + Vector3.new(-7, 0.8, 4.5), height = 1.8, color = Color3.fromRGB(220, 230, 245), label = "🥈 2ND PLACE" },
+		{ rank = 3, pos = center + Vector3.new(7, 0.8, 4.5), height = 1.3, color = Color3.fromRGB(215, 135, 65), label = "🥉 3RD PLACE" },
 	}
 
 	for _, pod in ipairs(podiums) do
@@ -438,6 +461,7 @@ local function buildPhysicalMonument(parentFolder: Folder)
 		prompt.ObjectText = "Hall of Champions"
 		prompt.MaxActivationDistance = 14
 		prompt.HoldDuration = 0
+		prompt.RequiresLineOfSight = false
 		prompt.Parent = base
 		prompt.Triggered:Connect(function(player)
 			local openEvent = Remotes.getEvent("OpenLeaderboardModal")
@@ -471,23 +495,30 @@ function LeaderboardService.init()
 	buildPhysicalMonument(mapFolder)
 
 	-- 3. Initial SurfaceGui render
-	for _, catDef in ipairs(LeaderboardConfig.ORDERED_CATEGORIES) do
-		updateBoardSurfaceGui(catDef.id)
-	end
+	LeaderboardService.refresh()
 
-	-- 4. Background refresh loop every UPDATE_INTERVAL seconds
+	-- 4. Automatically refresh when players join / leave
+	Players.PlayerAdded:Connect(function(_player)
+		task.delay(2, function()
+			LeaderboardService.refresh()
+		end)
+	end)
+
+	Players.PlayerRemoving:Connect(function(_player)
+		task.delay(0.5, function()
+			LeaderboardService.refresh()
+		end)
+	end)
+
+	-- 5. Background refresh loop every UPDATE_INTERVAL seconds
 	task.spawn(function()
 		while true do
 			task.wait(UPDATE_INTERVAL)
-			for _, catDef in ipairs(LeaderboardConfig.ORDERED_CATEGORIES) do
-				pcall(function()
-					updateBoardSurfaceGui(catDef.id)
-				end)
-			end
+			LeaderboardService.refresh()
 		end
 	end)
 
-	print("✅ [LeaderboardService] Hall of Champions Leaderboards Online in Town Plaza at (0, 0, -32)!")
+	print("✅ [LeaderboardService] Hall of Champions Leaderboards Online in Town Plaza at (0, 3.0, -32)!")
 end
 
 return LeaderboardService

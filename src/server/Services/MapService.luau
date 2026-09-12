@@ -325,9 +325,9 @@ function MapService.buildPlazaAndPaths(folder: Folder)
 	-- 2. South Avenue (leading to Cosmic Gate & Boss Arena)
 	createStudPart(pathsFolder, "Path_South", Vector3.new(12, 0.35, 100), CFrame.new(0, 0.2, 88), stoneColor)
 	-- 3. West Town Courtyard (connecting Blacksmith & Trail Artisan)
-	createStudPart(pathsFolder, "Courtyard_West", Vector3.new(24, 0.35, 48), CFrame.new(-38, 0.2, 0), stoneColor)
-	-- 4. East Sanctuary Courtyard (connecting Hatchery, Fusion Lab, & VIP Pavilion)
-	createStudPart(pathsFolder, "Courtyard_East", Vector3.new(24, 0.35, 48), CFrame.new(38, 0.2, 0), stoneColor)
+	createStudPart(pathsFolder, "Courtyard_West", Vector3.new(36, 0.35, 68), CFrame.new(-40, 0.2, 0), stoneColor)
+	-- 4. East Sanctuary Courtyard (connecting Hatchery, Fusion Lab, Pet Merchant & VIP)
+	createStudPart(pathsFolder, "Courtyard_East", Vector3.new(36, 0.35, 68), CFrame.new(40, 0.2, 0), stoneColor)
 
 	-- Pathway Braziers along North & South Avenues
 	local avenueBraziers = {

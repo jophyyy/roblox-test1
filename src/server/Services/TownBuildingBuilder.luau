@@ -41,138 +41,303 @@ function TownBuildingBuilder.buildBlacksmith(parent: Instance): Model
 	buildingModel.Name = "BlacksmithForge"
 
 	-- Positioned on West/Northwest courtyard, facing +X (toward central spawn plaza)
-	local bCF = CFrame.new(-38, 0, -18) * CFrame.Angles(0, math.rad(90), 0)
+	local bCF = CFrame.new(-40, 0, -18) * CFrame.Angles(0, math.rad(90), 0)
 
-	local stoneDark = Color3.fromRGB(52, 55, 62)
-	local stoneWall = Color3.fromRGB(74, 78, 86)
-	local woodDark = Color3.fromRGB(72, 46, 26)
+	local stoneDark = Color3.fromRGB(48, 52, 60)
+	local stoneWall = Color3.fromRGB(72, 76, 84)
+	local stoneTrim = Color3.fromRGB(58, 62, 70)
+	local woodDark = Color3.fromRGB(68, 42, 24)
 	local woodLight = Color3.fromRGB(110, 72, 42)
-	local roofSlate = Color3.fromRGB(44, 46, 52)
+	local woodPlank = Color3.fromRGB(92, 58, 34)
+	local roofSlate = Color3.fromRGB(42, 44, 50)
+	local roofRidge = Color3.fromRGB(30, 32, 38)
 	local fireGlow = Color3.fromRGB(255, 80, 15)
+	local ironMetal = Color3.fromRGB(45, 48, 55)
 
-	-- 1. Heavy Cobblestone Plinth Foundation
-	createStudPart(buildingModel, "Foundation", Vector3.new(20, 1.2, 22), bCF * CFrame.new(0, 0.6, 0), stoneDark)
+	-- 1. Raised Heavy Stone Plinth Foundation (28 x 1.4 x 30)
+	createStudPart(buildingModel, "Foundation", Vector3.new(28, 1.4, 30), bCF * CFrame.new(0, 0.7, 0), stoneDark)
+	createStudPart(buildingModel, "StoneDeck", Vector3.new(26.4, 0.4, 28.4), bCF * CFrame.new(0, 1.4, 0), stoneTrim)
 
-	-- 2. Heavy Timber Frame Columns at 4 Corners
+	-- Stepped stone entrance threshold
+	for s = 1, 2 do
+		createStudPart(buildingModel, "Step_" .. s, Vector3.new(14, 0.35, 2.0), bCF * CFrame.new(0, 0.35 * s, 14.5 + (2.0 * (2 - s))), stoneDark)
+	end
+
+	-- 2. Heavy Timber Columns & Stone Buttresses at Corners
 	local colOffsets = {
-		Vector3.new(-8.8, 6.6, -9.8),
-		Vector3.new(8.8, 6.6, -9.8),
-		Vector3.new(-8.8, 6.6, 9.8),
-		Vector3.new(8.8, 6.6, 9.8),
+		Vector3.new(-12.5, 7.0, -13.5),
+		Vector3.new(12.5, 7.0, -13.5),
+		Vector3.new(-12.5, 7.0, 13.5),
+		Vector3.new(12.5, 7.0, 13.5),
 	}
 	for _, cOff in ipairs(colOffsets) do
-		local col = createStudPart(buildingModel, "TimberColumn", Vector3.new(2.0, 11, 2.0), bCF * CFrame.new(cOff.X, cOff.Y, cOff.Z), woodDark)
+		-- Ashlar stone buttress base
+		createStudPart(buildingModel, "CornerButtress", Vector3.new(3.2, 4.0, 3.2), bCF * CFrame.new(cOff.X, 3.4, cOff.Z), stoneDark)
+		-- Chamfered timber pillar
+		local col = createStudPart(buildingModel, "TimberColumn", Vector3.new(2.4, 12.0, 2.4), bCF * CFrame.new(cOff.X, 8.4, cOff.Z), woodDark)
 		col.Material = Enum.Material.Wood
 	end
 
-	-- 3. Masonry Stone Walls (Back & Sides)
-	createStudPart(buildingModel, "BackWall", Vector3.new(1.4, 10, 18), bCF * CFrame.new(0, 6.2, -9.8), stoneWall)
-	createStudPart(buildingModel, "LeftWall", Vector3.new(16, 10, 1.4), bCF * CFrame.new(-8.8, 6.2, 0), stoneWall)
-	createStudPart(buildingModel, "RightWall", Vector3.new(16, 10, 1.4), bCF * CFrame.new(8.8, 6.2, 0), stoneWall)
+	-- 3. Ground Floor Stone Masonry Walls (Back, Sides & Front Piers)
+	-- Back Wall
+	createStudPart(buildingModel, "BackWall", Vector3.new(24, 11.0, 1.6), bCF * CFrame.new(0, 7.1, -13.5), stoneWall)
+	-- Left Wall with Small High Forge Window
+	createStudPart(buildingModel, "LeftWall", Vector3.new(1.6, 11.0, 18), bCF * CFrame.new(-12.5, 7.1, -4.5), stoneWall)
+	createStudPart(buildingModel, "LeftWindowLintel", Vector3.new(2.0, 0.6, 3.6), bCF * CFrame.new(-12.5, 9.8, -4.5), woodDark)
+	local lWinGlow = createStudPart(buildingModel, "LeftWinGlow", Vector3.new(1.2, 2.0, 2.8), bCF * CFrame.new(-12.5, 8.5, -4.5), Color3.fromRGB(255, 170, 60))
+	lWinGlow.Material = Enum.Material.Neon
 
-	-- Front facade side piers (leaving open 10-stud forge archway)
-	createStudPart(buildingModel, "FrontPierL", Vector3.new(4.5, 10, 1.4), bCF * CFrame.new(-6.5, 6.2, 9.8), stoneWall)
-	createStudPart(buildingModel, "FrontPierR", Vector3.new(4.5, 10, 1.4), bCF * CFrame.new(6.5, 6.2, 9.8), stoneWall)
-	createStudPart(buildingModel, "FrontArchLintel", Vector3.new(18, 2.0, 1.6), bCF * CFrame.new(0, 10.2, 9.8), woodDark)
+	-- Right Wall
+	createStudPart(buildingModel, "RightWall", Vector3.new(1.6, 11.0, 18), bCF * CFrame.new(12.5, 7.1, -4.5), stoneWall)
 
-	-- 4. Pitched Slate Roof with Front Porch Overhang
-	createStudPart(buildingModel, "RoofRidge", Vector3.new(21, 1.6, 2.2), bCF * CFrame.new(0, 14.5, 1.5), woodDark)
-	-- Slanted Roof Slabs
-	createStudPart(buildingModel, "RoofSlopeBack", Vector3.new(21, 0.8, 14), bCF * CFrame.new(0, 12.8, -5.5) * CFrame.Angles(math.rad(-26), 0, 0), roofSlate)
-	createStudPart(buildingModel, "RoofSlopeFront", Vector3.new(21, 0.8, 16), bCF * CFrame.new(0, 12.5, 7.5) * CFrame.Angles(math.rad(24), 0, 0), roofSlate)
+	-- Front Facade Piers & Heavy Header Beam (creating grand 15-stud open covered workshop arch)
+	createStudPart(buildingModel, "FrontPierL", Vector3.new(5.5, 11.0, 1.6), bCF * CFrame.new(-9.5, 7.1, 4.5), stoneWall)
+	createStudPart(buildingModel, "FrontPierR", Vector3.new(5.5, 11.0, 1.6), bCF * CFrame.new(9.5, 7.1, 4.5), stoneWall)
+	local archBeam = createStudPart(buildingModel, "ArchLintel", Vector3.new(27, 2.2, 2.0), bCF * CFrame.new(0, 12.2, 4.5), woodDark)
+	archBeam.Material = Enum.Material.Wood
 
-	-- 5. Tall Stone Brick Forge Chimney with Smoke
-	local chimney = createStudPart(buildingModel, "Chimney", Vector3.new(3.8, 18, 3.8), bCF * CFrame.new(-6.5, 9.0, -7.5), stoneDark)
-	local chimneyTop = createStudPart(buildingModel, "ChimneyCap", Vector3.new(4.6, 1.2, 4.6), bCF * CFrame.new(-6.5, 18.2, -7.5), Color3.fromRGB(36, 38, 44))
+	-- 4. Jetted Second-Story Timber Loft (Overhanging by 1.5 studs on all sides)
+	local loftY = 17.0
+	createStudPart(buildingModel, "LoftFloorPlate", Vector3.new(27.4, 1.2, 23.4), bCF * CFrame.new(0, 13.0, -1.5), woodDark)
+
+	-- Decorative Carved Wooden Corbel Brackets supporting the overhang
+	for bx = -11, 11, 5.5 do
+		local bracket = createStudPart(buildingModel, "CorbelFront_" .. bx, Vector3.new(1.4, 2.0, 1.8), bCF * CFrame.new(bx, 12.0, 5.0) * CFrame.Angles(math.rad(25), 0, 0), woodDark)
+		bracket.Material = Enum.Material.Wood
+	end
+
+	-- Upper Floor Walls (Tudor Half-Timber Infill)
+	createStudPart(buildingModel, "LoftBackWall", Vector3.new(26, 7.5, 1.4), bCF * CFrame.new(0, loftY, -13.0), Color3.fromRGB(235, 228, 215))
+	createStudPart(buildingModel, "LoftLeftWall", Vector3.new(1.4, 7.5, 22), bCF * CFrame.new(-13.0, loftY, -2.0), Color3.fromRGB(235, 228, 215))
+	createStudPart(buildingModel, "LoftRightWall", Vector3.new(1.4, 7.5, 22), bCF * CFrame.new(13.0, loftY, -2.0), Color3.fromRGB(235, 228, 215))
+	createStudPart(buildingModel, "LoftFrontWall", Vector3.new(26, 7.5, 1.4), bCF * CFrame.new(0, loftY, 9.0), Color3.fromRGB(235, 228, 215))
+
+	-- Exposed Tudor Half-Timber Cross-Beams on Front Facade
+	createStudPart(buildingModel, "LoftTrimTop", Vector3.new(27, 1.0, 1.8), bCF * CFrame.new(0, loftY + 3.4, 9.1), woodDark)
+	createStudPart(buildingModel, "LoftTrimBot", Vector3.new(27, 1.0, 1.8), bCF * CFrame.new(0, loftY - 3.4, 9.1), woodDark)
+	for tx = -10, 10, 5 do
+		createStudPart(buildingModel, "LoftStud_" .. tx, Vector3.new(1.0, 6.8, 1.6), bCF * CFrame.new(tx, loftY, 9.1), woodDark)
+	end
+	-- Diagonal X-Braces
+	createStudPart(buildingModel, "LoftBrace1", Vector3.new(1.0, 7.2, 1.5), bCF * CFrame.new(-7.5, loftY, 9.15) * CFrame.Angles(0, 0, math.rad(42)), woodDark)
+	createStudPart(buildingModel, "LoftBrace2", Vector3.new(1.0, 7.2, 1.5), bCF * CFrame.new(7.5, loftY, 9.15) * CFrame.Angles(0, 0, math.rad(-42)), woodDark)
+
+	-- Twin 3D Leaded Glass Attic Windows with Wooden Shutters
+	for wx = -5, 5, 10 do
+		local winGlow = createStudPart(buildingModel, "AtticWinGlow_" .. wx, Vector3.new(2.4, 3.2, 1.6), bCF * CFrame.new(wx, loftY, 9.2), Color3.fromRGB(255, 210, 100))
+		winGlow.Material = Enum.Material.Neon
+		createStudPart(buildingModel, "WinShutterL_" .. wx, Vector3.new(0.8, 3.2, 1.7), bCF * CFrame.new(wx - 1.6, loftY, 9.2), woodLight)
+		createStudPart(buildingModel, "WinShutterR_" .. wx, Vector3.new(0.8, 3.2, 1.7), bCF * CFrame.new(wx + 1.6, loftY, 9.2), woodLight)
+	end
+
+	-- Hoisting Crane Winch with Suspended Anvil over Street
+	createStudPart(buildingModel, "CraneBeam", Vector3.new(1.6, 1.6, 8.5), bCF * CFrame.new(0, loftY + 3.8, 11.5), woodDark)
+	createStudPart(buildingModel, "CraneBrace", Vector3.new(1.2, 4.2, 1.2), bCF * CFrame.new(0, loftY + 1.8, 12.0) * CFrame.Angles(math.rad(45), 0, 0), woodDark)
+	local rope = createStudPart(buildingModel, "CraneRope", Vector3.new(0.2, 5.5, 0.2), bCF * CFrame.new(0, loftY + 0.8, 15.0), Color3.fromRGB(180, 150, 110))
+	rope.Material = Enum.Material.Fabric
+	local suspendedAnvil = createStudPart(buildingModel, "CraneAnvil", Vector3.new(1.8, 1.2, 1.2), bCF * CFrame.new(0, loftY - 2.2, 15.0), ironMetal)
+	suspendedAnvil.Material = Enum.Material.Metal
+
+	-- 5. Multi-Tier Steep Pitched Slate Roof with Front Porch Awning
+	local roofPeakY = 24.5
+	createStudPart(buildingModel, "RoofRidgeBeam", Vector3.new(28.5, 1.8, 2.4), bCF * CFrame.new(0, roofPeakY, -1.0), roofRidge)
+
+	-- Main Slanted Roof Slabs with 3D Overhangs
+	createStudPart(buildingModel, "RoofSlopeBack", Vector3.new(28.5, 1.0, 16.5), bCF * CFrame.new(0, 21.0, -8.5) * CFrame.Angles(math.rad(-34), 0, 0), roofSlate)
+	createStudPart(buildingModel, "RoofSlopeFront", Vector3.new(28.5, 1.0, 16.5), bCF * CFrame.new(0, 21.0, 6.5) * CFrame.Angles(math.rad(34), 0, 0), roofSlate)
+
+	-- Front Porch Overhang Canopy
+	createStudPart(buildingModel, "PorchCanopy", Vector3.new(26.0, 0.8, 8.5), bCF * CFrame.new(0, 13.8, 9.8) * CFrame.Angles(math.rad(16), 0, 0), roofSlate)
+
+	-- Two 3D Gabled Dormer Windows Protruding from Front Roof
+	for dx = -8, 8, 16 do
+		createStudPart(buildingModel, "DormerGable_" .. dx, Vector3.new(4.5, 4.0, 4.5), bCF * CFrame.new(dx, 22.0, 4.0), stoneWall)
+		createStudPart(buildingModel, "DormerRoofL_" .. dx, Vector3.new(3.0, 0.6, 5.0), bCF * CFrame.new(dx - 1.5, 24.2, 4.0) * CFrame.Angles(0, 0, math.rad(38)), roofRidge)
+		createStudPart(buildingModel, "DormerRoofR_" .. dx, Vector3.new(3.0, 0.6, 5.0), bCF * CFrame.new(dx + 1.5, 24.2, 4.0) * CFrame.Angles(0, 0, math.rad(-38)), roofRidge)
+		local dWin = createStudPart(buildingModel, "DormerWin_" .. dx, Vector3.new(2.4, 2.4, 0.8), bCF * CFrame.new(dx, 22.5, 6.3), Color3.fromRGB(255, 200, 80))
+		dWin.Material = Enum.Material.Neon
+	end
+
+	-- 6. Colossal Stepped Industrial Stone Forge Chimney with Smoke & Sparks
+	local chimX = -10.5
+	local chimZ = -10.5
+	createStudPart(buildingModel, "ChimneyBase", Vector3.new(5.8, 12.0, 5.8), bCF * CFrame.new(chimX, 7.0, chimZ), stoneDark)
+	createStudPart(buildingModel, "ChimneyMid", Vector3.new(4.6, 12.0, 4.6), bCF * CFrame.new(chimX, 18.0, chimZ), stoneWall)
+	local chimneyTop = createStudPart(buildingModel, "ChimneyCap", Vector3.new(5.4, 1.8, 5.4), bCF * CFrame.new(chimX, 24.5, chimZ), Color3.fromRGB(36, 38, 44))
+
+	-- Cast Iron Reinforcement Straps on Chimney
+	for cy = 6, 22, 6 do
+		createStudPart(buildingModel, "ChimneyStrap_" .. cy, Vector3.new(5.0, 0.4, 5.0), bCF * CFrame.new(chimX, cy, chimZ), ironMetal)
+	end
 
 	local chimAtt = Instance.new("Attachment")
-	chimAtt.Position = Vector3.new(0, 0.8, 0)
+	chimAtt.Position = Vector3.new(0, 1.0, 0)
 	chimAtt.Parent = chimneyTop
 
 	local smoke = Instance.new("ParticleEmitter")
 	smoke.Name = "ChimneySmoke"
-	smoke.Color = ColorSequence.new(Color3.fromRGB(70, 72, 78))
+	smoke.Color = ColorSequence.new(Color3.fromRGB(65, 68, 75))
 	smoke.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.8),
-		NumberSequenceKeypoint.new(0.5, 2.4),
-		NumberSequenceKeypoint.new(1, 4.5),
+		NumberSequenceKeypoint.new(0, 1.2),
+		NumberSequenceKeypoint.new(0.5, 3.4),
+		NumberSequenceKeypoint.new(1, 6.5),
 	})
 	smoke.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(0, 0.3),
 		NumberSequenceKeypoint.new(0.7, 0.7),
 		NumberSequenceKeypoint.new(1, 1.0),
 	})
-	smoke.Rate = 12
-	smoke.Speed = NumberRange.new(3, 6)
-	smoke.Lifetime = NumberRange.new(2.5, 4.0)
-	smoke.SpreadAngle = Vector2.new(15, 15)
-	smoke.Acceleration = Vector3.new(0, 3, 0)
+	smoke.Rate = 18
+	smoke.Speed = NumberRange.new(3.5, 7.0)
+	smoke.Lifetime = NumberRange.new(3.0, 5.0)
+	smoke.SpreadAngle = Vector2.new(16, 16)
+	smoke.Acceleration = Vector3.new(0, 3.5, 0)
 	smoke.Parent = chimAtt
 
-	-- 6. Outdoor Covered Forge Porch & Blacksmith Equipment
-	-- Forge Furnace Hearth
-	local forgeHearth = createStudPart(buildingModel, "ForgeHearth", Vector3.new(4.5, 2.8, 4.0), bCF * CFrame.new(-5.0, 2.6, 7.0), stoneDark)
-	local glowingCoals = createStudPart(buildingModel, "ForgeCoals", Vector3.new(3.5, 0.5, 3.0), bCF * CFrame.new(-5.0, 3.8, 7.0), fireGlow)
+	local ember = Instance.new("ParticleEmitter")
+	ember.Name = "ChimneyEmbers"
+	ember.Color = ColorSequence.new(Color3.fromRGB(255, 120, 20))
+	ember.Size = NumberSequence.new(0.4, 0.1)
+	ember.Rate = 8
+	ember.Speed = NumberRange.new(4, 8)
+	ember.Lifetime = NumberRange.new(1.5, 2.5)
+	ember.LightEmission = 1.0
+	ember.Acceleration = Vector3.new(0, 4, 0)
+	ember.Parent = chimAtt
+
+	-- 7. Deep Outdoor Covered Forge Patio & Blacksmith Machinery
+	-- Heavy Forge Furnace Hearth with Glowing Pit
+	local forgeHearth = createStudPart(buildingModel, "ForgeHearth", Vector3.new(6.0, 3.2, 5.5), bCF * CFrame.new(-7.5, 2.8, 8.5), stoneDark)
+	local glowingCoals = createStudPart(buildingModel, "ForgeCoals", Vector3.new(4.8, 0.6, 4.2), bCF * CFrame.new(-7.5, 4.2, 8.5), fireGlow)
 	glowingCoals.Material = Enum.Material.Neon
 
+	-- Forge Bellows with Timber Lever
+	createStudPart(buildingModel, "BellowsBody", Vector3.new(3.2, 1.4, 2.6), bCF * CFrame.new(-11.0, 3.5, 8.5), Color3.fromRGB(140, 80, 40))
+	createStudPart(buildingModel, "BellowsNozzle", Vector3.new(1.6, 0.4, 0.4), bCF * CFrame.new(-9.0, 3.5, 8.5), ironMetal)
+
 	local forgeLight = Instance.new("PointLight")
-	forgeLight.Color = Color3.fromRGB(255, 130, 25)
-	forgeLight.Brightness = 2.8
-	forgeLight.Range = 24
+	forgeLight.Color = Color3.fromRGB(255, 140, 30)
+	forgeLight.Brightness = 3.2
+	forgeLight.Range = 26
 	forgeLight.Shadows = true
 	forgeLight.Parent = glowingCoals
 
 	local fireAtt = Instance.new("Attachment")
-	fireAtt.Position = Vector3.new(0, 0.4, 0)
+	fireAtt.Position = Vector3.new(0, 0.5, 0)
 	fireAtt.Parent = glowingCoals
 
 	local forgeFire = Instance.new("ParticleEmitter")
 	forgeFire.Name = "ForgeFire"
 	forgeFire.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 120)),
-		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 120, 20)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 140)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 130, 20)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 30, 0)),
 	})
 	forgeFire.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.8),
-		NumberSequenceKeypoint.new(0.5, 1.4),
-		NumberSequenceKeypoint.new(1, 0.1),
+		NumberSequenceKeypoint.new(0, 1.0),
+		NumberSequenceKeypoint.new(0.5, 1.8),
+		NumberSequenceKeypoint.new(1, 0.2),
 	})
-	forgeFire.Rate = 16
-	forgeFire.Speed = NumberRange.new(2, 4.5)
-	forgeFire.Lifetime = NumberRange.new(0.6, 1.0)
-	forgeFire.SpreadAngle = Vector2.new(10, 10)
-	forgeFire.LightEmission = 0.9
+	forgeFire.Rate = 22
+	forgeFire.Speed = NumberRange.new(2.5, 5.0)
+	forgeFire.Lifetime = NumberRange.new(0.7, 1.2)
+	forgeFire.SpreadAngle = Vector2.new(12, 12)
+	forgeFire.LightEmission = 1.0
 	forgeFire.Parent = fireAtt
 
-	-- Heavy Cast-Iron Anvil on Wood Stump
-	createStudPart(buildingModel, "AnvilStump", Vector3.new(2.4, 1.8, 2.4), bCF * CFrame.new(-4.8, 2.1, 12.0), woodDark)
-	local anvilBase = createStudPart(buildingModel, "AnvilBase", Vector3.new(2.6, 0.6, 1.8), bCF * CFrame.new(-4.8, 3.2, 12.0), Color3.fromRGB(120, 130, 145))
+	-- Heavy Cast-Iron Anvil on Massive Carved Oak Stump
+	createStudPart(buildingModel, "AnvilStump", Vector3.new(3.2, 2.0, 3.2), bCF * CFrame.new(-7.5, 2.2, 13.5), woodDark)
+	local anvilBase = createStudPart(buildingModel, "AnvilBase", Vector3.new(3.4, 0.8, 2.2), bCF * CFrame.new(-7.5, 3.4, 13.5), Color3.fromRGB(115, 125, 140))
 	anvilBase.Material = Enum.Material.Metal
-	local anvilHorn = createStudPart(buildingModel, "AnvilHorn", Vector3.new(3.4, 0.8, 1.4), bCF * CFrame.new(-4.8, 3.8, 12.0), Color3.fromRGB(160, 170, 185))
+	local anvilHorn = createStudPart(buildingModel, "AnvilHorn", Vector3.new(4.4, 1.0, 1.6), bCF * CFrame.new(-7.5, 4.2, 13.5), Color3.fromRGB(150, 160, 175))
 	anvilHorn.Material = Enum.Material.Metal
 
-	-- Quenching Water Barrel
-	createStudPart(buildingModel, "WaterBarrel", Vector3.new(2.4, 2.6, 2.4), bCF * CFrame.new(-7.8, 2.5, 11.5), woodLight)
-	local water = createStudPart(buildingModel, "BarrelWater", Vector3.new(2.0, 0.2, 2.0), bCF * CFrame.new(-7.8, 3.6, 11.5), Color3.fromRGB(0, 170, 230))
+	-- Quenching Water Trough with Steaming Water
+	createStudPart(buildingModel, "WaterTrough", Vector3.new(4.5, 2.2, 2.6), bCF * CFrame.new(-11.5, 2.3, 13.5), woodPlank)
+	local water = createStudPart(buildingModel, "TroughWater", Vector3.new(4.0, 0.2, 2.2), bCF * CFrame.new(-11.5, 3.2, 13.5), Color3.fromRGB(0, 170, 230))
 	water.Material = Enum.Material.Glass
 
-	-- Pickaxe Display Rack (Weapon Stand)
-	createStudPart(buildingModel, "WeaponRack", Vector3.new(1.0, 4.2, 4.8), bCF * CFrame.new(7.5, 3.3, 7.0), woodDark)
-	local displayPick1 = createStudPart(buildingModel, "DisplayPick1", Vector3.new(0.4, 2.6, 0.4), bCF * CFrame.new(7.5, 3.6, 6.0) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(255, 215, 0))
-	displayPick1.Material = Enum.Material.Neon
-	local displayPick2 = createStudPart(buildingModel, "DisplayPick2", Vector3.new(0.4, 2.6, 0.4), bCF * CFrame.new(7.5, 3.6, 8.0) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(0, 230, 255))
-	displayPick2.Material = Enum.Material.Neon
+	local steamAtt = Instance.new("Attachment")
+	steamAtt.Position = Vector3.new(0, 0.2, 0)
+	steamAtt.Parent = water
+	local steam = Instance.new("ParticleEmitter")
+	steam.Name = "QuenchSteam"
+	steam.Color = ColorSequence.new(Color3.fromRGB(230, 235, 245))
+	steam.Size = NumberSequence.new(0.4, 1.8)
+	steam.Transparency = NumberSequence.new(0.3, 1.0)
+	steam.Rate = 6
+	steam.Speed = NumberRange.new(1.0, 2.2)
+	steam.Lifetime = NumberRange.new(1.2, 2.0)
+	steam.Parent = steamAtt
 
-	-- 7. Front Service Counter Desk (Outside Porch)
-	createStudPart(buildingModel, "CounterBase", Vector3.new(9.0, 2.6, 2.4), bCF * CFrame.new(1.5, 2.5, 12.2), woodDark)
-	createStudPart(buildingModel, "CounterTop", Vector3.new(10.0, 0.6, 3.2), bCF * CFrame.new(1.5, 4.0, 12.2), woodLight)
+	-- Pedal-Operated Tool Grinding Wheel with Sparks
+	createStudPart(buildingModel, "GrindTrestle", Vector3.new(1.8, 2.4, 2.4), bCF * CFrame.new(11.5, 2.4, 8.5), woodDark)
+	local grindStone = createStudPart(buildingModel, "GrindWheel", Vector3.new(0.6, 2.6, 2.6), bCF * CFrame.new(11.5, 3.6, 8.5), stoneWall)
+	grindStone.Material = Enum.Material.Slate
 
-	-- 8. BARNABY THE BLACKSMITH NPC (Standing outside on porch behind counter)
+	local grindAtt = Instance.new("Attachment")
+	grindAtt.Position = Vector3.new(0, 0.8, 0.4)
+	grindAtt.Parent = grindStone
+	local grindSparks = Instance.new("ParticleEmitter")
+	grindSparks.Name = "GrindSparks"
+	grindSparks.Color = ColorSequence.new(Color3.fromRGB(255, 220, 60))
+	grindSparks.Size = NumberSequence.new(0.25, 0.05)
+	grindSparks.Rate = 14
+	grindSparks.Speed = NumberRange.new(3, 7)
+	grindSparks.SpreadAngle = Vector2.new(20, 20)
+	grindSparks.LightEmission = 1.0
+	grindSparks.Acceleration = Vector3.new(0, -12, 0)
+	grindSparks.Parent = grindAtt
+
+	-- Pyramids of Stacked Metal Ingots on Timber Pallet
+	createStudPart(buildingModel, "IngotPallet", Vector3.new(3.5, 0.4, 3.5), bCF * CFrame.new(11.5, 1.4, 13.5), woodLight)
+	local ingotColors = { Color3.fromRGB(170, 175, 185), Color3.fromRGB(255, 215, 0), Color3.fromRGB(230, 45, 60) }
+	for layer = 1, 3 do
+		for ix = 1, (4 - layer) do
+			local ing = createStudPart(buildingModel, "Ingot_" .. layer .. "_" .. ix, Vector3.new(0.7, 0.4, 1.6), bCF * CFrame.new(10.2 + (ix * 0.7), 1.6 + (layer * 0.4), 13.5), ingotColors[layer])
+			ing.Material = Enum.Material.Metal
+		end
+	end
+
+	-- Pickaxe & Shovel Weapon Rack along Right Wall
+	createStudPart(buildingModel, "WeaponRack", Vector3.new(1.2, 5.0, 5.5), bCF * CFrame.new(9.5, 3.7, 8.5), woodDark)
+	local pick1 = createStudPart(buildingModel, "DisplayPick1", Vector3.new(0.4, 3.2, 0.4), bCF * CFrame.new(9.5, 4.0, 7.2) * CFrame.Angles(math.rad(22), 0, 0), Color3.fromRGB(255, 215, 0))
+	pick1.Material = Enum.Material.Neon
+	local pick2 = createStudPart(buildingModel, "DisplayPick2", Vector3.new(0.4, 3.2, 0.4), bCF * CFrame.new(9.5, 4.0, 9.8) * CFrame.Angles(math.rad(22), 0, 0), Color3.fromRGB(0, 230, 255))
+	pick2.Material = Enum.Material.Neon
+
+	-- Hanging 3D Forged Iron Shop Sign on Wrought Iron Wall Bracket
+	createStudPart(buildingModel, "SignBracket", Vector3.new(4.5, 0.4, 0.4), bCF * CFrame.new(11.5, 11.5, 5.5), ironMetal)
+	createStudPart(buildingModel, "SignChainL", Vector3.new(0.15, 1.2, 0.15), bCF * CFrame.new(10.2, 10.8, 5.5), ironMetal)
+	createStudPart(buildingModel, "SignChainR", Vector3.new(0.15, 1.2, 0.15), bCF * CFrame.new(12.8, 10.8, 5.5), ironMetal)
+	local signBoard = createStudPart(buildingModel, "SignBoard", Vector3.new(4.0, 2.2, 0.6), bCF * CFrame.new(11.5, 9.6, 5.5), woodDark)
+	signBoard.Material = Enum.Material.WoodPlanks
+
+	local signBb = Instance.new("BillboardGui")
+	signBb.Size = UDim2.new(0, 160, 0, 60)
+	signBb.StudsOffset = Vector3.new(0, 0, 0)
+	signBb.AlwaysOnTop = false
+	signBb.MaxDistance = 45
+	signBb.Parent = signBoard
+	local sLbl = Instance.new("TextLabel")
+	sLbl.Size = UDim2.new(1, 0, 1, 0)
+	sLbl.BackgroundTransparency = 1
+	sLbl.Text = "⚒️ FORGE"
+	sLbl.TextColor3 = Color3.fromRGB(255, 215, 60)
+	sLbl.Font = Enum.Font.GothamBlack
+	sLbl.TextSize = 18
+	sLbl.Parent = signBb
+
+	-- 8. Front Service Counter Desk (Outside Porch)
+	createStudPart(buildingModel, "CounterBase", Vector3.new(11.0, 2.8, 2.6), bCF * CFrame.new(1.5, 2.6, 12.8), woodDark)
+	createStudPart(buildingModel, "CounterTop", Vector3.new(12.2, 0.5, 3.4), bCF * CFrame.new(1.5, 4.2, 12.8), woodLight)
+	createStudPart(buildingModel, "CounterIronTrim", Vector3.new(12.4, 0.15, 3.6), bCF * CFrame.new(1.5, 4.45, 12.8), ironMetal)
+
+	-- 9. BARNABY THE BLACKSMITH NPC (Behind the Counter)
 	local npcModel = Instance.new("Model")
 	npcModel.Name = "BarnabyMerchant"
 
-	local npcCF = bCF * CFrame.new(1.5, 2.4, 10.0) -- Facing forward toward customer side (+Z local)
+	local npcCF = bCF * CFrame.new(1.5, 2.4, 10.5) -- Facing forward toward customer side (+Z local)
 
 	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 2.0, 0), Color3.fromRGB(48, 72, 115))
 	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 0.0, 0), Color3.fromRGB(38, 42, 50))
@@ -196,18 +361,18 @@ function TownBuildingBuilder.buildBlacksmith(parent: Instance): Model
 	-- Signboard Overhead Title Billboard
 	local titleGui = Instance.new("BillboardGui")
 	titleGui.Name = "MerchantTitleGui"
-	titleGui.Size = UDim2.new(0, 240, 0, 56)
-	titleGui.StudsOffset = Vector3.new(0, 3.6, 0)
+	titleGui.Size = UDim2.new(0, 260, 0, 58)
+	titleGui.StudsOffset = Vector3.new(0, 3.8, 0)
 	titleGui.AlwaysOnTop = false
-	titleGui.MaxDistance = 65
+	titleGui.MaxDistance = 70
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
 	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = "⚒️ THE BLACKSMITH ⚒️"
+	titleLabel.Text = "⚒️ THE MASTER BLACKSMITH ⚒️"
 	titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	titleLabel.Font = Enum.Font.Antique
-	titleLabel.TextSize = 20
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
 	titleLabel.TextStrokeTransparency = 0.2
 	titleLabel.Parent = titleGui
 
@@ -215,10 +380,10 @@ function TownBuildingBuilder.buildBlacksmith(parent: Instance): Model
 	subtitleLabel.Size = UDim2.new(1, 0, 0.45, 0)
 	subtitleLabel.Position = UDim2.new(0, 0, 0.55, 0)
 	subtitleLabel.BackgroundTransparency = 1
-	subtitleLabel.Text = "Barnaby [Equipment Merchant]"
+	subtitleLabel.Text = "Barnaby [Pickaxes • Shovels • Packs]"
 	subtitleLabel.TextColor3 = Color3.fromRGB(210, 235, 255)
-	subtitleLabel.Font = Enum.Font.Antique
-	subtitleLabel.TextSize = 14
+	subtitleLabel.Font = Enum.Font.GothamBold
+	subtitleLabel.TextSize = 12
 	subtitleLabel.TextStrokeTransparency = 0.2
 	subtitleLabel.Parent = titleGui
 	titleGui.Parent = head
@@ -226,8 +391,8 @@ function TownBuildingBuilder.buildBlacksmith(parent: Instance): Model
 	-- Invisible Interaction Part & Proximity Prompt
 	local interactionPart = Instance.new("Part")
 	interactionPart.Name = "BarnabyInteractionPart"
-	interactionPart.Size = Vector3.new(10, 6, 5)
-	interactionPart.CFrame = bCF * CFrame.new(1.5, 3.6, 14.5)
+	interactionPart.Size = Vector3.new(12, 6, 6)
+	interactionPart.CFrame = bCF * CFrame.new(1.5, 3.6, 14.8)
 	interactionPart.Transparency = 1
 	interactionPart.CanCollide = false
 	interactionPart.CanTouch = true
@@ -265,92 +430,221 @@ function TownBuildingBuilder.buildTrailArtisan(parent: Instance): Model
 	buildingModel.Name = "TrailArtisanBoutique"
 
 	-- Positioned on West/Southwest courtyard, facing +X (toward central spawn plaza)
-	local bCF = CFrame.new(-38, 0, 18) * CFrame.Angles(0, math.rad(90), 0)
+	local bCF = CFrame.new(-40, 0, 18) * CFrame.Angles(0, math.rad(90), 0)
 
-	local woodDark = Color3.fromRGB(46, 28, 56)
-	local woodLight = Color3.fromRGB(78, 48, 96)
-	local clothCyan = Color3.fromRGB(0, 210, 255)
-	local clothViolet = Color3.fromRGB(175, 45, 235)
+	local woodDark = Color3.fromRGB(42, 24, 52)
+	local woodLight = Color3.fromRGB(72, 44, 90)
+	local woodTrim = Color3.fromRGB(56, 32, 70)
+	local clothCyan = Color3.fromRGB(0, 220, 255)
+	local clothViolet = Color3.fromRGB(165, 40, 230)
+	local royalIndigo = Color3.fromRGB(28, 20, 48)
 	local goldTrim = Color3.fromRGB(255, 215, 60)
-	local stoneDark = Color3.fromRGB(48, 42, 54)
+	local stoneDark = Color3.fromRGB(42, 38, 50)
+	local stonePlinth = Color3.fromRGB(60, 52, 72)
+	local runeGlow = Color3.fromRGB(0, 240, 255)
 
-	-- 1. Polished Stone Plinth Foundation
-	createStudPart(buildingModel, "Foundation", Vector3.new(20, 1.2, 20), bCF * CFrame.new(0, 0.6, 0), stoneDark)
+	-- 1. Raised Celestial Amethyst & Slate Foundation (28 x 1.4 x 28)
+	createStudPart(buildingModel, "Foundation", Vector3.new(28, 1.4, 28), bCF * CFrame.new(0, 0.7, 0), stoneDark)
+	createStudPart(buildingModel, "CelestialDeck", Vector3.new(26.4, 0.4, 26.4), bCF * CFrame.new(0, 1.4, 0), stonePlinth)
 
-	-- 2. Celestial Timber Frame Columns
+	-- Stepped stone entrance threshold with inlaid glowing rune line
+	for s = 1, 2 do
+		createStudPart(buildingModel, "Step_" .. s, Vector3.new(14, 0.35, 2.0), bCF * CFrame.new(0, 0.35 * s, 13.5 + (2.0 * (2 - s))), stoneDark)
+	end
+	local stepGlow = createStudPart(buildingModel, "StepRuneGlow", Vector3.new(12, 0.05, 0.4), bCF * CFrame.new(0, 1.42, 13.0), runeGlow)
+	stepGlow.Material = Enum.Material.Neon
+
+	-- 2. Heavy Fluted Amethyst Columns at 4 Corners
 	local colOffsets = {
-		Vector3.new(-8.8, 6.6, -8.8),
-		Vector3.new(8.8, 6.6, -8.8),
-		Vector3.new(-8.8, 6.6, 8.8),
-		Vector3.new(8.8, 6.6, 8.8),
+		Vector3.new(-12.5, 7.0, -12.5),
+		Vector3.new(12.5, 7.0, -12.5),
+		Vector3.new(-12.5, 7.0, 12.5),
+		Vector3.new(12.5, 7.0, 12.5),
 	}
 	for _, cOff in ipairs(colOffsets) do
-		local col = createStudPart(buildingModel, "BoutiqueCol", Vector3.new(2.0, 11, 2.0), bCF * CFrame.new(cOff.X, cOff.Y, cOff.Z), woodDark)
+		createStudPart(buildingModel, "ColBase", Vector3.new(3.0, 3.2, 3.0), bCF * CFrame.new(cOff.X, 3.0, cOff.Z), stoneDark)
+		local col = createStudPart(buildingModel, "CelestialCol", Vector3.new(2.4, 12.0, 2.4), bCF * CFrame.new(cOff.X, 8.4, cOff.Z), woodDark)
 		col.Material = Enum.Material.Wood
+		local colCap = createStudPart(buildingModel, "ColCapital", Vector3.new(2.8, 0.8, 2.8), bCF * CFrame.new(cOff.X, 14.0, cOff.Z), goldTrim)
+		colCap.Material = Enum.Material.SmoothPlastic
 	end
 
-	-- 3. Walls with Arched Bay Windows
-	createStudPart(buildingModel, "BackWall", Vector3.new(1.4, 10, 16), bCF * CFrame.new(0, 6.2, -8.8), woodLight)
-	createStudPart(buildingModel, "LeftWall", Vector3.new(16, 10, 1.4), bCF * CFrame.new(-8.8, 6.2, 0), woodLight)
-	createStudPart(buildingModel, "RightWall", Vector3.new(16, 10, 1.4), bCF * CFrame.new(8.8, 6.2, 0), woodLight)
+	-- 3. Ground Floor Walls with Diamond Bay Windows
+	-- Back Wall
+	createStudPart(buildingModel, "BackWall", Vector3.new(24, 11.0, 1.6), bCF * CFrame.new(0, 7.1, -12.5), royalIndigo)
+	-- Left Wall with Mystical Arched Window
+	createStudPart(buildingModel, "LeftWall", Vector3.new(1.6, 11.0, 16), bCF * CFrame.new(-12.5, 7.1, -3.5), royalIndigo)
+	local lWin = createStudPart(buildingModel, "LeftWinGlow", Vector3.new(1.8, 4.2, 3.2), bCF * CFrame.new(-12.5, 8.0, -3.5), clothCyan)
+	lWin.Material = Enum.Material.Neon
 
-	-- Front facade piers
-	createStudPart(buildingModel, "FrontPierL", Vector3.new(4.5, 10, 1.4), bCF * CFrame.new(-6.5, 6.2, 8.8), woodLight)
-	createStudPart(buildingModel, "FrontPierR", Vector3.new(4.5, 10, 1.4), bCF * CFrame.new(6.5, 6.2, 8.8), woodLight)
-	createStudPart(buildingModel, "FrontArchLintel", Vector3.new(18, 2.0, 1.6), bCF * CFrame.new(0, 10.2, 8.8), woodDark)
+	-- Right Wall
+	createStudPart(buildingModel, "RightWall", Vector3.new(1.6, 11.0, 16), bCF * CFrame.new(12.5, 7.1, -3.5), royalIndigo)
+	local rWin = createStudPart(buildingModel, "RightWinGlow", Vector3.new(1.8, 4.2, 3.2), bCF * CFrame.new(12.5, 8.0, -3.5), clothViolet)
+	rWin.Material = Enum.Material.Neon
 
-	-- 4. Striped Arched Fabric Canopy Roof (Violet & Cyan with Gold Fringe)
-	createStudPart(buildingModel, "CanopyRidge", Vector3.new(21, 1.4, 2.2), bCF * CFrame.new(0, 13.5, 1.0), woodDark)
-	for s = -7, 7 do
-		local slatCol = if s % 2 == 0 then clothViolet else clothCyan
-		createStudPart(buildingModel, "CanopySlatFront", Vector3.new(1.4, 0.5, 12.0), bCF * CFrame.new(s * 1.35, 11.8, 6.5) * CFrame.Angles(math.rad(18), 0, 0), slatCol)
-		createStudPart(buildingModel, "CanopySlatBack", Vector3.new(1.4, 0.5, 10.0), bCF * CFrame.new(s * 1.35, 12.2, -4.5) * CFrame.Angles(math.rad(-20), 0, 0), slatCol)
+	-- Front Facade Piers & Arched Header Beam (leaving 15-stud open porch archway)
+	createStudPart(buildingModel, "FrontPierL", Vector3.new(5.5, 11.0, 1.6), bCF * CFrame.new(-9.5, 7.1, 4.5), royalIndigo)
+	createStudPart(buildingModel, "FrontPierR", Vector3.new(5.5, 11.0, 1.6), bCF * CFrame.new(9.5, 7.1, 4.5), royalIndigo)
+	local archLintel = createStudPart(buildingModel, "FrontArchLintel", Vector3.new(27, 2.2, 2.0), bCF * CFrame.new(0, 12.2, 4.5), woodDark)
+	archLintel.Material = Enum.Material.Wood
+
+	-- 4. Jetted Second-Story Starlight Observatory & Balcony
+	local loftY = 17.5
+	createStudPart(buildingModel, "ObservatoryDeck", Vector3.new(27.4, 1.2, 23.4), bCF * CFrame.new(0, 13.0, -0.5), woodDark)
+
+	-- Overhanging Starlight Balcony at Front
+	createStudPart(buildingModel, "BalconyFloor", Vector3.new(18, 0.8, 5.0), bCF * CFrame.new(0, 13.2, 7.5), woodLight)
+	-- Golden Balustrade Railing
+	createStudPart(buildingModel, "BalconyRailFront", Vector3.new(18.4, 2.2, 0.4), bCF * CFrame.new(0, 14.5, 9.8), goldTrim)
+	createStudPart(buildingModel, "BalconyRailL", Vector3.new(0.4, 2.2, 5.0), bCF * CFrame.new(-9.0, 14.5, 7.5), goldTrim)
+	createStudPart(buildingModel, "BalconyRailR", Vector3.new(0.4, 2.2, 5.0), bCF * CFrame.new(9.0, 14.5, 7.5), goldTrim)
+
+	-- Second Floor Walls (Deep Astral Purple with Inlaid Gold Stars)
+	createStudPart(buildingModel, "ObsBackWall", Vector3.new(26, 8.0, 1.4), bCF * CFrame.new(0, loftY, -12.0), royalIndigo)
+	createStudPart(buildingModel, "ObsLeftWall", Vector3.new(1.4, 8.0, 20), bCF * CFrame.new(-12.8, loftY, -2.0), royalIndigo)
+	createStudPart(buildingModel, "ObsRightWall", Vector3.new(1.4, 8.0, 20), bCF * CFrame.new(12.8, loftY, -2.0), royalIndigo)
+	createStudPart(buildingModel, "ObsFrontWall", Vector3.new(26, 8.0, 1.4), bCF * CFrame.new(0, loftY, 5.0), royalIndigo)
+
+	-- Dual Grand Stained-Glass Rose Windows on Upper Floor
+	for rx = -6, 6, 12 do
+		local roseWin = createStudPart(buildingModel, "RoseWin_" .. rx, Vector3.new(3.8, 3.8, 1.6), bCF * CFrame.new(rx, loftY + 0.8, 5.1), clothViolet)
+		roseWin.Material = Enum.Material.Neon
+		roseWin.Shape = Enum.PartType.Cylinder
+		roseWin.CFrame = bCF * CFrame.new(rx, loftY + 0.8, 5.1) * CFrame.Angles(0, 0, math.rad(90))
 	end
 
-	-- 5. Outdoor Artisan Porch & Magic Displays
-	-- Floating Crystal Trail Orb on Mystical Pedestal
-	createStudPart(buildingModel, "PedestalBase", Vector3.new(3.0, 2.2, 3.0), bCF * CFrame.new(-5.5, 2.3, 10.5), woodDark)
-	local orb = createStudPart(buildingModel, "TrailOrb", Vector3.new(1.8, 1.8, 1.8), bCF * CFrame.new(-5.5, 4.5, 10.5), clothViolet)
-	orb.Material = Enum.Material.Neon
-	orb.Shape = Enum.PartType.Ball
+	-- 5. Multi-Tier Curved Pagoda Celestial Roof with Gold Trim
+	local roofPeakY = 25.5
+	createStudPart(buildingModel, "CanopyRidge", Vector3.new(28.5, 1.8, 2.4), bCF * CFrame.new(0, roofPeakY, -1.0), goldTrim)
 
-	local orbAtt = Instance.new("Attachment")
-	orbAtt.Parent = orb
+	-- Curved Roof Slopes (Tier 1: Royal Violet Slates with Flared Eaves)
+	createStudPart(buildingModel, "RoofSlopeBack", Vector3.new(28.5, 0.9, 16.0), bCF * CFrame.new(0, 21.8, -8.0) * CFrame.Angles(math.rad(-32), 0, 0), clothViolet)
+	createStudPart(buildingModel, "RoofSlopeFront", Vector3.new(28.5, 0.9, 16.0), bCF * CFrame.new(0, 21.8, 6.0) * CFrame.Angles(math.rad(32), 0, 0), clothViolet)
 
-	local orbSparks = Instance.new("ParticleEmitter")
-	orbSparks.Name = "OrbSparks"
-	orbSparks.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 240, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 60, 255)),
-	})
-	orbSparks.Size = NumberSequence.new(0.3, 0.05)
-	orbSparks.Rate = 12
-	orbSparks.Speed = NumberRange.new(0.8, 1.8)
-	orbSparks.LightEmission = 1.0
-	orbSparks.Parent = orbAtt
+	-- Upward Curved Eaves Flanges
+	createStudPart(buildingModel, "EaveFlangeBack", Vector3.new(29.0, 0.5, 3.5), bCF * CFrame.new(0, 18.2, -15.5) * CFrame.Angles(math.rad(-14), 0, 0), clothCyan)
+	createStudPart(buildingModel, "EaveFlangeFront", Vector3.new(29.0, 0.5, 3.5), bCF * CFrame.new(0, 18.2, 13.5) * CFrame.Angles(math.rad(14), 0, 0), clothCyan)
 
-	local orbLight = Instance.new("PointLight")
-	orbLight.Color = clothCyan
-	orbLight.Brightness = 2.5
-	orbLight.Range = 18
-	orbLight.Parent = orb
+	-- Glowing Gold Neon Roof Perimeter Trim
+	local neonTrimF = createStudPart(buildingModel, "NeonTrimFront", Vector3.new(29.2, 0.3, 0.6), bCF * CFrame.new(0, 18.2, 14.8), goldTrim)
+	neonTrimF.Material = Enum.Material.Neon
+	local neonTrimB = createStudPart(buildingModel, "NeonTrimBack", Vector3.new(29.2, 0.3, 0.6), bCF * CFrame.new(0, 18.2, -16.8), goldTrim)
+	neonTrimB.Material = Enum.Material.Neon
 
-	-- Enchanted Trail Essence Bottles Shelf
-	createStudPart(buildingModel, "PotionShelf", Vector3.new(1.0, 4.0, 4.5), bCF * CFrame.new(7.5, 3.2, 6.5), woodDark)
-	for p = 1, 3 do
-		local bottle = createStudPart(buildingModel, "PotionBottle" .. p, Vector3.new(0.6, 1.2, 0.6), bCF * CFrame.new(7.5, 4.2, 5.0 + (p * 1.0)), if p == 1 then Color3.fromRGB(255, 60, 20) elseif p == 2 then Color3.fromRGB(255, 220, 0) else Color3.fromRGB(0, 230, 255))
+	-- Central Roof Spire with Slowly Spinning Brass Astrolabe
+	local spireBase = createStudPart(buildingModel, "SpireBase", Vector3.new(2.8, 3.5, 2.8), bCF * CFrame.new(0, roofPeakY + 2.2, -1.0), goldTrim)
+	spireBase.Material = Enum.Material.SmoothPlastic
+	local astrolabe = createStudPart(buildingModel, "SpinningAstrolabe", Vector3.new(2.4, 2.4, 2.4), bCF * CFrame.new(0, roofPeakY + 4.8, -1.0), goldTrim)
+	astrolabe.Material = Enum.Material.Neon
+	astrolabe.Shape = Enum.PartType.Ball
+
+	task.spawn(function()
+		local rot = 0
+		while astrolabe and astrolabe.Parent do
+			rot += 0.02
+			astrolabe.CFrame = bCF * CFrame.new(0, roofPeakY + 4.8, -1.0) * CFrame.Angles(rot * 0.7, rot, 0)
+			task.wait(0.03)
+		end
+	end)
+
+	-- 6. Outdoor Arcane Porch & Four Floating Elemental Trail Orbs
+	-- Glowing Inlaid Summoning Circle on Deck
+	local magicCircle = createStudPart(buildingModel, "MagicCircleRune", Vector3.new(8.0, 0.05, 8.0), bCF * CFrame.new(-4.5, 1.42, 10.0), clothCyan)
+	magicCircle.Material = Enum.Material.Neon
+	magicCircle.Shape = Enum.PartType.Cylinder
+	magicCircle.CFrame = bCF * CFrame.new(-4.5, 1.42, 10.0) * CFrame.Angles(0, 0, math.rad(90))
+
+	-- Four Floating Elemental Trail Orbs on Runic Pedestals
+	local elementalOrbs = {
+		{ name = "CosmicFire", offset = Vector3.new(-10.5, 8.5), color = Color3.fromRGB(255, 80, 20), light = Color3.fromRGB(255, 120, 40) },
+		{ name = "FrostBreeze", offset = Vector3.new(-6.5, 13.5), color = Color3.fromRGB(0, 220, 255), light = Color3.fromRGB(100, 240, 255) },
+		{ name = "VoidShadow", offset = Vector3.new(6.5, 13.5), color = Color3.fromRGB(175, 45, 235), light = Color3.fromRGB(200, 80, 255) },
+		{ name = "SparkBurst", offset = Vector3.new(10.5, 8.5), color = Color3.fromRGB(255, 220, 0), light = Color3.fromRGB(255, 235, 60) },
+	}
+
+	for _, orbDef in ipairs(elementalOrbs) do
+		-- Carved Runic Stone Pedestal
+		createStudPart(buildingModel, "OrbPedestal_" .. orbDef.name, Vector3.new(2.4, 2.2, 2.4), bCF * CFrame.new(orbDef.offset.X, 2.3, orbDef.offset.Y), woodDark)
+		createStudPart(buildingModel, "OrbPedCapital_" .. orbDef.name, Vector3.new(2.8, 0.4, 2.8), bCF * CFrame.new(orbDef.offset.X, 3.4, orbDef.offset.Y), goldTrim)
+
+		-- Levitating Elemental Orb
+		local eOrb = createStudPart(buildingModel, "Orb_" .. orbDef.name, Vector3.new(1.6, 1.6, 1.6), bCF * CFrame.new(orbDef.offset.X, 4.6, orbDef.offset.Y), orbDef.color)
+		eOrb.Material = Enum.Material.Neon
+		eOrb.Shape = Enum.PartType.Ball
+
+		local oAtt = Instance.new("Attachment")
+		oAtt.Parent = eOrb
+		local oSparks = Instance.new("ParticleEmitter")
+		oSparks.Name = "OrbSparks"
+		oSparks.Color = ColorSequence.new(orbDef.color)
+		oSparks.Size = NumberSequence.new(0.3, 0.05)
+		oSparks.Rate = 12
+		oSparks.Speed = NumberRange.new(0.6, 1.6)
+		oSparks.LightEmission = 1.0
+		oSparks.Parent = oAtt
+
+		local oLight = Instance.new("PointLight")
+		oLight.Color = orbDef.light
+		oLight.Brightness = 2.2
+		oLight.Range = 14
+		oLight.Parent = eOrb
+
+		-- Smooth bobbing animation
+		task.spawn(function()
+			local startY = eOrb.Position.Y
+			local timeAcc = (orbDef.offset.X * 0.3)
+			while eOrb and eOrb.Parent do
+				timeAcc += 0.04
+				local bob = math.sin(timeAcc * 2) * 0.25
+				eOrb.CFrame = CFrame.new(eOrb.Position.X, startY + bob, eOrb.Position.Z)
+				task.wait(0.03)
+			end
+		end)
+	end
+
+	-- Enchanted Apothecary Potion Cabinet against Right Wall
+	createStudPart(buildingModel, "PotionCabinet", Vector3.new(1.4, 6.0, 5.0), bCF * CFrame.new(11.5, 4.2, 7.0), woodDark)
+	for p = 1, 4 do
+		local botCol = if p == 1 then Color3.fromRGB(255, 60, 20)
+			elseif p == 2 then Color3.fromRGB(0, 230, 255)
+			elseif p == 3 then Color3.fromRGB(210, 50, 255)
+			else Color3.fromRGB(46, 204, 113)
+		local bottle = createStudPart(buildingModel, "PotionBottle" .. p, Vector3.new(0.6, 1.2, 0.6), bCF * CFrame.new(11.5, 4.8, 5.2 + (p * 0.9)), botCol)
 		bottle.Material = Enum.Material.Neon
 	end
 
-	-- 6. Front Service Counter Desk
-	createStudPart(buildingModel, "TrailCounterBase", Vector3.new(9.0, 2.6, 2.4), bCF * CFrame.new(1.5, 2.5, 11.2), woodDark)
-	createStudPart(buildingModel, "TrailCounterTop", Vector3.new(10.0, 0.6, 3.2), bCF * CFrame.new(1.5, 4.0, 11.2), woodLight)
+	-- Hanging 3D Celestial Crescent Moon Shop Sign
+	createStudPart(buildingModel, "MoonBracket", Vector3.new(4.5, 0.4, 0.4), bCF * CFrame.new(11.5, 11.5, 5.0), goldTrim)
+	createStudPart(buildingModel, "MoonChainL", Vector3.new(0.15, 1.2, 0.15), bCF * CFrame.new(10.2, 10.8, 5.0), goldTrim)
+	createStudPart(buildingModel, "MoonChainR", Vector3.new(0.15, 1.2, 0.15), bCF * CFrame.new(12.8, 10.8, 5.0), goldTrim)
+	local signBoard = createStudPart(buildingModel, "TrailSignBoard", Vector3.new(4.0, 2.2, 0.6), bCF * CFrame.new(11.5, 9.6, 5.0), royalIndigo)
+	signBoard.Material = Enum.Material.SmoothPlastic
 
-	-- 7. ZEPHYR THE TRAIL ARTISAN NPC
+	local signBb = Instance.new("BillboardGui")
+	signBb.Size = UDim2.new(0, 160, 0, 60)
+	signBb.AlwaysOnTop = false
+	signBb.MaxDistance = 45
+	signBb.Parent = signBoard
+	local sLbl = Instance.new("TextLabel")
+	sLbl.Size = UDim2.new(1, 0, 1, 0)
+	sLbl.BackgroundTransparency = 1
+	sLbl.Text = "✨ TRAILS"
+	sLbl.TextColor3 = Color3.fromRGB(0, 240, 255)
+	sLbl.Font = Enum.Font.GothamBlack
+	sLbl.TextSize = 18
+	sLbl.Parent = signBb
+
+	-- 7. Front Service Counter Desk
+	createStudPart(buildingModel, "TrailCounterBase", Vector3.new(11.0, 2.8, 2.6), bCF * CFrame.new(1.5, 2.6, 12.0), woodDark)
+	createStudPart(buildingModel, "TrailCounterTop", Vector3.new(12.2, 0.5, 3.4), bCF * CFrame.new(1.5, 4.2, 12.0), clothViolet)
+	local counterTrim = createStudPart(buildingModel, "TrailCounterTrim", Vector3.new(12.4, 0.15, 3.6), bCF * CFrame.new(1.5, 4.45, 12.0), goldTrim)
+	counterTrim.Material = Enum.Material.Neon
+
+	-- 8. ZEPHYR THE TRAIL ARTISAN NPC
 	local npcModel = Instance.new("Model")
 	npcModel.Name = "ZephyrArtisan"
 
-	local npcCF = bCF * CFrame.new(1.5, 2.4, 9.0)
+	local npcCF = bCF * CFrame.new(1.5, 2.4, 9.8)
 
 	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 2.0, 0), Color3.fromRGB(55, 30, 75))
 	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 0.0, 0), Color3.fromRGB(40, 25, 55))
@@ -367,6 +661,12 @@ function TownBuildingBuilder.buildTrailArtisan(parent: Instance): Model
 	createStudPart(npcModel, "Cowl", Vector3.new(1.8, 1.2, 1.8), npcCF * CFrame.new(0, 4.2, 0), clothViolet)
 	createStudPart(npcModel, "CowlGem", Vector3.new(0.4, 0.4, 0.4), npcCF * CFrame.new(0, 4.4, 0.95), clothCyan)
 
+	-- Wizard Staff in Hand
+	createStudPart(npcModel, "StaffShaft", Vector3.new(0.3, 5.0, 0.3), npcCF * CFrame.new(1.8, 2.5, 0.6), woodDark)
+	local staffOrb = createStudPart(npcModel, "StaffOrb", Vector3.new(0.9, 0.9, 0.9), npcCF * CFrame.new(1.8, 5.1, 0.6), clothCyan)
+	staffOrb.Material = Enum.Material.Neon
+	staffOrb.Shape = Enum.PartType.Ball
+
 	-- Arms resting on counter
 	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(55, 30, 75))
 	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 2.0, 0.3) * CFrame.Angles(math.rad(25), 0, 0), Color3.fromRGB(55, 30, 75))
@@ -374,18 +674,18 @@ function TownBuildingBuilder.buildTrailArtisan(parent: Instance): Model
 	-- Signboard Overhead Title Billboard
 	local titleGui = Instance.new("BillboardGui")
 	titleGui.Name = "ArtisanTitleGui"
-	titleGui.Size = UDim2.new(0, 240, 0, 56)
-	titleGui.StudsOffset = Vector3.new(0, 3.6, 0)
+	titleGui.Size = UDim2.new(0, 260, 0, 58)
+	titleGui.StudsOffset = Vector3.new(0, 3.8, 0)
 	titleGui.AlwaysOnTop = false
-	titleGui.MaxDistance = 65
+	titleGui.MaxDistance = 70
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Size = UDim2.new(1, 0, 0.55, 0)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "✨ THE TRAIL WEAVER ✨"
 	titleLabel.TextColor3 = Color3.fromRGB(0, 240, 255)
-	titleLabel.Font = Enum.Font.Antique
-	titleLabel.TextSize = 20
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.TextSize = 18
 	titleLabel.TextStrokeTransparency = 0.2
 	titleLabel.Parent = titleGui
 
@@ -393,10 +693,10 @@ function TownBuildingBuilder.buildTrailArtisan(parent: Instance): Model
 	subtitleLabel.Size = UDim2.new(1, 0, 0.45, 0)
 	subtitleLabel.Position = UDim2.new(0, 0, 0.55, 0)
 	subtitleLabel.BackgroundTransparency = 1
-	subtitleLabel.Text = "Zephyr [Trail Artisan]"
+	subtitleLabel.Text = "Zephyr [Aura & Particle Boutique]"
 	subtitleLabel.TextColor3 = Color3.fromRGB(235, 185, 255)
-	subtitleLabel.Font = Enum.Font.Antique
-	subtitleLabel.TextSize = 14
+	subtitleLabel.Font = Enum.Font.GothamBold
+	subtitleLabel.TextSize = 12
 	subtitleLabel.TextStrokeTransparency = 0.2
 	subtitleLabel.Parent = titleGui
 	titleGui.Parent = head
@@ -404,8 +704,8 @@ function TownBuildingBuilder.buildTrailArtisan(parent: Instance): Model
 	-- Invisible Interaction Part & Proximity Prompt
 	local interactionPart = Instance.new("Part")
 	interactionPart.Name = "ZephyrInteractionPart"
-	interactionPart.Size = Vector3.new(10, 6, 5)
-	interactionPart.CFrame = bCF * CFrame.new(1.5, 3.6, 13.5)
+	interactionPart.Size = Vector3.new(12, 6, 6)
+	interactionPart.CFrame = bCF * CFrame.new(1.5, 3.6, 14.0)
 	interactionPart.Transparency = 1
 	interactionPart.CanCollide = false
 	interactionPart.CanTouch = true
@@ -976,17 +1276,24 @@ function TownBuildingBuilder.buildVIPPavilion(parent: Instance): Model
 	local buildingModel = Instance.new("Model")
 	buildingModel.Name = "RoyalVIPPavilion"
 
-	-- Positioned due East, facing -X (facing central spawn plaza)
-	local bCF = CFrame.new(46, 0, 0) * CFrame.Angles(0, math.rad(-90), 0)
+	-- Positioned due East on Royal Hilltop Terrace, facing -X (facing central spawn plaza)
+	local bCF = CFrame.new(62, 0, 0) * CFrame.Angles(0, math.rad(-90), 0)
 
 	local goldMetal = Color3.fromRGB(255, 215, 60)
 	local royalPurple = Color3.fromRGB(110, 25, 180)
 	local marbleWhite = Color3.fromRGB(245, 246, 250)
 	local marbleGrey = Color3.fromRGB(210, 215, 225)
+	local royalRed = Color3.fromRGB(185, 25, 45)
+
+	-- Royal Red Carpet Walkway Approach from East Courtyard
+	local carpet = createStudPart(buildingModel, "VIPRedCarpet", Vector3.new(12, 0.1, 4.0), bCF * CFrame.new(0, 0.45, 12.0), royalRed)
+	carpet.Material = Enum.Material.Fabric
+	createStudPart(buildingModel, "VIPCarpetTrimL", Vector3.new(12, 0.15, 0.4), bCF * CFrame.new(0, 0.48, 14.1), goldMetal)
+	createStudPart(buildingModel, "VIPCarpetTrimR", Vector3.new(12, 0.15, 0.4), bCF * CFrame.new(0, 0.48, 9.9), goldMetal)
 
 	-- 1. Raised Gilded Marble Terrace
-	createStudPart(buildingModel, "PavilionPlinth1", Vector3.new(18, 1.2, 20), bCF * CFrame.new(0, 0.6, 0), marbleGrey)
-	createStudPart(buildingModel, "PavilionPlinth2", Vector3.new(16, 0.6, 18), bCF * CFrame.new(0, 1.5, 0), marbleWhite)
+	createStudPart(buildingModel, "PavilionPlinth1", Vector3.new(20, 1.2, 22), bCF * CFrame.new(0, 0.6, 0), marbleGrey)
+	createStudPart(buildingModel, "PavilionPlinth2", Vector3.new(18, 0.6, 20), bCF * CFrame.new(0, 1.5, 0), marbleWhite)
 
 	-- 2. Four Golden Roman Columns
 	local colOffsets = {
@@ -1308,74 +1615,396 @@ function TownBuildingBuilder.buildPetMerchantStall(parent: Instance): Model
 	-- Positioned on East courtyard at (38, 0, 0), facing -X (toward Town Plaza / Spawn)
 	local bCF = CFrame.new(38, 0, 0) * CFrame.Angles(0, math.rad(-90), 0)
 
-	local stoneDark = Color3.fromRGB(48, 52, 60)
-	local stonePlinth = Color3.fromRGB(68, 72, 82)
-	local woodDark = Color3.fromRGB(72, 45, 25)
-	local woodCounter = Color3.fromRGB(110, 68, 38)
+	local stoneDark = Color3.fromRGB(45, 48, 55)
+	local stonePaving = Color3.fromRGB(72, 75, 84)
+	local tudorWood = Color3.fromRGB(58, 36, 20)
+	local tudorPlaster = Color3.fromRGB(238, 230, 214)
+	local mahoganyCounter = Color3.fromRGB(98, 52, 28)
+	local roofEmerald = Color3.fromRGB(28, 105, 65)
+	local roofGold = Color3.fromRGB(235, 185, 40)
 	local goldBrass = Color3.fromRGB(255, 215, 60)
-	local awningGreen = Color3.fromRGB(35, 155, 86)
-	local awningGold = Color3.fromRGB(241, 196, 15)
+	local velvetRed = Color3.fromRGB(160, 32, 45)
+	local windowGlow = Color3.fromRGB(255, 205, 110)
+	local crystalCyan = Color3.fromRGB(0, 230, 255)
 
-	-- 1. Cobblestone Foundation Plinth
-	createStudPart(buildingModel, "Foundation", Vector3.new(16, 1.0, 14), bCF * CFrame.new(0, 0.5, 0), stoneDark)
-	createStudPart(buildingModel, "FloorDeck", Vector3.new(15, 0.4, 13), bCF * CFrame.new(0, 1.1, 0), stonePlinth)
+	-- 1. Raised Heavy Stone Plinth & Stepped Terrace (28 x 1.4 x 26)
+	createStudPart(buildingModel, "Foundation", Vector3.new(28, 1.4, 26), bCF * CFrame.new(0, 0.7, 0), stoneDark)
+	createStudPart(buildingModel, "PavedDeck", Vector3.new(26.4, 0.4, 24.4), bCF * CFrame.new(0, 1.4, 0), stonePaving)
 
-	-- 2. Four Timber Posts Supporting Awning
-	local postOffsets = {
-		Vector3.new(-6.8, 6.0, -5.8),
-		Vector3.new(6.8, 6.0, -5.8),
-		Vector3.new(-6.8, 6.0, 5.8),
-		Vector3.new(6.8, 6.0, 5.8),
+	-- Stepped stone entrance threshold leading to the courtyard
+	for s = 1, 2 do
+		createStudPart(buildingModel, "EntranceStep_" .. s, Vector3.new(14, 0.35, 2.0), bCF * CFrame.new(0, 0.35 * s, 12.5 + (2.0 * (2 - s))), stoneDark)
+	end
+
+	-- Flanking Porch Stone Balustrades with Polished Railing
+	for _, side in ipairs({ -1, 1 }) do
+		local balustrade = createStudPart(buildingModel, "PorchBalustrade_" .. side, Vector3.new(1.4, 2.6, 7.0), bCF * CFrame.new(side * 12.5, 2.7, 8.5), stoneDark)
+		balustrade.Material = Enum.Material.Cobblestone
+		local balCap = createStudPart(buildingModel, "BalustradeCap_" .. side, Vector3.new(1.8, 0.5, 7.4), bCF * CFrame.new(side * 12.5, 4.15, 8.5), stonePaving)
+		balCap.Material = Enum.Material.SmoothPlastic
+		local newelPost = createStudPart(buildingModel, "NewelPost_" .. side, Vector3.new(2.0, 3.2, 2.0), bCF * CFrame.new(side * 12.5, 3.0, 12.0), stoneDark)
+		newelPost.Material = Enum.Material.Cobblestone
+		local postBall = createStudPart(buildingModel, "NewelFinial_" .. side, Vector3.new(1.5, 1.5, 1.5), bCF * CFrame.new(side * 12.5, 5.0, 12.0), goldBrass)
+		postBall.Shape = Enum.PartType.Ball
+		postBall.Material = Enum.Material.SmoothPlastic
+	end
+
+	-- 2. Heavy Timber Columns & Stone Buttresses at 4 Corners
+	local colOffsets = {
+		Vector3.new(-12.5, 7.0, -11.5),
+		Vector3.new(12.5, 7.0, -11.5),
+		Vector3.new(-12.5, 7.0, 11.5),
+		Vector3.new(12.5, 7.0, 11.5),
 	}
-	for _, pOff in ipairs(postOffsets) do
-		local post = createStudPart(buildingModel, "TimberPost", Vector3.new(1.4, 10.0, 1.4), bCF * CFrame.new(pOff.X, pOff.Y, pOff.Z), woodDark)
-		post.Material = Enum.Material.Wood
+	for _, cOff in ipairs(colOffsets) do
+		local buttress = createStudPart(buildingModel, "CornerButtress", Vector3.new(3.2, 4.0, 3.2), bCF * CFrame.new(cOff.X, 3.4, cOff.Z), stoneDark)
+		buttress.Material = Enum.Material.Cobblestone
+		local col = createStudPart(buildingModel, "TudorCornerPost", Vector3.new(2.4, 12.0, 2.4), bCF * CFrame.new(cOff.X, 8.4, cOff.Z), tudorWood)
+		col.Material = Enum.Material.Wood
 	end
 
-	-- 3. Striped Canopy Awning (Teal / Emerald & Gold stripes)
-	for s = -6, 6 do
-		local stripeColor = (math.abs(s) % 2 == 0) and awningGreen or awningGold
-		local stripe = createStudPart(buildingModel, "CanopyStripe_" .. s, Vector3.new(1.2, 0.6, 14), bCF * CFrame.new(s * 1.1, 11.2, 0) * CFrame.Angles(math.rad(-4), 0, 0), stripeColor)
-		stripe.Material = Enum.Material.Fabric
+	-- 3. Ground Floor Tudor Masonry Walls & Projecting Bay Windows
+	-- Back Wall
+	createStudPart(buildingModel, "BackWall", Vector3.new(24, 11.0, 1.6), bCF * CFrame.new(0, 7.1, -11.5), stoneDark)
+	-- Left Wall with Projecting Bay Window
+	createStudPart(buildingModel, "LeftWall", Vector3.new(1.6, 11.0, 16), bCF * CFrame.new(-12.5, 7.1, -2.5), stoneDark)
+	local lBayWindow = createStudPart(buildingModel, "LeftBayWindow", Vector3.new(2.4, 4.2, 4.5), bCF * CFrame.new(-13.0, 7.5, -2.5), windowGlow)
+	lBayWindow.Material = Enum.Material.Neon
+	local lBayRoof = createStudPart(buildingModel, "LeftBayRoof", Vector3.new(2.8, 0.8, 5.2), bCF * CFrame.new(-13.0, 9.8, -2.5), tudorWood)
+	lBayRoof.Material = Enum.Material.Wood
+
+	-- Right Wall with Projecting Bay Window
+	createStudPart(buildingModel, "RightWall", Vector3.new(1.6, 11.0, 16), bCF * CFrame.new(12.5, 7.1, -2.5), stoneDark)
+	local rBayWindow = createStudPart(buildingModel, "RightBayWindow", Vector3.new(2.4, 4.2, 4.5), bCF * CFrame.new(13.0, 7.5, -2.5), windowGlow)
+	rBayWindow.Material = Enum.Material.Neon
+	local rBayRoof = createStudPart(buildingModel, "RightBayRoof", Vector3.new(2.8, 0.8, 5.2), bCF * CFrame.new(13.0, 9.8, -2.5), tudorWood)
+	rBayRoof.Material = Enum.Material.Wood
+
+	-- Front Ground Facade: Stately Double Entrance Door behind Counter
+	createStudPart(buildingModel, "BackEntryWall", Vector3.new(24, 11.0, 1.6), bCF * CFrame.new(0, 7.1, 0), stoneDark)
+	local doorFrame = createStudPart(buildingModel, "DoorFrame", Vector3.new(5.0, 8.2, 2.0), bCF * CFrame.new(0, 5.7, 0.1), tudorWood)
+	doorFrame.Material = Enum.Material.Wood
+	local doorPanel = createStudPart(buildingModel, "DoorPanel", Vector3.new(4.2, 7.6, 0.4), bCF * CFrame.new(0, 5.5, 0.8), Color3.fromRGB(42, 25, 15))
+	doorPanel.Material = Enum.Material.WoodPlanks
+	-- Brass Door Knocker Rings
+	for _, dx in ipairs({ -1.0, 1.0 }) do
+		local knocker = createStudPart(buildingModel, "Knocker", Vector3.new(0.5, 0.8, 0.3), bCF * CFrame.new(dx, 5.5, 1.1), goldBrass)
+		knocker.Material = Enum.Material.SmoothPlastic
 	end
 
-	-- 4. Front Merchant Counter
-	local counter = createStudPart(buildingModel, "Counter", Vector3.new(12, 3.2, 2.4), bCF * CFrame.new(0, 2.6, 4.2), woodCounter)
+	-- Flanking Front Lanterns
+	for _, lx in ipairs({ -3.6, 3.6 }) do
+		createStudPart(buildingModel, "LanternBracket", Vector3.new(0.4, 0.4, 1.4), bCF * CFrame.new(lx, 7.5, 1.0), Color3.fromRGB(30, 30, 35))
+		local lLamp = createStudPart(buildingModel, "LanternGlass", Vector3.new(0.9, 1.4, 0.9), bCF * CFrame.new(lx, 7.2, 1.8), Color3.fromRGB(255, 200, 100))
+		lLamp.Material = Enum.Material.Neon
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 210, 120)
+		light.Brightness = 1.8
+		light.Range = 16
+		light.Parent = lLamp
+	end
+
+	-- 4. Jetted Second-Story (Tudor Timber Framing & Balcony)
+	-- Decorative Carved Wooden Corbels supporting the cantilevered second floor
+	local corbelX = { -11.5, -6.5, 0, 6.5, 11.5 }
+	for _, cx in ipairs(corbelX) do
+		local corbel = createStudPart(buildingModel, "CorbelFront", Vector3.new(1.2, 2.2, 2.0), bCF * CFrame.new(cx, 12.0, 2.0), tudorWood)
+		corbel.Material = Enum.Material.Wood
+	end
+	for _, cz in ipairs({ -9.0, -3.0, 3.0, 9.0 }) do
+		local corbelL = createStudPart(buildingModel, "CorbelLeft", Vector3.new(2.0, 2.2, 1.2), bCF * CFrame.new(-12.0, 12.0, cz), tudorWood)
+		corbelL.Material = Enum.Material.Wood
+		local corbelR = createStudPart(buildingModel, "CorbelRight", Vector3.new(2.0, 2.2, 1.2), bCF * CFrame.new(12.0, 12.0, cz), tudorWood)
+		corbelR.Material = Enum.Material.Wood
+	end
+
+	-- Jetted Floor Overhang Beam (29.6 x 1.4 x 28.0)
+	local jettedBeam = createStudPart(buildingModel, "JettedBeam", Vector3.new(29.6, 1.4, 27.6), bCF * CFrame.new(0, 13.2, 0), tudorWood)
+	jettedBeam.Material = Enum.Material.Wood
+
+	-- Second Story Plaster Core Walls (loftY = 17.5)
+	local loftY = 17.5
+	local loftCore = createStudPart(buildingModel, "LoftCore", Vector3.new(26.4, 7.5, 24.4), bCF * CFrame.new(0, loftY, 0), tudorPlaster)
+	loftCore.Material = Enum.Material.SmoothPlastic
+
+	-- Tudor Half-Timber Framing (Vertical Studs & Mid-Rail Belt)
+	local midRail = createStudPart(buildingModel, "TudorMidRail", Vector3.new(27.2, 0.8, 25.2), bCF * CFrame.new(0, loftY, 0), tudorWood)
+	midRail.Material = Enum.Material.Wood
+
+	-- 4 Corner Posts on 2nd floor
+	for _, cOff in ipairs(colOffsets) do
+		local upperPost = createStudPart(buildingModel, "UpperCornerPost", Vector3.new(2.0, 8.0, 2.0), bCF * CFrame.new(cOff.X * 1.04, loftY, cOff.Z * 1.04), tudorWood)
+		upperPost.Material = Enum.Material.Wood
+	end
+
+	-- Front Tudor Timber X-Braces (authentic medieval motif)
+	local xOffsets = { -7.0, 7.0 }
+	for _, xx in ipairs(xOffsets) do
+		local brace1 = createStudPart(buildingModel, "TudorBrace1", Vector3.new(0.6, 7.2, 0.6), bCF * CFrame.new(xx, loftY, 12.3) * CFrame.Angles(0, 0, math.rad(38)), tudorWood)
+		brace1.Material = Enum.Material.Wood
+		local brace2 = createStudPart(buildingModel, "TudorBrace2", Vector3.new(0.6, 7.2, 0.6), bCF * CFrame.new(xx, loftY, 12.3) * CFrame.Angles(0, 0, math.rad(-38)), tudorWood)
+		brace2.Material = Enum.Material.Wood
+	end
+
+	-- Second Story Front Guild Balcony (overhanging the front veranda)
+	local balDeck = createStudPart(buildingModel, "BalconyDeck", Vector3.new(12.0, 0.6, 4.2), bCF * CFrame.new(0, 14.0, 13.8), tudorWood)
+	balDeck.Material = Enum.Material.WoodPlanks
+	local balRailF = createStudPart(buildingModel, "BalconyRailF", Vector3.new(12.0, 2.2, 0.6), bCF * CFrame.new(0, 15.2, 15.6), tudorWood)
+	balRailF.Material = Enum.Material.Wood
+	local balRailL = createStudPart(buildingModel, "BalconyRailL", Vector3.new(0.6, 2.2, 3.8), bCF * CFrame.new(-5.7, 15.2, 13.8), tudorWood)
+	balRailL.Material = Enum.Material.Wood
+	local balRailR = createStudPart(buildingModel, "BalconyRailR", Vector3.new(0.6, 2.2, 3.8), bCF * CFrame.new(5.7, 15.2, 13.8), tudorWood)
+	balRailR.Material = Enum.Material.Wood
+
+	-- Balcony Flower Planters with Blooming Flowers
+	local flowerBox = createStudPart(buildingModel, "FlowerBox", Vector3.new(10.0, 0.8, 1.0), bCF * CFrame.new(0, 15.2, 16.0), Color3.fromRGB(110, 65, 35))
+	flowerBox.Material = Enum.Material.Wood
+	local foliage = createStudPart(buildingModel, "BalconyFoliage", Vector3.new(9.6, 0.6, 0.8), bCF * CFrame.new(0, 15.8, 16.0), Color3.fromRGB(45, 140, 50))
+	foliage.Material = Enum.Material.Grass
+	-- Colorful flower blossom studs
+	local flowerColors = { Color3.fromRGB(255, 100, 120), Color3.fromRGB(255, 220, 60), Color3.fromRGB(180, 100, 240), Color3.fromRGB(255, 140, 40) }
+	for fx = -4, 4, 2 do
+		local flower = createStudPart(buildingModel, "Blossom", Vector3.new(0.7, 0.5, 0.7), bCF * CFrame.new(fx, 16.3, 16.0), flowerColors[(math.abs(fx) % 4) + 1])
+		flower.Material = Enum.Material.SmoothPlastic
+	end
+
+	-- Hanging Brass Birdcage suspended beneath balcony with tiny golden canary
+	createStudPart(buildingModel, "CageRod", Vector3.new(0.2, 2.0, 0.2), bCF * CFrame.new(0, 12.5, 13.5), goldBrass)
+	local cageDome = createStudPart(buildingModel, "CageDome", Vector3.new(1.8, 2.2, 1.8), bCF * CFrame.new(0, 10.5, 13.5), goldBrass)
+	cageDome.Material = Enum.Material.Glass
+	cageDome.Transparency = 0.4
+	local canary = createStudPart(buildingModel, "GoldenCanary", Vector3.new(0.6, 0.6, 0.8), bCF * CFrame.new(0, 10.5, 13.5), Color3.fromRGB(255, 225, 40))
+	canary.Material = Enum.Material.SmoothPlastic
+
+	-- Second Story Windows (Triple Leaded Casement Windows)
+	for _, wx in ipairs({ -2.6, 0, 2.6 }) do
+		local win = createStudPart(buildingModel, "UpperWindow_" .. wx, Vector3.new(1.8, 3.4, 0.4), bCF * CFrame.new(wx, 17.5, 12.3), windowGlow)
+		win.Material = Enum.Material.Neon
+		local winFrame = createStudPart(buildingModel, "UpperWinFrame_" .. wx, Vector3.new(2.2, 3.8, 0.6), bCF * CFrame.new(wx, 17.5, 12.3), tudorWood)
+		winFrame.Material = Enum.Material.Wood
+	end
+
+	-- 5. Steep Tudor Emerald & Gold Gable Roof Structure
+	-- Roof Gables (Front & Back Triangular Peaks)
+	for _, gz in ipairs({ -12.3, 12.3 }) do
+		for tier = 1, 4 do
+			local gw = 26 - (tier * 5.8)
+			local gy = 21.0 + (tier * 1.3)
+			local gable = createStudPart(buildingModel, "GableTier", Vector3.new(gw, 1.4, 1.0), bCF * CFrame.new(0, gy, gz), tudorPlaster)
+			gable.Material = Enum.Material.SmoothPlastic
+		end
+		-- Carved Dark Wood Bargeboard Trim
+		createStudPart(buildingModel, "GableTrimL", Vector3.new(1.0, 10.0, 1.4), bCF * CFrame.new(-7.0, 24.0, gz) * CFrame.Angles(0, 0, math.rad(-42)), tudorWood)
+		createStudPart(buildingModel, "GableTrimR", Vector3.new(1.0, 10.0, 1.4), bCF * CFrame.new(7.0, 24.0, gz) * CFrame.Angles(0, 0, math.rad(42)), tudorWood)
+	end
+
+	-- Main Sloped Roof Pitches (Emerald Green Slate Tiles)
+	local roofSlopeL = createStudPart(buildingModel, "RoofSlopeL", Vector3.new(1.4, 16.2, 28.0), bCF * CFrame.new(-7.8, 24.5, 0) * CFrame.Angles(0, 0, math.rad(-44)), roofEmerald)
+	roofSlopeL.Material = Enum.Material.Slate
+	local roofSlopeR = createStudPart(buildingModel, "RoofSlopeR", Vector3.new(1.4, 16.2, 28.0), bCF * CFrame.new(7.8, 24.5, 0) * CFrame.Angles(0, 0, math.rad(44)), roofEmerald)
+	roofSlopeR.Material = Enum.Material.Slate
+
+	-- Heavy Gold Ridge Cap Beam
+	local ridgeCap = createStudPart(buildingModel, "RoofRidgeCap", Vector3.new(2.8, 1.2, 29.0), bCF * CFrame.new(0, 29.8, 0), roofGold)
+	ridgeCap.Material = Enum.Material.SmoothPlastic
+
+	-- Roof Ridge Finials (Front and Back brass finials)
+	for _, fz in ipairs({ -14.2, 14.2 }) do
+		local finial = createStudPart(buildingModel, "RidgeFinial", Vector3.new(1.0, 3.2, 1.0), bCF * CFrame.new(0, 31.2, fz), goldBrass)
+		finial.Material = Enum.Material.SmoothPlastic
+	end
+
+	-- Center Front Attic Dormer with Diamond Light
+	createStudPart(buildingModel, "DormerBase", Vector3.new(6.0, 3.5, 4.0), bCF * CFrame.new(0, 24.8, 8.0), tudorPlaster)
+	createStudPart(buildingModel, "DormerRoofL", Vector3.new(0.8, 4.2, 4.6), bCF * CFrame.new(-2.2, 26.8, 8.0) * CFrame.Angles(0, 0, math.rad(-38)), roofEmerald)
+	createStudPart(buildingModel, "DormerRoofR", Vector3.new(0.8, 4.2, 4.6), bCF * CFrame.new(2.2, 26.8, 8.0) * CFrame.Angles(0, 0, math.rad(38)), roofEmerald)
+	local dormerWin = createStudPart(buildingModel, "DormerWindow", Vector3.new(2.4, 2.2, 0.4), bCF * CFrame.new(0, 25.0, 10.1), windowGlow)
+	dormerWin.Material = Enum.Material.Neon
+
+	-- 3D Golden Weathervane atop Center Roof Ridge Spire
+	createStudPart(buildingModel, "WV_Spire", Vector3.new(0.4, 4.2, 0.4), bCF * CFrame.new(0, 32.2, 0), goldBrass)
+	local wvOrb = createStudPart(buildingModel, "WV_Orb", Vector3.new(1.2, 1.2, 1.2), bCF * CFrame.new(0, 33.6, 0), goldBrass)
+	wvOrb.Shape = Enum.PartType.Ball
+	-- Compass Directional Cross Arms
+	createStudPart(buildingModel, "WV_ArmNS", Vector3.new(0.25, 0.25, 3.6), bCF * CFrame.new(0, 33.6, 0), goldBrass)
+	createStudPart(buildingModel, "WV_ArmEW", Vector3.new(3.6, 0.25, 0.25), bCF * CFrame.new(0, 33.6, 0), goldBrass)
+	-- Golden Silhouette Mascot (Finneas's Proud Golden Rooster)
+	local wvMascot = createStudPart(buildingModel, "WV_Mascot", Vector3.new(0.3, 1.8, 2.4), bCF * CFrame.new(0, 35.0, 0), goldBrass)
+	wvMascot.Material = Enum.Material.SmoothPlastic
+
+	-- Side Red Brick / Fieldstone Chimney
+	createStudPart(buildingModel, "ChimneyBase", Vector3.new(3.6, 28.0, 3.6), bCF * CFrame.new(13.4, 15.0, -3.5), Color3.fromRGB(130, 52, 42))
+	local chimCap = createStudPart(buildingModel, "ChimneyCap", Vector3.new(4.2, 0.8, 4.2), bCF * CFrame.new(13.4, 29.4, -3.5), stoneDark)
+	chimCap.Material = Enum.Material.Cobblestone
+	local chimPot = createStudPart(buildingModel, "ChimneyPot", Vector3.new(1.6, 2.0, 1.6), bCF * CFrame.new(13.4, 30.6, -3.5), Color3.fromRGB(160, 68, 52))
+	local chimSmoke = Instance.new("Smoke")
+	chimSmoke.Color = Color3.fromRGB(225, 225, 230)
+	chimSmoke.Size = 1.4
+	chimSmoke.RiseVelocity = 3.5
+	chimSmoke.Opacity = 0.25
+	chimSmoke.Parent = chimPot
+
+	-- 6. Front Covered Veranda & Grand Pet Exchange Counter
+	-- Front Porch Canopy (Striped Emerald & Gold scalloped valence trim)
+	for s = -9, 9 do
+		local stripeColor = (math.abs(s) % 2 == 0) and roofEmerald or roofGold
+		local val = createStudPart(buildingModel, "Valence_" .. s, Vector3.new(1.1, 1.2, 0.4), bCF * CFrame.new(s * 1.15, 12.8, 11.8), stripeColor)
+		val.Material = Enum.Material.Fabric
+	end
+
+	-- Grand Curved Mahogany Exchange Counter (Vector3.new(15, 3.2, 2.6))
+	local counter = createStudPart(buildingModel, "Counter", Vector3.new(15.0, 3.2, 2.6), bCF * CFrame.new(0, 2.8, 5.2), mahoganyCounter)
 	counter.Material = Enum.Material.WoodPlanks
-	createStudPart(buildingModel, "CounterTop", Vector3.new(13.2, 0.4, 3.2), bCF * CFrame.new(0, 4.3, 4.2), woodDark)
+	local counterTop = createStudPart(buildingModel, "CounterTop", Vector3.new(16.4, 0.5, 3.4), bCF * CFrame.new(0, 4.5, 5.2), tudorWood)
+	counterTop.Material = Enum.Material.Wood
 
-	-- 5. Counter Props: Brass Scales, Coin Bag & Pet Basket
-	-- Brass Balance Scale
-	createStudPart(buildingModel, "ScaleBase", Vector3.new(1.2, 0.3, 1.2), bCF * CFrame.new(-3.8, 4.6, 4.2), goldBrass)
-	createStudPart(buildingModel, "ScalePillar", Vector3.new(0.3, 1.5, 0.3), bCF * CFrame.new(-3.8, 5.4, 4.2), goldBrass)
-	createStudPart(buildingModel, "ScaleBeam", Vector3.new(2.4, 0.2, 0.2), bCF * CFrame.new(-3.8, 6.1, 4.2), goldBrass)
-
-	-- Gold Coin Pouch
-	local coinBag = createStudPart(buildingModel, "CoinBag", Vector3.new(1.2, 1.0, 1.2), bCF * CFrame.new(-1.8, 4.9, 4.2), Color3.fromRGB(180, 140, 50))
-	coinBag.Material = Enum.Material.Fabric
-
-	-- Wicker Pet Bed with Sleeping Mini Doge
-	local petBed = createStudPart(buildingModel, "PetBed", Vector3.new(2.8, 0.6, 2.8), bCF * CFrame.new(3.8, 4.7, 4.2), Color3.fromRGB(160, 110, 60))
-	petBed.Material = Enum.Material.Wood
-	local miniPet = createStudPart(buildingModel, "MiniPup", Vector3.new(1.4, 1.2, 1.6), bCF * CFrame.new(3.8, 5.3, 4.2), Color3.fromRGB(240, 200, 80))
-	miniPet.Material = Enum.Material.SmoothPlastic
-
-	-- 6. Background Pet Crates and Shelves
-	createStudPart(buildingModel, "BackShelves", Vector3.new(12, 7.0, 1.4), bCF * CFrame.new(0, 5.0, -5.2), woodDark)
-	for cx = -4, 4, 4 do
-		local petCrate = createStudPart(buildingModel, "PetCrate", Vector3.new(2.5, 2.2, 2.5), bCF * CFrame.new(cx, 2.2, -3.2), Color3.fromRGB(140, 95, 55))
-		petCrate.Material = Enum.Material.Wood
+	-- Counter Props:
+	-- A. 3D Dual-Pan Brass Balance Scale
+	createStudPart(buildingModel, "ScaleBase", Vector3.new(1.4, 0.35, 1.4), bCF * CFrame.new(-4.2, 4.8, 5.2), goldBrass)
+	createStudPart(buildingModel, "ScalePillar", Vector3.new(0.35, 1.8, 0.35), bCF * CFrame.new(-4.2, 5.7, 5.2), goldBrass)
+	createStudPart(buildingModel, "ScaleBeam", Vector3.new(2.8, 0.25, 0.25), bCF * CFrame.new(-4.2, 6.5, 5.2), goldBrass)
+	for _, pX in ipairs({ -5.4, -3.0 }) do
+		createStudPart(buildingModel, "ScaleCord", Vector3.new(0.1, 0.8, 0.1), bCF * CFrame.new(pX, 6.0, 5.2), goldBrass)
+		local pan = createStudPart(buildingModel, "ScalePan", Vector3.new(1.0, 0.15, 1.0), bCF * CFrame.new(pX, 5.5, 5.2), goldBrass)
+		pan.Shape = Enum.PartType.Cylinder
 	end
 
-	-- 7. FINNEAS THE PET MERCHANT NPC (Behind the Counter)
+	-- B. Rich Leather Gold Coin Pouches & Stacked Gold Coins
+	local coinBag1 = createStudPart(buildingModel, "CoinBag1", Vector3.new(1.4, 1.2, 1.4), bCF * CFrame.new(-1.8, 5.2, 5.2), Color3.fromRGB(160, 110, 45))
+	coinBag1.Material = Enum.Material.Fabric
+	local coinBag2 = createStudPart(buildingModel, "CoinBag2", Vector3.new(1.0, 0.9, 1.0), bCF * CFrame.new(-2.6, 5.0, 5.4), Color3.fromRGB(180, 130, 55))
+	coinBag2.Material = Enum.Material.Fabric
+	-- Gold coin stack studs
+	for ci = 1, 3 do
+		local coin = createStudPart(buildingModel, "GoldCoin_" .. ci, Vector3.new(0.7, 0.2, 0.7), bCF * CFrame.new(-1.4, 4.7 + (ci * 0.2), 5.5), goldBrass)
+		coin.Shape = Enum.PartType.Cylinder
+	end
+
+	-- C. Merchant's Open Ledger Register Book on Wooden Easel
+	createStudPart(buildingModel, "LedgerEasel", Vector3.new(1.6, 0.4, 1.4), bCF * CFrame.new(2.2, 4.9, 5.2) * CFrame.Angles(math.rad(22), 0, 0), tudorWood)
+	createStudPart(buildingModel, "LedgerPageL", Vector3.new(0.9, 0.15, 1.2), bCF * CFrame.new(1.8, 5.1, 5.2) * CFrame.Angles(math.rad(22), math.rad(-10), 0), Color3.fromRGB(245, 240, 225))
+	createStudPart(buildingModel, "LedgerPageR", Vector3.new(0.9, 0.15, 1.2), bCF * CFrame.new(2.6, 5.1, 5.2) * CFrame.Angles(math.rad(22), math.rad(10), 0), Color3.fromRGB(245, 240, 225))
+	createStudPart(buildingModel, "QuillPen", Vector3.new(0.15, 0.9, 0.15), bCF * CFrame.new(3.2, 5.2, 5.1) * CFrame.Angles(math.rad(-15), 0, math.rad(25)), Color3.fromRGB(230, 230, 240))
+
+	-- D. Glass Jars with Colorful Pet Treats
+	local jar1 = createStudPart(buildingModel, "TreatJar1", Vector3.new(1.0, 1.4, 1.0), bCF * CFrame.new(4.5, 5.3, 5.2), Color3.fromRGB(200, 240, 255))
+	jar1.Material = Enum.Material.Glass
+	jar1.Transparency = 0.4
+	createStudPart(buildingModel, "DogBoneTreat", Vector3.new(0.7, 0.3, 0.3), bCF * CFrame.new(4.5, 5.1, 5.2), Color3.fromRGB(240, 230, 210))
+
+	-- 7. Porch Pet Amenities & Props
+	-- A. Deluxe Multi-Tier Cat Scratching Tree (Left Porch)
+	local catTreeBase = createStudPart(buildingModel, "CatTreeBase", Vector3.new(3.2, 0.4, 3.2), bCF * CFrame.new(-9.5, 1.8, 6.0), Color3.fromRGB(120, 80, 45))
+	catTreeBase.Material = Enum.Material.Wood
+	local catPost1 = createStudPart(buildingModel, "CatPost1", Vector3.new(0.9, 5.2, 0.9), bCF * CFrame.new(-9.5, 4.4, 6.0), Color3.fromRGB(190, 170, 130))
+	catPost1.Material = Enum.Material.Fabric -- Sisal rope look
+	local perch1 = createStudPart(buildingModel, "Perch1", Vector3.new(2.4, 0.4, 2.4), bCF * CFrame.new(-9.5, 5.2, 6.0), Color3.fromRGB(35, 135, 125))
+	perch1.Material = Enum.Material.Fabric
+	local catPost2 = createStudPart(buildingModel, "CatPost2", Vector3.new(0.7, 3.2, 0.7), bCF * CFrame.new(-9.5, 7.0, 6.0), Color3.fromRGB(190, 170, 130))
+	catPost2.Material = Enum.Material.Fabric
+	local perch2 = createStudPart(buildingModel, "Perch2", Vector3.new(2.0, 0.4, 2.0), bCF * CFrame.new(-9.5, 8.7, 6.0), Color3.fromRGB(35, 135, 125))
+	perch2.Material = Enum.Material.Fabric
+	-- Dangling Cat Toy Ball
+	local toyBall = createStudPart(buildingModel, "ToyBall", Vector3.new(0.6, 0.6, 0.6), bCF * CFrame.new(-8.6, 7.8, 6.0), Color3.fromRGB(255, 90, 90))
+	toyBall.Shape = Enum.PartType.Ball
+
+	-- B. Luxury Wicker Pet Bed with Sleeping Golden Pup (Right Porch)
+	local petBedRing = createStudPart(buildingModel, "PetBedRing", Vector3.new(3.4, 0.8, 3.4), bCF * CFrame.new(9.5, 1.9, 6.0), Color3.fromRGB(150, 100, 55))
+	petBedRing.Material = Enum.Material.Wood
+	local cushion = createStudPart(buildingModel, "BedCushion", Vector3.new(2.8, 0.5, 2.8), bCF * CFrame.new(9.5, 2.1, 6.0), velvetRed)
+	cushion.Material = Enum.Material.Fabric
+	local sleepingPup = createStudPart(buildingModel, "SleepingPup", Vector3.new(1.6, 1.0, 1.8), bCF * CFrame.new(9.5, 2.7, 6.0), Color3.fromRGB(240, 195, 80))
+	sleepingPup.Material = Enum.Material.SmoothPlastic
+	local pupEars = createStudPart(buildingModel, "PupEars", Vector3.new(1.8, 0.4, 0.6), bCF * CFrame.new(9.5, 3.2, 5.7), Color3.fromRGB(210, 160, 60))
+	pupEars.Material = Enum.Material.SmoothPlastic
+
+	-- C. Stack of Exotic Wooden Pet Travel Crates & Burlap Kibble Sacks
+	local cratePositions = {
+		{ pos = Vector3.new(-9.5, 2.4, 2.0), sz = Vector3.new(2.8, 2.4, 2.8), col = Color3.fromRGB(140, 95, 55) },
+		{ pos = Vector3.new(-9.5, 4.6, 2.0), sz = Vector3.new(2.4, 2.0, 2.4), col = Color3.fromRGB(160, 110, 65) },
+		{ pos = Vector3.new(9.5, 2.4, 2.0), sz = Vector3.new(2.8, 2.4, 2.8), col = Color3.fromRGB(130, 85, 48) },
+	}
+	for _, cr in ipairs(cratePositions) do
+		local crate = createStudPart(buildingModel, "PetTravelCrate", cr.sz, bCF * CFrame.new(cr.pos.X, cr.pos.Y, cr.pos.Z), cr.col)
+		crate.Material = Enum.Material.Wood
+		local bracket = createStudPart(buildingModel, "CrateBracket", Vector3.new(cr.sz.X + 0.1, 0.3, cr.sz.Z + 0.1), bCF * CFrame.new(cr.pos.X, cr.pos.Y, cr.pos.Z), goldBrass)
+		bracket.Material = Enum.Material.SmoothPlastic
+	end
+	-- Burlap Kibble Sacks tied with string
+	for _, sx in ipairs({ 8.0, 9.5 }) do
+		local sack = createStudPart(buildingModel, "KibbleSack", Vector3.new(1.6, 1.8, 1.6), bCF * CFrame.new(sx, 2.2, 9.5), Color3.fromRGB(190, 160, 115))
+		sack.Material = Enum.Material.Fabric
+	end
+
+	-- 8. THE LIVE "MARKET MOOD CRYSTAL" MONUMENT
+	-- A magnificent magical attraction indicating Finneas's fluctuating market mind!
+	createStudPart(buildingModel, "CrystalPedestalBase", Vector3.new(2.8, 0.8, 2.8), bCF * CFrame.new(-6.2, 1.8, 10.5), stoneDark)
+	local pedShaft = createStudPart(buildingModel, "CrystalPedestalShaft", Vector3.new(2.0, 2.4, 2.0), bCF * CFrame.new(-6.2, 3.2, 10.5), stonePaving)
+	pedShaft.Material = Enum.Material.Cobblestone
+	local pedCap = createStudPart(buildingModel, "CrystalPedestalCap", Vector3.new(2.4, 0.5, 2.4), bCF * CFrame.new(-6.2, 4.6, 10.5), goldBrass)
+	pedCap.Material = Enum.Material.SmoothPlastic
+
+	-- 3D Faceted Glowing Mood Crystal hovering above the pedestal
+	local moodCrystal = createStudPart(buildingModel, "MarketMoodCrystal", Vector3.new(1.6, 2.4, 1.6), bCF * CFrame.new(-6.2, 6.2, 10.5), crystalCyan)
+	moodCrystal.Material = Enum.Material.Neon
+	local crystalLight = Instance.new("PointLight")
+	crystalLight.Color = crystalCyan
+	crystalLight.Brightness = 2.2
+	crystalLight.Range = 14
+	crystalLight.Parent = moodCrystal
+
+	local crystalSparkles = Instance.new("Sparkles")
+	crystalSparkles.SparkleColor = crystalCyan
+	crystalSparkles.Parent = moodCrystal
+
+	-- Gentle Bobbing / Rotation script for the Mood Crystal
+	task.spawn(function()
+		local originCF = bCF * CFrame.new(-6.2, 6.2, 10.5)
+		local t = 0
+		while moodCrystal and moodCrystal.Parent do
+			t += 0.03
+			moodCrystal.CFrame = originCF * CFrame.new(0, math.sin(t * 2.0) * 0.25, 0) * CFrame.Angles(0, t * 1.5, math.sin(t) * 0.1)
+			task.wait(0.03)
+		end
+	end)
+
+	-- 9. 3D ORNATE HANGING GUILD SIGN (Extending from front-left post)
+	local signArm = createStudPart(buildingModel, "SignBracket", Vector3.new(0.4, 0.4, 4.2), bCF * CFrame.new(-12.5, 11.2, 13.6), Color3.fromRGB(35, 38, 45))
+	signArm.Material = Enum.Material.Metal
+	local signBoard = createStudPart(buildingModel, "GuildSignBoard", Vector3.new(0.4, 3.2, 4.0), bCF * CFrame.new(-12.5, 9.2, 13.6), Color3.fromRGB(52, 32, 18))
+	signBoard.Material = Enum.Material.Wood
+	local signBorder = createStudPart(buildingModel, "GuildSignBorder", Vector3.new(0.5, 3.4, 4.2), bCF * CFrame.new(-12.5, 9.2, 13.6), goldBrass)
+	signBorder.Material = Enum.Material.SmoothPlastic
+	-- 3D Golden Paw Emblem in relief on the sign
+	for _, sFace in ipairs({ -0.28, 0.28 }) do
+		local pawPad = createStudPart(buildingModel, "SignPawPad", Vector3.new(0.15, 1.0, 1.2), bCF * CFrame.new(-12.5 + sFace, 8.9, 13.6), goldBrass)
+		pawPad.Shape = Enum.PartType.Cylinder
+		pawPad.Material = Enum.Material.SmoothPlastic
+		for _, tx in ipairs({ -0.5, 0, 0.5 }) do
+			local toe = createStudPart(buildingModel, "SignPawToe", Vector3.new(0.12, 0.45, 0.45), bCF * CFrame.new(-12.5 + sFace, 9.8, 13.6 + tx), goldBrass)
+			toe.Shape = Enum.PartType.Ball
+			toe.Material = Enum.Material.SmoothPlastic
+		end
+	end
+
+	-- 10. FINNEAS THE PET MERCHANT NPC (Behind the Counter)
 	local npcModel = Instance.new("Model")
 	npcModel.Name = "FinneasMerchant"
 
-	local npcCF = bCF * CFrame.new(0, 1.2, 1.8) -- Standing behind counter facing +Z local
+	local npcCF = bCF * CFrame.new(0, 1.4, 2.5) -- Standing behind counter facing +Z local
 
-	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 3.0, 0), awningGreen)
-	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 1.0, 0), Color3.fromRGB(38, 42, 50))
-	createStudPart(npcModel, "RightLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(0.5, 1.0, 0), Color3.fromRGB(38, 42, 50))
+	local torso = createStudPart(npcModel, "Torso", Vector3.new(2, 2, 1), npcCF * CFrame.new(0, 3.0, 0), roofEmerald)
+	createStudPart(npcModel, "LeftLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(-0.5, 1.0, 0), Color3.fromRGB(35, 38, 46))
+	createStudPart(npcModel, "RightLeg", Vector3.new(1, 2, 1), npcCF * CFrame.new(0.5, 1.0, 0), Color3.fromRGB(35, 38, 46))
+
+	-- Crisp White Cravat / Collar & Golden Vest Buttons
+	local cravat = createStudPart(npcModel, "Cravat", Vector3.new(0.9, 0.7, 0.15), npcCF * CFrame.new(0, 3.6, 0.52), Color3.fromRGB(248, 248, 252))
+	cravat.Material = Enum.Material.SmoothPlastic
+	for bi = 1, 3 do
+		local btn = createStudPart(npcModel, "VestButton_" .. bi, Vector3.new(0.2, 0.2, 0.1), npcCF * CFrame.new(0, 3.2 - (bi * 0.4), 0.52), goldBrass)
+		btn.Shape = Enum.PartType.Ball
+		btn.Material = Enum.Material.SmoothPlastic
+	end
 
 	local head = createStudPart(npcModel, "Head", Vector3.new(1.25, 1.25, 1.25), npcCF * CFrame.new(0, 4.4, 0), Color3.fromRGB(255, 215, 175), true, Enum.SurfaceType.Smooth)
 	local face = Instance.new("Decal")
@@ -1384,26 +2013,33 @@ function TownBuildingBuilder.buildPetMerchantStall(parent: Instance): Model
 	face.Face = Enum.NormalId.Front
 	face.Parent = head
 
+	-- Aristocratic Monocle on Finneas's Right Eye
+	local monocleRing = createStudPart(npcModel, "MonocleRing", Vector3.new(0.45, 0.45, 0.15), npcCF * CFrame.new(0.32, 4.45, 0.65), goldBrass)
+	monocleRing.Material = Enum.Material.SmoothPlastic
+	local monocleLens = createStudPart(npcModel, "MonocleLens", Vector3.new(0.35, 0.35, 0.1), npcCF * CFrame.new(0.32, 4.45, 0.65), Color3.fromRGB(200, 240, 255))
+	monocleLens.Material = Enum.Material.Glass
+	monocleLens.Transparency = 0.3
+
 	-- Stylish Merchant Top Hat with Gold Band
-	createStudPart(npcModel, "HatBrim", Vector3.new(2.6, 0.35, 2.6), npcCF * CFrame.new(0, 5.1, 0), Color3.fromRGB(30, 35, 45))
-	createStudPart(npcModel, "HatBand", Vector3.new(1.7, 0.4, 1.7), npcCF * CFrame.new(0, 5.4, 0), awningGold)
-	createStudPart(npcModel, "HatCrown", Vector3.new(1.6, 1.2, 1.6), npcCF * CFrame.new(0, 6.0, 0), Color3.fromRGB(30, 35, 45))
+	createStudPart(npcModel, "HatBrim", Vector3.new(2.6, 0.35, 2.6), npcCF * CFrame.new(0, 5.15, 0), Color3.fromRGB(28, 32, 40))
+	createStudPart(npcModel, "HatBand", Vector3.new(1.7, 0.4, 1.7), npcCF * CFrame.new(0, 5.45, 0), roofGold)
+	createStudPart(npcModel, "HatCrown", Vector3.new(1.6, 1.4, 1.6), npcCF * CFrame.new(0, 6.15, 0), Color3.fromRGB(28, 32, 40))
 
 	-- Arms resting eagerly on counter
-	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 3.0, 0.4) * CFrame.Angles(math.rad(28), 0, 0), awningGreen)
-	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 3.0, 0.4) * CFrame.Angles(math.rad(28), 0, 0), awningGreen)
+	createStudPart(npcModel, "LeftArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(-1.4, 3.0, 0.5) * CFrame.Angles(math.rad(28), 0, 0), roofEmerald)
+	createStudPart(npcModel, "RightArm", Vector3.new(1, 2, 1), npcCF * CFrame.new(1.4, 3.0, 0.5) * CFrame.Angles(math.rad(28), 0, 0), roofEmerald)
 
-	-- 8. Signboard Overhead Title Billboard (With Live "Mind Changes" Counter)
+	-- 11. Signboard Overhead Title Billboard (With Live "Mind Changes" Counter)
 	local titleGui = Instance.new("BillboardGui")
 	titleGui.Name = "FinneasBillboard"
-	titleGui.Size = UDim2.new(0, 300, 0, 85)
-	titleGui.StudsOffset = Vector3.new(0, 4.8, 0)
+	titleGui.Size = UDim2.new(0, 320, 0, 90)
+	titleGui.StudsOffset = Vector3.new(0, 5.2, 0)
 	titleGui.AlwaysOnTop = false
-	titleGui.MaxDistance = 75
+	titleGui.MaxDistance = 80
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "TitleLabel"
-	titleLabel.Size = UDim2.new(1, 0, 0, 26)
+	titleLabel.Size = UDim2.new(1, 0, 0, 28)
 	titleLabel.Position = UDim2.new(0, 0, 0, 0)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = "🐾 FINNEAS THE PET MERCHANT 🐾"
@@ -1415,8 +2051,8 @@ function TownBuildingBuilder.buildPetMerchantStall(parent: Instance): Model
 
 	local timerLabel = Instance.new("TextLabel")
 	timerLabel.Name = "TimerLabel"
-	timerLabel.Size = UDim2.new(1, 0, 0, 24)
-	timerLabel.Position = UDim2.new(0, 0, 0, 26)
+	timerLabel.Size = UDim2.new(1, 0, 0, 26)
+	timerLabel.Position = UDim2.new(0, 0, 0, 28)
 	timerLabel.BackgroundTransparency = 1
 	timerLabel.Text = "🧠 Mind changes in: 60s"
 	timerLabel.TextColor3 = Color3.fromRGB(0, 240, 255)
@@ -1427,24 +2063,24 @@ function TownBuildingBuilder.buildPetMerchantStall(parent: Instance): Model
 
 	local rateLabel = Instance.new("TextLabel")
 	rateLabel.Name = "RateLabel"
-	rateLabel.Size = UDim2.new(1, 0, 0, 22)
-	rateLabel.Position = UDim2.new(0, 0, 0, 50)
+	rateLabel.Size = UDim2.new(1, 0, 0, 24)
+	rateLabel.Position = UDim2.new(0, 0, 0, 54)
 	rateLabel.BackgroundTransparency = 1
 	rateLabel.Text = "Market: ⚖️ 1.00x FAIR RATES"
 	rateLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
 	rateLabel.Font = Enum.Font.GothamBlack
-	rateLabel.TextSize = 12
+	rateLabel.TextSize = 13
 	rateLabel.TextStrokeTransparency = 0.2
 	rateLabel.Parent = titleGui
 
 	titleGui.Parent = head
 	npcModel.Parent = buildingModel
 
-	-- 9. Invisible Interaction Part & Proximity Prompt
+	-- 12. Invisible Interaction Part & Proximity Prompt
 	local interactionPart = Instance.new("Part")
 	interactionPart.Name = "FinneasInteractionPart"
-	interactionPart.Size = Vector3.new(12, 6, 6)
-	interactionPart.CFrame = bCF * CFrame.new(0, 3.6, 6.0)
+	interactionPart.Size = Vector3.new(16, 7, 7)
+	interactionPart.CFrame = bCF * CFrame.new(0, 3.8, 7.2)
 	interactionPart.Transparency = 1
 	interactionPart.CanCollide = false
 	interactionPart.CanTouch = true

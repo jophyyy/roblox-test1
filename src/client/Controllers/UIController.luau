@@ -8137,84 +8137,310 @@ function UIController.buildHUD()
 	vipBadge.Parent = badgeRow
 	applyTextOutline(vipBadge, 2.5)
 
-	-- SIDE MENU BUTTONS
-	local sideMenu = Instance.new("ScrollingFrame")
-	sideMenu.Name = "SideMenu"
-	sideMenu.Size = UDim2.new(0, 154, 0.78, 0)
-	sideMenu.Position = UDim2.new(0, 16, 0.5, 0)
-	sideMenu.AnchorPoint = Vector2.new(0, 0.5)
-	sideMenu.BackgroundTransparency = 1
-	sideMenu.BorderSizePixel = 0
-	sideMenu.ScrollBarThickness = 3
-	sideMenu.ScrollBarImageTransparency = 0.5
-	sideMenu.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	sideMenu.CanvasSize = UDim2.new(0, 0, 0, 0)
-	sideMenu.Parent = screenGui
+	-- =========================================================================
+	-- DUAL-SIDE STUD MENU BUTTONS & COLLAPSIBLE ARROW TABS
+	-- =========================================================================
+	local leftMenuOpen = true
+	local rightMenuOpen = true
 
-	local list = Instance.new("UIListLayout")
-	list.Padding = UDim.new(0, 6)
-	list.Parent = sideMenu
+	-- Helper to create authentic 3D retro stud-brick buttons
+	local function createStudMenuButton(
+		name: string,
+		text: string,
+		color: Color3,
+		onClick: () -> (),
+		parentFrame: ScrollingFrame
+	): TextButton
+		local container = Instance.new("Frame")
+		container.Name = name .. "_Container"
+		container.Size = UDim2.new(1, -6, 0, 48)
+		container.BackgroundTransparency = 1
+		container.BorderSizePixel = 0
+		container.Parent = parentFrame
 
-	local function createMenuButton(name: string, text: string, color: Color3, onClick: () -> ()): TextButton
+		-- 3D Brick Bottom Shadow Lip (creates authentic physical plastic brick depth)
+		local shadowLip = Instance.new("Frame")
+		shadowLip.Name = "ShadowLip"
+		shadowLip.Size = UDim2.new(1, 0, 1, 0)
+		shadowLip.Position = UDim2.new(0, 0, 0, 4)
+		shadowLip.BackgroundColor3 = Color3.new(color.R * 0.45, color.G * 0.45, color.B * 0.45)
+		shadowLip.BorderSizePixel = 0
+		shadowLip.Parent = container
+
+		local lipCorner = Instance.new("UICorner")
+		lipCorner.CornerRadius = UDim.new(0, 10)
+		lipCorner.Parent = shadowLip
+
+		-- Main Depressing Brick Button Body
 		local btn = Instance.new("TextButton")
 		btn.Name = name
-		btn.Size = UDim2.new(1, 0, 0, 39)
+		btn.Size = UDim2.new(1, 0, 1, 0)
+		btn.Position = UDim2.new(0, 0, 0, 0)
 		btn.BackgroundColor3 = color
 		btn.Text = text
 		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		btn.Font = Enum.Font.GothamBold
-		btn.TextSize = 14
+		btn.Font = Enum.Font.FredokaOne
+		btn.TextSize = 16
 		btn.BorderSizePixel = 0
-		btn.AutoButtonColor = true
-		btn.Parent = sideMenu
+		btn.AutoButtonColor = false
+		btn.Parent = container
 
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 10)
-		corner.Parent = btn
+		local btnCorner = Instance.new("UICorner")
+		btnCorner.CornerRadius = UDim.new(0, 10)
+		btnCorner.Parent = btn
 
 		local stroke = Instance.new("UIStroke")
+		stroke.Name = "ButtonStroke"
 		stroke.Color = Color3.fromRGB(255, 255, 255)
-		stroke.Transparency = 0.8
+		stroke.Thickness = 1.8
+		stroke.Transparency = 0.75
 		stroke.Parent = btn
+
+		-- Top Specular Plastic Highlight Strip
+		local highlight = Instance.new("Frame")
+		highlight.Name = "TopHighlight"
+		highlight.Size = UDim2.new(1, -16, 0, 3)
+		highlight.Position = UDim2.new(0, 8, 0, 3)
+		highlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		highlight.BackgroundTransparency = 0.65
+		highlight.BorderSizePixel = 0
+		highlight.Parent = btn
+
+		local hCorner = Instance.new("UICorner")
+		hCorner.CornerRadius = UDim.new(1, 0)
+		hCorner.Parent = highlight
+
+		-- Authentic 3D Plastic Studs along Top Edge of Brick
+		local studColors = Color3.new(math.min(1, color.R * 1.25), math.min(1, color.G * 1.25), math.min(1, color.B * 1.25))
+		for i = 1, 4 do
+			local stud = Instance.new("Frame")
+			stud.Name = "BrickStud_" .. i
+			stud.Size = UDim2.new(0, 14, 0, 5)
+			stud.Position = UDim2.new(0.12 + (i - 1) * 0.22, -7, 0, -3)
+			stud.BackgroundColor3 = studColors
+			stud.BorderSizePixel = 0
+			stud.ZIndex = btn.ZIndex + 1
+			stud.Parent = btn
+
+			local sCorner = Instance.new("UICorner")
+			sCorner.CornerRadius = UDim.new(1, 0)
+			sCorner.Parent = stud
+
+			local sStroke = Instance.new("UIStroke")
+			sStroke.Color = Color3.fromRGB(255, 255, 255)
+			sStroke.Thickness = 1
+			sStroke.Transparency = 0.55
+			sStroke.Parent = stud
+		end
+
+		-- Internal Text Label with Shadow Outline
+		local label = Instance.new("TextLabel")
+		label.Name = "ButtonLabel"
+		label.Size = UDim2.new(1, -12, 1, 0)
+		label.Position = UDim2.new(0, 6, 0, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text
+		label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		label.Font = Enum.Font.FredokaOne
+		label.TextSize = 16
+		label.TextXAlignment = Enum.TextXAlignment.Center
+		label.ZIndex = btn.ZIndex + 2
+		label.Parent = btn
+		applyTextOutline(label, 2.5)
+
+		-- Physical Button Click Depression Animations
+		btn.MouseButton1Down:Connect(function()
+			TweenService:Create(btn, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Position = UDim2.new(0, 0, 0, 3),
+			}):Play()
+		end)
+
+		local function releaseBtn()
+			TweenService:Create(btn, TweenInfo.new(0.08, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Position = UDim2.new(0, 0, 0, 0),
+			}):Play()
+		end
+		btn.MouseButton1Up:Connect(releaseBtn)
+		btn.MouseLeave:Connect(function()
+			releaseBtn()
+			TweenService:Create(stroke, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Transparency = 0.75,
+			}):Play()
+		end)
+
+		btn.MouseEnter:Connect(function()
+			TweenService:Create(stroke, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Transparency = 0.35,
+			}):Play()
+		end)
 
 		btn.Activated:Connect(onClick)
 		return btn
 	end
 
-	createMenuButton("ShopBtn", "🛒 Shop", Color3.fromRGB(220, 100, 30), openEquipmentShopModal)
-	createMenuButton("RebirthBtn", "⚡ Rebirth", Color3.fromRGB(218, 165, 32), openRebirthModal)
-	createMenuButton("PetsBtn", "🐾 Pets", Color3.fromRGB(65, 105, 225), openPetModal)
-	createMenuButton("CratesBtn", "📦 Crates", Color3.fromRGB(180, 50, 240), openLootBoxModal)
-	createMenuButton("MasteryBtn", "📜 Mastery", Color3.fromRGB(255, 170, 0), function()
-		openMasteryModal()
-	end)
-	createMenuButton("IndexBtn", "📖 Pet Index", Color3.fromRGB(0, 165, 215), function()
-		openPetIndexModal()
-	end)
-	createMenuButton("FusionBtn", "⚗️ Fusion", Color3.fromRGB(245, 150, 0), function()
-		openFusionModal()
-	end)
-	createMenuButton("TrailsBtn", "✨ Trails", Color3.fromRGB(160, 40, 220), openTrailsShopModal)
-	createMenuButton("TreeBtn", "🌳 Upgrades", Color3.fromRGB(0, 175, 120), openUpgradeTreeModal)
-	createMenuButton("VIPBtn", "👑 VIP Pass", Color3.fromRGB(190, 140, 15), openVIPModal)
-	createMenuButton("CodesBtn", "🎟️ Codes", Color3.fromRGB(0, 185, 225), function()
-		openCodesModal()
-	end)
-	createMenuButton("LeaderboardBtn", "🏆 Top Players", Color3.fromRGB(245, 175, 25), function()
-		openLeaderboardModal()
-	end)
+	-- 1. LEFT SIDE MENU (Tycoon Progression & Equipment)
+	local sideMenu = Instance.new("ScrollingFrame")
+	sideMenu.Name = "SideMenu"
+	sideMenu.Size = UDim2.new(0, 196, 0.74, 0)
+	sideMenu.Position = UDim2.new(0, 14, 0.5, 20)
+	sideMenu.AnchorPoint = Vector2.new(0, 0.5)
+	sideMenu.BackgroundTransparency = 1
+	sideMenu.BorderSizePixel = 0
+	sideMenu.ScrollBarThickness = 4
+	sideMenu.ScrollBarImageTransparency = 0.4
+	sideMenu.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	sideMenu.CanvasSize = UDim2.new(0, 0, 0, 0)
+	sideMenu.Parent = screenGui
 
-	local dailyBtn = createMenuButton("DailyBtn", "📅 Daily", Color3.fromRGB(46, 204, 113), function()
+	local leftList = Instance.new("UIListLayout")
+	leftList.Padding = UDim.new(0, 8)
+	leftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	leftList.SortOrder = Enum.SortOrder.LayoutOrder
+	leftList.Parent = sideMenu
+
+	-- Left Menu Stud Header Banner
+	local leftHeader = Instance.new("Frame")
+	leftHeader.Name = "LeftHeader"
+	leftHeader.Size = UDim2.new(1, -6, 0, 32)
+	leftHeader.BackgroundColor3 = Color3.fromRGB(24, 28, 36)
+	leftHeader.BorderSizePixel = 0
+	leftHeader.LayoutOrder = 0
+	leftHeader.Parent = sideMenu
+
+	local lhCorner = Instance.new("UICorner")
+	lhCorner.CornerRadius = UDim.new(0, 8)
+	lhCorner.Parent = leftHeader
+
+	local lhStroke = Instance.new("UIStroke")
+	lhStroke.Color = Color3.fromRGB(255, 255, 255)
+	lhStroke.Transparency = 0.8
+	lhStroke.Thickness = 1.2
+	lhStroke.Parent = leftHeader
+
+	local lhText = Instance.new("TextLabel")
+	lhText.Size = UDim2.new(1, 0, 1, 0)
+	lhText.BackgroundTransparency = 1
+	lhText.Text = "🔨 TYCOON PROGRESS"
+	lhText.TextColor3 = Color3.fromRGB(255, 215, 60)
+	lhText.Font = Enum.Font.FredokaOne
+	lhText.TextSize = 13
+	lhText.Parent = leftHeader
+	applyTextOutline(lhText, 2.0)
+
+	-- Left Menu Buttons
+	createStudMenuButton("ShopBtn", "🛒 SHOP", Color3.fromRGB(225, 105, 30), openEquipmentShopModal, sideMenu)
+	createStudMenuButton("RebirthBtn", "⚡ REBIRTH", Color3.fromRGB(225, 170, 30), openRebirthModal, sideMenu)
+	createStudMenuButton("PetsBtn", "🐾 PETS", Color3.fromRGB(65, 115, 235), openPetModal, sideMenu)
+	createStudMenuButton("CratesBtn", "📦 CRATES", Color3.fromRGB(185, 55, 245), openLootBoxModal, sideMenu)
+	createStudMenuButton("MasteryBtn", "📜 MASTERY", Color3.fromRGB(255, 150, 0), function()
+		openMasteryModal()
+	end, sideMenu)
+	createStudMenuButton("FusionBtn", "⚗️ FUSION", Color3.fromRGB(245, 130, 0), function()
+		openFusionModal()
+	end, sideMenu)
+	createStudMenuButton("TreeBtn", "🌳 UPGRADES", Color3.fromRGB(10, 185, 125), openUpgradeTreeModal, sideMenu)
+	createStudMenuButton("TrailsBtn", "✨ TRAILS", Color3.fromRGB(165, 45, 225), openTrailsShopModal, sideMenu)
+	createStudMenuButton("IndexBtn", "📖 PET INDEX", Color3.fromRGB(0, 175, 225), function()
+		openPetIndexModal()
+	end, sideMenu)
+	createStudMenuButton("SellPetsBtn", "🐾 SELL PETS", Color3.fromRGB(0, 195, 145), function()
+		openPetMerchantModal()
+	end, sideMenu)
+
+	-- 2. RIGHT SIDE MENU (Activities, Rewards, Utilities & Dev)
+	local rightSideMenu = Instance.new("ScrollingFrame")
+	rightSideMenu.Name = "RightSideMenu"
+	rightSideMenu.Size = UDim2.new(0, 196, 0.74, 0)
+	rightSideMenu.Position = UDim2.new(1, -14, 0.5, 20)
+	rightSideMenu.AnchorPoint = Vector2.new(1, 0.5)
+	rightSideMenu.BackgroundTransparency = 1
+	rightSideMenu.BorderSizePixel = 0
+	rightSideMenu.ScrollBarThickness = 4
+	rightSideMenu.ScrollBarImageTransparency = 0.4
+	rightSideMenu.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	rightSideMenu.CanvasSize = UDim2.new(0, 0, 0, 0)
+	rightSideMenu.Parent = screenGui
+
+	local rightList = Instance.new("UIListLayout")
+	rightList.Padding = UDim.new(0, 8)
+	rightList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	rightList.SortOrder = Enum.SortOrder.LayoutOrder
+	rightList.Parent = rightSideMenu
+
+	-- Right Menu Stud Header Banner
+	local rightHeader = Instance.new("Frame")
+	rightHeader.Name = "RightHeader"
+	rightHeader.Size = UDim2.new(1, -6, 0, 32)
+	rightHeader.BackgroundColor3 = Color3.fromRGB(24, 28, 36)
+	rightHeader.BorderSizePixel = 0
+	rightHeader.LayoutOrder = 0
+	rightHeader.Parent = rightSideMenu
+
+	local rhCorner = Instance.new("UICorner")
+	rhCorner.CornerRadius = UDim.new(0, 8)
+	rhCorner.Parent = rightHeader
+
+	local rhStroke = Instance.new("UIStroke")
+	rhStroke.Color = Color3.fromRGB(255, 255, 255)
+	rhStroke.Transparency = 0.8
+	rhStroke.Thickness = 1.2
+	rhStroke.Parent = rightHeader
+
+	local rhText = Instance.new("TextLabel")
+	rhText.Size = UDim2.new(1, 0, 1, 0)
+	rhText.BackgroundTransparency = 1
+	rhText.Text = "⭐ REWARDS & PLAY"
+	rhText.TextColor3 = Color3.fromRGB(0, 240, 255)
+	rhText.Font = Enum.Font.FredokaOne
+	rhText.TextSize = 13
+	rhText.Parent = rightHeader
+	applyTextOutline(rhText, 2.0)
+
+	-- Lucky Wheel Stud Button
+	local wheelBtn = createStudMenuButton("WheelSpinBtn", "🎡 LUCKY WHEEL", Color3.fromRGB(230, 45, 110), openWheelModal, rightSideMenu)
+
+	-- "FREE" Badge on Lucky Wheel
+	local freeBadge = Instance.new("Frame")
+	freeBadge.Name = "FreeBadge"
+	freeBadge.Size = UDim2.new(0, 46, 0, 20)
+	freeBadge.Position = UDim2.new(1, -20, 0, -8)
+	freeBadge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	freeBadge.BorderSizePixel = 0
+	freeBadge.ZIndex = 8
+	freeBadge.Parent = wheelBtn
+	wheelFreeBadge = freeBadge
+
+	local fbCorner = Instance.new("UICorner")
+	fbCorner.CornerRadius = UDim.new(1, 0)
+	fbCorner.Parent = freeBadge
+
+	local fbStroke = Instance.new("UIStroke")
+	fbStroke.Thickness = 1.8
+	fbStroke.Color = Color3.fromRGB(0, 0, 0)
+	fbStroke.Parent = freeBadge
+
+	local fbText = Instance.new("TextLabel")
+	fbText.Size = UDim2.new(1, 0, 1, 0)
+	fbText.BackgroundTransparency = 1
+	fbText.Text = "FREE"
+	fbText.TextColor3 = Color3.fromRGB(0, 0, 0)
+	fbText.Font = Enum.Font.FredokaOne
+	fbText.TextSize = 11
+	fbText.ZIndex = 9
+	fbText.Parent = freeBadge
+
+	-- Daily Rewards Button with Notification Badge
+	local dailyBtn = createStudMenuButton("DailyBtn", "📅 DAILY REWARDS", Color3.fromRGB(46, 204, 113), function()
 		openDailyRewardModal()
-	end)
+	end, rightSideMenu)
 
 	local dBadge = Instance.new("Frame")
 	dBadge.Name = "DailyBadge"
-	dBadge.Size = UDim2.new(0, 12, 0, 12)
-	dBadge.Position = UDim2.new(1, -14, 0, 4)
-	dBadge.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+	dBadge.Size = UDim2.new(0, 14, 0, 14)
+	dBadge.Position = UDim2.new(1, -16, 0, 4)
+	dBadge.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
 	dBadge.BorderSizePixel = 0
-	dBadge.ZIndex = 5
+	dBadge.ZIndex = 8
 	dBadge.Visible = false
 	dBadge.Parent = dailyBtn
 
@@ -8229,17 +8455,35 @@ function UIController.buildHUD()
 
 	dailyRewardBadge = dBadge
 
-	createMenuButton("SellPetsBtn", "🐾 Sell Pets", Color3.fromRGB(0, 190, 140), function()
-		openPetMerchantModal()
-	end)
+	-- Social & Utility Buttons on Right Side
+	createStudMenuButton("LeaderboardBtn", "🏆 TOP PLAYERS", Color3.fromRGB(245, 175, 25), function()
+		openLeaderboardModal()
+	end, rightSideMenu)
 
-	-- SIMULATOR QUICK HARVEST CLICKER BUTTON
-	local harvestBtn = createMenuButton("HarvestBtn", "⛏️ Mine (+$$/💎)", Color3.fromRGB(0, 180, 120), function()
+	createStudMenuButton("VIPBtn", "👑 VIP PASS", Color3.fromRGB(195, 145, 15), openVIPModal, rightSideMenu)
+
+	createStudMenuButton("CodesBtn", "🎟️ CODES", Color3.fromRGB(0, 190, 230), function()
+		openCodesModal()
+	end, rightSideMenu)
+
+	createStudMenuButton("HarvestBtn", "⛏️ QUICK MINE", Color3.fromRGB(0, 185, 120), function()
 		MiningClient.performSwing()
-	end)
+	end, rightSideMenu)
 
-	-- DEV TESTING CHEAT BUTTON (+$10,000,000 & +50,000 Gems for easy upgrade testing)
-	createMenuButton("DevBtn", "⚡ +$10M (Dev)", Color3.fromRGB(147, 51, 234), function()
+	local musicBtn: TextButton? = nil
+	musicBtn = createStudMenuButton("MusicBtn", "🎵 MUSIC: ON", Color3.fromRGB(75, 85, 100), function()
+		local isPlaying = AudioController.toggleMusic()
+		if musicBtn then
+			local lbl = musicBtn:FindFirstChild("ButtonLabel") :: TextLabel?
+			if lbl then
+				lbl.Text = if isPlaying then "🎵 MUSIC: ON" else "🔇 MUSIC: OFF"
+			end
+			musicBtn.BackgroundColor3 = if isPlaying then Color3.fromRGB(75, 85, 100) else Color3.fromRGB(50, 55, 65)
+		end
+	end, rightSideMenu)
+
+	-- Dev Cheats & Testing Buttons on Right Side
+	createStudMenuButton("DevBtn", "⚡ +$10M (DEV)", Color3.fromRGB(147, 51, 234), function()
 		local devFn = Remotes.getFunction("DevAddCash")
 		local ok, success, addedCash, addedGems = pcall(function()
 			return devFn:InvokeServer()
@@ -8248,10 +8492,9 @@ function UIController.buildHUD()
 			showFloatingPopup("+$10,000,000!", Color3.fromRGB(255, 215, 0), -35)
 			showFloatingPopup("+50,000 💎!", Color3.fromRGB(0, 255, 220), 35)
 		end
-	end)
+	end, rightSideMenu)
 
-	-- DEV TESTING CRATES BUTTON (+5 of every crate variety)
-	createMenuButton("DevCratesBtn", "📦 +Crates (Dev)", Color3.fromRGB(190, 80, 255), function()
+	createStudMenuButton("DevCratesBtn", "📦 +CRATES (DEV)", Color3.fromRGB(190, 80, 255), function()
 		local devFn = Remotes.getFunction("DevAddLootBoxes")
 		local ok, success, msg = pcall(function()
 			return devFn:InvokeServer()
@@ -8259,10 +8502,9 @@ function UIController.buildHUD()
 		if ok and success then
 			showFloatingPopup("📦 +5 OF EVERY CRATE ADDED!", Color3.fromRGB(255, 215, 0), 0)
 		end
-	end)
+	end, rightSideMenu)
 
-	-- DEV TESTING MASTERY BUTTON (+1,000 XP to all Masteries on Click, +5,000 XP on Right Click)
-	local devMasteryBtn = createMenuButton("DevMasteryBtn", "📜 +1k XP (Dev)", Color3.fromRGB(255, 140, 20), function()
+	local devMasteryBtn = createStudMenuButton("DevMasteryBtn", "📜 +1k XP (DEV)", Color3.fromRGB(255, 140, 20), function()
 		local devMasteryFn = Remotes.getFunction("DevAddMasteryXP")
 		for _, trackId in ipairs(MasteryConfig.TRACK_ORDER) do
 			pcall(function()
@@ -8270,7 +8512,7 @@ function UIController.buildHUD()
 			end)
 		end
 		showFloatingPopup("📜 +1,000 Mastery XP (All Tracks)!", Color3.fromRGB(255, 215, 80), 0)
-	end)
+	end, rightSideMenu)
 	devMasteryBtn.MouseButton2Click:Connect(function()
 		local devMasteryFn = Remotes.getFunction("DevAddMasteryXP")
 		for _, trackId in ipairs(MasteryConfig.TRACK_ORDER) do
@@ -8281,7 +8523,6 @@ function UIController.buildHUD()
 		showFloatingPopup("📜 +5,000 Mastery XP (All Tracks)!", Color3.fromRGB(255, 180, 40), 0)
 	end)
 
-	-- DEV TESTING 3D MODEL SHOWROOM BUTTON (Instantly teleports player to model exhibition platform)
 	local function triggerShowroomTeleport()
 		local char = player.Character
 		local root = if char then char:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
@@ -8318,10 +8559,9 @@ function UIController.buildHUD()
 		end)
 	end
 
-	createMenuButton("DevShowroomBtn", "🧪 Showroom (Dev)", Color3.fromRGB(0, 200, 240), triggerShowroomTeleport)
+	createStudMenuButton("DevShowroomBtn", "🧪 SHOWROOM (DEV)", Color3.fromRGB(0, 200, 240), triggerShowroomTeleport, rightSideMenu)
 
-	-- DEV TESTING METEOR EVENT BUTTON (Instantly summons a Celestial Meteor Strike)
-	createMenuButton("DevMeteorBtn", "☄️ Meteor (Dev)", Color3.fromRGB(255, 60, 20), function()
+	createStudMenuButton("DevMeteorBtn", "☄️ METEOR (DEV)", Color3.fromRGB(255, 60, 20), function()
 		local devMeteorFn = Remotes.getFunction("DevTriggerMeteor")
 		local ok, success, msg = pcall(function()
 			return devMeteorFn:InvokeServer()
@@ -8331,10 +8571,9 @@ function UIController.buildHUD()
 		else
 			showFloatingPopup("⚠️ " .. tostring(msg or "Already active"), Color3.fromRGB(255, 80, 80), 0)
 		end
-	end)
+	end, rightSideMenu)
 
-	-- DEV TESTING REBIRTH CHEAT BUTTON (+1 on Left Click, +5 on Right Click)
-	local devRebirthBtn = createMenuButton("DevRebirthBtn", "🔄 +Rebirth (Dev)", Color3.fromRGB(190, 40, 115), function()
+	local devRebirthBtn = createStudMenuButton("DevRebirthBtn", "🔄 +REBIRTH (DEV)", Color3.fromRGB(190, 40, 115), function()
 		local devRebirthFn = Remotes.getFunction("DevAddRebirth")
 		local ok, success, newRebirths = pcall(function()
 			return devRebirthFn:InvokeServer(1)
@@ -8342,7 +8581,7 @@ function UIController.buildHUD()
 		if ok and success then
 			showFloatingPopup(string.format("⚡ +1 REBIRTH! (Total: %d)", newRebirths or (cachedData.Rebirths or 0) + 1), Color3.fromRGB(255, 120, 220), 0)
 		end
-	end)
+	end, rightSideMenu)
 	devRebirthBtn.MouseButton2Click:Connect(function()
 		local devRebirthFn = Remotes.getFunction("DevAddRebirth")
 		local ok, success, newRebirths = pcall(function()
@@ -8353,99 +8592,135 @@ function UIController.buildHUD()
 		end
 	end)
 
-	-- SIMULATOR BGM MUSIC MUTE / UNMUTE TOGGLE
-	local musicBtn: TextButton? = nil
-	musicBtn = createMenuButton("MusicBtn", "🎵 Music: ON", Color3.fromRGB(70, 80, 95), function()
-		local isPlaying = AudioController.toggleMusic()
-		if musicBtn then
-			musicBtn.Text = if isPlaying then "🎵 Music: ON" else "🔇 Music: OFF"
-			musicBtn.BackgroundColor3 = if isPlaying then Color3.fromRGB(70, 80, 95) else Color3.fromRGB(50, 55, 65)
+	-- =========================================================================
+	-- COLLAPSIBLE ARROW TABS (◀ / ▶)
+	-- =========================================================================
+	local leftToggleTab = Instance.new("TextButton")
+	leftToggleTab.Name = "LeftToggleArrow"
+	leftToggleTab.Size = UDim2.new(0, 32, 0, 58)
+	leftToggleTab.Position = UDim2.new(0, 216, 0.5, 20)
+	leftToggleTab.AnchorPoint = Vector2.new(0, 0.5)
+	leftToggleTab.BackgroundColor3 = Color3.fromRGB(30, 34, 44)
+	leftToggleTab.BorderSizePixel = 0
+	leftToggleTab.AutoButtonColor = false
+	leftToggleTab.Parent = screenGui
+
+	local ltCorner = Instance.new("UICorner")
+	ltCorner.CornerRadius = UDim.new(0, 10)
+	ltCorner.Parent = leftToggleTab
+
+	local ltStroke = Instance.new("UIStroke")
+	ltStroke.Color = Color3.fromRGB(255, 255, 255)
+	ltStroke.Thickness = 1.8
+	ltStroke.Transparency = 0.6
+	ltStroke.Parent = leftToggleTab
+
+	local ltArrow = Instance.new("TextLabel")
+	ltArrow.Name = "ArrowLabel"
+	ltArrow.Size = UDim2.new(1, 0, 0.6, 0)
+	ltArrow.Position = UDim2.new(0, 0, 0.08, 0)
+	ltArrow.BackgroundTransparency = 1
+	ltArrow.Text = "◀"
+	ltArrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+	ltArrow.Font = Enum.Font.FredokaOne
+	ltArrow.TextSize = 18
+	ltArrow.Parent = leftToggleTab
+
+	local ltSub = Instance.new("TextLabel")
+	ltSub.Size = UDim2.new(1, 0, 0.35, 0)
+	ltSub.Position = UDim2.new(0, 0, 0.62, 0)
+	ltSub.BackgroundTransparency = 1
+	ltSub.Text = "UI"
+	ltSub.TextColor3 = Color3.fromRGB(200, 210, 225)
+	ltSub.Font = Enum.Font.FredokaOne
+	ltSub.TextSize = 10
+	ltSub.Parent = leftToggleTab
+
+	local function toggleLeftMenu()
+		leftMenuOpen = not leftMenuOpen
+		local targetMenuPos = if leftMenuOpen then UDim2.new(0, 14, 0.5, 20) else UDim2.new(0, -225, 0.5, 20)
+		local targetTabPos = if leftMenuOpen then UDim2.new(0, 216, 0.5, 20) else UDim2.new(0, 10, 0.5, 20)
+		ltArrow.Text = if leftMenuOpen then "◀" else "▶"
+
+		TweenService:Create(sideMenu, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = targetMenuPos,
+		}):Play()
+		TweenService:Create(leftToggleTab, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = targetTabPos,
+		}):Play()
+	end
+	leftToggleTab.Activated:Connect(toggleLeftMenu)
+
+	-- Right Toggle Arrow Tab
+	local rightToggleTab = Instance.new("TextButton")
+	rightToggleTab.Name = "RightToggleArrow"
+	rightToggleTab.Size = UDim2.new(0, 32, 0, 58)
+	rightToggleTab.Position = UDim2.new(1, -216, 0.5, 20)
+	rightToggleTab.AnchorPoint = Vector2.new(1, 0.5)
+	rightToggleTab.BackgroundColor3 = Color3.fromRGB(30, 34, 44)
+	rightToggleTab.BorderSizePixel = 0
+	rightToggleTab.AutoButtonColor = false
+	rightToggleTab.Parent = screenGui
+
+	local rtCorner = Instance.new("UICorner")
+	rtCorner.CornerRadius = UDim.new(0, 10)
+	rtCorner.Parent = rightToggleTab
+
+	local rtStroke = Instance.new("UIStroke")
+	rtStroke.Color = Color3.fromRGB(255, 255, 255)
+	rtStroke.Thickness = 1.8
+	rtStroke.Transparency = 0.6
+	rtStroke.Parent = rightToggleTab
+
+	local rtArrow = Instance.new("TextLabel")
+	rtArrow.Name = "ArrowLabel"
+	rtArrow.Size = UDim2.new(1, 0, 0.6, 0)
+	rtArrow.Position = UDim2.new(0, 0, 0.08, 0)
+	rtArrow.BackgroundTransparency = 1
+	rtArrow.Text = "▶"
+	rtArrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+	rtArrow.Font = Enum.Font.FredokaOne
+	rtArrow.TextSize = 18
+	rtArrow.Parent = rightToggleTab
+
+	local rtSub = Instance.new("TextLabel")
+	rtSub.Size = UDim2.new(1, 0, 0.35, 0)
+	rtSub.Position = UDim2.new(0, 0, 0.62, 0)
+	rtSub.BackgroundTransparency = 1
+	rtSub.Text = "UI"
+	rtSub.TextColor3 = Color3.fromRGB(200, 210, 225)
+	rtSub.Font = Enum.Font.FredokaOne
+	rtSub.TextSize = 10
+	rtSub.Parent = rightToggleTab
+
+	local function toggleRightMenu()
+		rightMenuOpen = not rightMenuOpen
+		local targetMenuPos = if rightMenuOpen then UDim2.new(1, -14, 0.5, 20) else UDim2.new(1, 225, 0.5, 20)
+		local targetTabPos = if rightMenuOpen then UDim2.new(1, -216, 0.5, 20) else UDim2.new(1, -10, 0.5, 20)
+		rtArrow.Text = if rightMenuOpen then "▶" else "◀"
+
+		TweenService:Create(rightSideMenu, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = targetMenuPos,
+		}):Play()
+		TweenService:Create(rightToggleTab, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = targetTabPos,
+		}):Play()
+	end
+	rightToggleTab.Activated:Connect(toggleRightMenu)
+
+	-- Hotkey [H] to toggle both menus at once for cinematic view
+	UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode.H then
+			if leftMenuOpen or rightMenuOpen then
+				if leftMenuOpen then toggleLeftMenu() end
+				if rightMenuOpen then toggleRightMenu() end
+			else
+				toggleLeftMenu()
+				toggleRightMenu()
+			end
 		end
 	end)
-
-	-- RIGHT-SIDE SIMULATOR ACTION BUTTONS (Lucky Wheel)
-	local rightSideMenu = Instance.new("Frame")
-	rightSideMenu.Name = "RightSideMenu"
-	rightSideMenu.Size = UDim2.new(0, 80, 0, 100)
-	rightSideMenu.Position = UDim2.new(1, -96, 0.5, -50)
-	rightSideMenu.BackgroundTransparency = 1
-	rightSideMenu.Parent = screenGui
-
-	local wheelBtn = Instance.new("TextButton")
-	wheelBtn.Name = "WheelSpinBtn"
-	wheelBtn.Size = UDim2.new(0, 74, 0, 74)
-	wheelBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
-	wheelBtn.AnchorPoint = Vector2.new(0.5, 0.5)
-	wheelBtn.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-	wheelBtn.Text = ""
-	wheelBtn.BorderSizePixel = 0
-	wheelBtn.Parent = rightSideMenu
-
-	local wBtnCorner = Instance.new("UICorner")
-	wBtnCorner.CornerRadius = UDim.new(0, 18)
-	wBtnCorner.Parent = wheelBtn
-
-	local wBtnStroke = Instance.new("UIStroke")
-	wBtnStroke.Thickness = 2.5
-	wBtnStroke.Color = Color3.fromRGB(255, 255, 255)
-	wBtnStroke.Parent = wheelBtn
-
-	local wBtnIcon = Instance.new("TextLabel")
-	wBtnIcon.Size = UDim2.new(1, 0, 0, 32)
-	wBtnIcon.Position = UDim2.new(0, 0, 0, 8)
-	wBtnIcon.BackgroundTransparency = 1
-	wBtnIcon.Text = "WHEEL"
-	wBtnIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	wBtnIcon.Font = Enum.Font.Antique
-	wBtnIcon.TextSize = 14
-	wBtnIcon.Parent = wheelBtn
-
-	local wBtnText = Instance.new("TextLabel")
-	wBtnText.Size = UDim2.new(1, 0, 0, 22)
-	wBtnText.Position = UDim2.new(0, 0, 1, -26)
-	wBtnText.BackgroundTransparency = 1
-	wBtnText.Text = "SPIN"
-	wBtnText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	wBtnText.Font = Enum.Font.GothamBlack
-	wBtnText.TextSize = 14
-	wBtnText.Parent = wheelBtn
-
-	-- "FREE" Badge on top-right corner (Black & White)
-	local freeBadge = Instance.new("Frame")
-	freeBadge.Name = "FreeBadge"
-	freeBadge.Size = UDim2.new(0, 42, 0, 20)
-	freeBadge.Position = UDim2.new(1, -22, 0, -8)
-	freeBadge.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	freeBadge.BorderSizePixel = 0
-	freeBadge.ZIndex = 5
-	freeBadge.Parent = wheelBtn
-	wheelFreeBadge = freeBadge
-
-	local bCorner = Instance.new("UICorner")
-	bCorner.CornerRadius = UDim.new(1, 0)
-	bCorner.Parent = freeBadge
-
-	local bStroke = Instance.new("UIStroke")
-	bStroke.Thickness = 1.5
-	bStroke.Color = Color3.fromRGB(0, 0, 0)
-	bStroke.Parent = freeBadge
-
-	local bText = Instance.new("TextLabel")
-	bText.Size = UDim2.new(1, 0, 1, 0)
-	bText.BackgroundTransparency = 1
-	bText.Text = "FREE"
-	bText.TextColor3 = Color3.fromRGB(0, 0, 0)
-	bText.Font = Enum.Font.GothamBlack
-	bText.TextSize = 10
-	bText.ZIndex = 6
-	bText.Parent = freeBadge
-
-	-- Idle breathing animation
-	TweenService:Create(wheelBtn, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-		Size = UDim2.new(0, 78, 0, 78),
-	}):Play()
-
-	wheelBtn.MouseButton1Click:Connect(openWheelModal)
 
 	-- Instantaneous local client prompt response when pressing E near Barnaby
 	ProximityPromptService.PromptTriggered:Connect(function(prompt, who)

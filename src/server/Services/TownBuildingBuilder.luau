@@ -2109,4 +2109,229 @@ function TownBuildingBuilder.buildPetMerchantStall(parent: Instance): Model
 	return buildingModel
 end
 
+-- =========================================================================
+-- 7. THE ADVENTURE QUEST BOARD (Town Plaza Bounty & Quest Board)
+-- =========================================================================
+function TownBuildingBuilder.buildQuestBoard(parent: Instance): Model
+	local boardModel = Instance.new("Model")
+	boardModel.Name = "TownQuestBoard"
+
+	-- Positioned at Town Plaza southwest edge at (-16, 0, 16), angled at 45 degrees towards spawn dais
+	local bCF = CFrame.new(-16, 0, 16) * CFrame.Angles(0, math.rad(45), 0)
+
+	local stoneDark = Color3.fromRGB(45, 48, 55)
+	local stonePaving = Color3.fromRGB(72, 75, 84)
+	local woodDark = Color3.fromRGB(62, 38, 22)
+	local woodPlank = Color3.fromRGB(88, 56, 34)
+	local goldTrim = Color3.fromRGB(255, 215, 60)
+	local parchmentColor = Color3.fromRGB(246, 238, 218)
+	local agedParchment = Color3.fromRGB(235, 222, 195)
+	local roofShingle = Color3.fromRGB(50, 32, 20)
+	local waxRed = Color3.fromRGB(195, 35, 45)
+
+	-- 1. Raised Stone Plinth Foundation & Cobble Steps
+	createStudPart(boardModel, "Foundation", Vector3.new(16, 0.9, 8), bCF * CFrame.new(0, 0.45, 0), stoneDark)
+	createStudPart(boardModel, "StoneDeck", Vector3.new(14.8, 0.35, 7.0), bCF * CFrame.new(0, 1.0, 0), stonePaving)
+	createStudPart(boardModel, "Step_1", Vector3.new(12, 0.35, 2.0), bCF * CFrame.new(0, 0.35, 4.2), stoneDark)
+
+	-- 2. Heavy Timber Pillars at Left and Right
+	for _, px in ipairs({ -5.8, 5.8 }) do
+		local bBase = createStudPart(boardModel, "PillarBase", Vector3.new(2.4, 3.2, 2.4), bCF * CFrame.new(px, 2.4, 0), stoneDark)
+		bBase.Material = Enum.Material.Cobblestone
+
+		local post = createStudPart(boardModel, "TimberPillar", Vector3.new(1.8, 14.0, 1.8), bCF * CFrame.new(px, 8.4, 0), woodDark)
+		post.Material = Enum.Material.Wood
+
+		for _, py in ipairs({ 3.8, 8.0, 12.5 }) do
+			local strap = createStudPart(boardModel, "IronStrap", Vector3.new(2.0, 0.4, 2.0), bCF * CFrame.new(px, py, 0), Color3.fromRGB(35, 38, 45))
+			strap.Material = Enum.Material.Metal
+		end
+
+		local braceDir = if px < 0 then 1 else -1
+		local brace = createStudPart(boardModel, "KneeBrace", Vector3.new(0.8, 3.6, 0.8), bCF * CFrame.new(px + (braceDir * 1.5), 13.5, 0) * CFrame.Angles(0, 0, math.rad(braceDir * 38)), woodDark)
+		brace.Material = Enum.Material.Wood
+	end
+
+	-- 3. Heavy Timber Framing & Notice Board Backing
+	createStudPart(boardModel, "LowerBeam", Vector3.new(12.4, 1.2, 1.4), bCF * CFrame.new(0, 4.2, 0), woodDark)
+	local headerBeam = createStudPart(boardModel, "HeaderBeam", Vector3.new(14.6, 1.4, 1.6), bCF * CFrame.new(0, 13.8, 0), woodDark)
+	headerBeam.Material = Enum.Material.Wood
+
+	local boardBack = createStudPart(boardModel, "NoticeBoardBack", Vector3.new(10.8, 8.2, 0.8), bCF * CFrame.new(0, 8.9, 0), woodPlank)
+	boardBack.Material = Enum.Material.WoodPlanks
+
+	createStudPart(boardModel, "FrameL", Vector3.new(0.8, 8.6, 1.1), bCF * CFrame.new(-5.0, 8.9, 0), woodDark)
+	createStudPart(boardModel, "FrameR", Vector3.new(0.8, 8.6, 1.1), bCF * CFrame.new(5.0, 8.9, 0), woodDark)
+
+	-- 4. Pinned Parchment Bounty Posters & Wanted Notices
+	local posterDefs = {
+		{ pos = Vector3.new(-3.4, 10.4, 0.48), sz = Vector3.new(2.6, 3.2, 0.12), rot = -3, col = parchmentColor, seal = waxRed },
+		{ pos = Vector3.new(0, 10.6, 0.48), sz = Vector3.new(2.8, 3.0, 0.12), rot = 2, col = agedParchment, seal = waxRed },
+		{ pos = Vector3.new(3.4, 10.3, 0.48), sz = Vector3.new(2.6, 3.3, 0.12), rot = -4, col = parchmentColor, seal = Color3.fromRGB(40, 40, 45) },
+		{ pos = Vector3.new(-3.4, 7.1, 0.48), sz = Vector3.new(2.5, 2.6, 0.12), rot = 4, col = agedParchment, seal = waxRed },
+		{ pos = Vector3.new(0, 7.0, 0.48), sz = Vector3.new(3.2, 2.7, 0.12), rot = 0, col = parchmentColor, seal = waxRed },
+		{ pos = Vector3.new(3.4, 7.2, 0.48), sz = Vector3.new(2.5, 2.5, 0.12), rot = -2, col = agedParchment, seal = waxRed },
+	}
+
+	for pIdx, pDef in ipairs(posterDefs) do
+		local poster = createStudPart(boardModel, "BountyPoster_" .. pIdx, pDef.sz, bCF * CFrame.new(pDef.pos.X, pDef.pos.Y, pDef.pos.Z) * CFrame.Angles(0, 0, math.rad(pDef.rot)), pDef.col)
+		poster.Material = Enum.Material.Fabric
+
+		local pGui = Instance.new("SurfaceGui")
+		pGui.Face = Enum.NormalId.Front
+		pGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		pGui.PixelsPerStud = 40
+		pGui.AlwaysOnTop = false
+		pGui.Parent = poster
+
+		local posterTitles = { "⚔️ BOUNTY", "⛏️ ORE QUOTA", "🐾 BEAST TAMER", "⚡ ASCENSION", "👹 GOLEM SLAYER", "💎 TREASURE" }
+		local pTitle = Instance.new("TextLabel")
+		pTitle.Size = UDim2.new(1, 0, 0, 24)
+		pTitle.Position = UDim2.new(0, 0, 0, 12)
+		pTitle.BackgroundTransparency = 1
+		pTitle.Text = posterTitles[pIdx] or "📜 BOUNTY"
+		pTitle.TextColor3 = Color3.fromRGB(60, 30, 10)
+		pTitle.Font = Enum.Font.FredokaOne
+		pTitle.TextSize = 14
+		pTitle.Parent = pGui
+
+		local pSub = Instance.new("TextLabel")
+		pSub.Size = UDim2.new(1, -12, 1, -42)
+		pSub.Position = UDim2.new(0, 6, 0, 36)
+		pSub.BackgroundTransparency = 1
+		pSub.Text = "REWARD: CASH & GEMS\n[Press E to Accept]"
+		pSub.TextColor3 = Color3.fromRGB(115, 80, 50)
+		pSub.Font = Enum.Font.FredokaOne
+		pSub.TextSize = 10
+		pSub.TextWrapped = true
+		pSub.Parent = pGui
+
+		local tack = createStudPart(boardModel, "WaxSeal_" .. pIdx, Vector3.new(0.45, 0.45, 0.18), bCF * CFrame.new(pDef.pos.X, pDef.pos.Y + (pDef.sz.Y * 0.44), pDef.pos.Z + 0.1), pDef.seal)
+		tack.Shape = Enum.PartType.Ball
+		tack.Material = Enum.Material.SmoothPlastic
+
+		if pIdx % 2 == 0 then
+			local twine = createStudPart(boardModel, "TwineRibbon_" .. pIdx, Vector3.new(0.12, 0.9, 0.1), bCF * CFrame.new(pDef.pos.X, pDef.pos.Y - (pDef.sz.Y * 0.45), pDef.pos.Z + 0.08), waxRed)
+			twine.Material = Enum.Material.Fabric
+		end
+	end
+
+	-- 5. Rustic Weathered Shingle Roof Canopy
+	local roofL = createStudPart(boardModel, "RoofSlopeL", Vector3.new(1.0, 5.8, 6.5), bCF * CFrame.new(-3.8, 16.0, 0) * CFrame.Angles(0, 0, math.rad(-34)), roofShingle)
+	roofL.Material = Enum.Material.Wood
+	local roofR = createStudPart(boardModel, "RoofSlopeR", Vector3.new(1.0, 5.8, 6.5), bCF * CFrame.new(3.8, 16.0, 0) * CFrame.Angles(0, 0, math.rad(34)), roofShingle)
+	roofR.Material = Enum.Material.Wood
+
+	local rCap = createStudPart(boardModel, "RoofRidgeCap", Vector3.new(15.2, 0.8, 1.2), bCF * CFrame.new(0, 17.6, 0), goldTrim)
+	rCap.Material = Enum.Material.SmoothPlastic
+
+	for _, gz in ipairs({ -2.4, 2.4 }) do
+		local gable = createStudPart(boardModel, "RoofGableInfill", Vector3.new(7.5, 2.4, 0.6), bCF * CFrame.new(0, 15.6, gz), woodDark)
+		gable.Material = Enum.Material.WoodPlanks
+	end
+
+	-- 6. Twin Wrought-Iron Hanging Lanterns
+	for _, lx in ipairs({ -7.2, 7.2 }) do
+		local arm = createStudPart(boardModel, "LanternArm", Vector3.new(1.4, 0.35, 0.35), bCF * CFrame.new(lx * 0.9, 12.8, 0.6), Color3.fromRGB(35, 38, 45))
+		arm.Material = Enum.Material.Metal
+		local chain = createStudPart(boardModel, "LanternChain", Vector3.new(0.2, 1.4, 0.2), bCF * CFrame.new(lx, 12.0, 0.6), Color3.fromRGB(35, 38, 45))
+		chain.Material = Enum.Material.Metal
+		local lamp = createStudPart(boardModel, "LanternLamp", Vector3.new(1.2, 1.6, 1.2), bCF * CFrame.new(lx, 10.6, 0.6), Color3.fromRGB(255, 195, 80))
+		lamp.Material = Enum.Material.Neon
+
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 210, 120)
+		light.Brightness = 1.8
+		light.Range = 16
+		light.Parent = lamp
+	end
+
+	-- 7. 3D Carved Title Plaque
+	local plaque = createStudPart(boardModel, "TitlePlaque", Vector3.new(13.8, 2.2, 1.4), bCF * CFrame.new(0, 13.8, 0.4), woodDark)
+	plaque.Material = Enum.Material.Wood
+	local plaqueGoldBorder = createStudPart(boardModel, "PlaqueBorder", Vector3.new(14.2, 2.4, 0.2), bCF * CFrame.new(0, 13.8, 1.1), goldTrim)
+	plaqueGoldBorder.Material = Enum.Material.SmoothPlastic
+
+	local sGui = Instance.new("SurfaceGui")
+	sGui.Name = "BoardTitleGui"
+	sGui.Face = Enum.NormalId.Front
+	sGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	sGui.PixelsPerStud = 50
+	sGui.AlwaysOnTop = false
+	sGui.Parent = plaqueGoldBorder
+
+	local titleLbl = Instance.new("TextLabel")
+	titleLbl.Size = UDim2.new(1, 0, 1, 0)
+	titleLbl.BackgroundTransparency = 1
+	titleLbl.Text = "⚔️ ADVENTURE QUEST BOARD ⚔️"
+	titleLbl.TextColor3 = Color3.fromRGB(255, 225, 60)
+	titleLbl.Font = Enum.Font.FredokaOne
+	titleLbl.TextSize = 28
+	titleLbl.TextStrokeTransparency = 0.2
+	titleLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	titleLbl.Parent = sGui
+
+	-- 8. Floating Rotating Golden Exclamation Mark (!)
+	local exMarkStem = createStudPart(boardModel, "ExMarkStem", Vector3.new(0.8, 2.4, 0.8), bCF * CFrame.new(0, 20.2, 0), goldTrim)
+	exMarkStem.Material = Enum.Material.Neon
+	local exMarkDot = createStudPart(boardModel, "ExMarkDot", Vector3.new(0.8, 0.8, 0.8), bCF * CFrame.new(0, 18.5, 0), goldTrim)
+	exMarkDot.Material = Enum.Material.Neon
+
+	local exSparkles = Instance.new("Sparkles")
+	exSparkles.SparkleColor = Color3.fromRGB(255, 220, 60)
+	exSparkles.Parent = exMarkStem
+
+	local exLight = Instance.new("PointLight")
+	exLight.Color = Color3.fromRGB(255, 220, 80)
+	exLight.Brightness = 2.4
+	exLight.Range = 14
+	exLight.Parent = exMarkStem
+
+	task.spawn(function()
+		local t = 0
+		local stemOrigin = bCF * CFrame.new(0, 20.2, 0)
+		local dotOrigin = bCF * CFrame.new(0, 18.5, 0)
+		while exMarkStem and exMarkStem.Parent do
+			t += 0.03
+			local yBob = math.sin(t * 2.5) * 0.3
+			local rot = CFrame.Angles(0, t * 1.5, 0)
+			exMarkStem.CFrame = (stemOrigin + Vector3.new(0, yBob, 0)) * rot
+			exMarkDot.CFrame = (dotOrigin + Vector3.new(0, yBob, 0)) * rot
+			task.wait(0.03)
+		end
+	end)
+
+	-- 9. Interaction Part & ProximityPrompt
+	local promptPart = Instance.new("Part")
+	promptPart.Name = "QuestBoardInteractionPart"
+	promptPart.Size = Vector3.new(14, 8, 8)
+	promptPart.CFrame = bCF * CFrame.new(0, 4.5, 3.2)
+	promptPart.Transparency = 1
+	promptPart.CanCollide = false
+	promptPart.CanTouch = true
+	promptPart.CanQuery = true
+	promptPart.Anchored = true
+	promptPart.Parent = boardModel
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "QuestPrompt"
+	prompt.ActionText = "View Quests"
+	prompt.ObjectText = "Adventure Quest Board"
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 15
+	prompt.RequiresLineOfSight = false
+	prompt.ClickablePrompt = true
+	prompt.Parent = promptPart
+
+	prompt.Triggered:Connect(function(player)
+		print(string.format("📜 [TownBuildingBuilder] Quest Board triggered by %s", player.Name))
+		local openEvent = Remotes.getEvent("OpenQuestModal")
+		openEvent:FireClient(player)
+	end)
+
+	boardModel.Parent = parent
+	return boardModel
+end
+
 return TownBuildingBuilder

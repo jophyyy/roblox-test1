@@ -45,6 +45,9 @@ export type PlayerData = {
 	DailyRewardDay: number?,
 	DailyRewardStreak: number?,
 	LastDailyClaimTime: number?,
+	Quests: { [string]: { progress: number, completed: boolean, claimed: boolean, acceptedAt: number } }?,
+	DailyQuestBoard: { [string]: boolean }?,
+	LastDailyQuestReset: number?,
 	LastSaved: number,
 }
 
@@ -99,6 +102,16 @@ local function getDefaultData(): PlayerData
 		DailyRewardDay = 1,
 		DailyRewardStreak = 0,
 		LastDailyClaimTime = 0,
+		Quests = {
+			["quest_first_mine"] = {
+				progress = 0,
+				completed = false,
+				claimed = false,
+				acceptedAt = os.time(),
+			},
+		},
+		DailyQuestBoard = {},
+		LastDailyQuestReset = 0,
 		LastSaved = os.time(),
 	}
 end
@@ -380,6 +393,16 @@ function DataService.load(player: Player)
 	data.DailyRewardDay = data.DailyRewardDay or 1
 	data.DailyRewardStreak = data.DailyRewardStreak or 0
 	data.LastDailyClaimTime = data.LastDailyClaimTime or 0
+	data.Quests = data.Quests or {
+		["quest_first_mine"] = {
+			progress = 0,
+			completed = false,
+			claimed = false,
+			acceptedAt = os.time(),
+		},
+	}
+	data.DailyQuestBoard = data.DailyQuestBoard or {}
+	data.LastDailyQuestReset = data.LastDailyQuestReset or 0
 
 	playerDataCache[player] = data
 	setupLeaderstats(player, data)
@@ -551,6 +574,15 @@ function DataService.spinWheel(player: Player, spinMode: string?): { success: bo
 
 	syncToClient(player, data)
 	print(string.format("[Wheel] %s spun slice %d (%s) -> %s", player.Name, sliceIndex, slice.name, rewardDisplay))
+
+	task.spawn(function()
+		local okQ, QuestService = pcall(function()
+			return require(script.Parent.QuestService)
+		end)
+		if okQ and QuestService then
+			QuestService.onWheelSpin(player)
+		end
+	end)
 
 	return {
 		success = true,

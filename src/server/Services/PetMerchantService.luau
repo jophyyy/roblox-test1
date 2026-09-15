@@ -125,6 +125,15 @@ function PetMerchantService.sellPet(player: Player, petId: string, count: number
 	-- Award cash
 	DataService.addCash(player, totalPayout)
 
+	task.spawn(function()
+		local okQ, QuestService = pcall(function()
+			return require(script.Parent.QuestService)
+		end)
+		if okQ and QuestService then
+			QuestService.onPetSold(player, toSell)
+		end
+	end)
+
 	print(string.format("🐾 [PetMerchantService] %s sold %dx %s for $%d (Multiplier: %.2fx)", player.Name, toSell, petName, totalPayout, petMult))
 
 	return true, string.format("Sold %dx %s for $%s! (+%.2fx)", toSell, petName, FormatNumber.formatCompact(totalPayout), petMult), totalPayout
@@ -161,6 +170,15 @@ function PetMerchantService.sellAllUnusedPets(player: Player): (boolean, string,
 	end
 
 	DataService.addCash(player, totalPayout)
+
+	task.spawn(function()
+		local okQ, QuestService = pcall(function()
+			return require(script.Parent.QuestService)
+		end)
+		if okQ and QuestService then
+			QuestService.onPetSold(player, totalCount)
+		end
+	end)
 
 	print(string.format("🐾 [PetMerchantService] %s sold ALL %d unused pets for $%d!", player.Name, totalCount, totalPayout))
 

@@ -337,6 +337,13 @@ function MiningService.mineOre(player: Player, oreId: string): (boolean, any)
 			if okTut and TutorialService then
 				TutorialService.onOreMined(player)
 			end
+
+			local okQ, QuestService = pcall(function()
+				return require(script.Parent.QuestService)
+			end)
+			if okQ and QuestService then
+				QuestService.onOreMined(player, ore.oreType, cashEarned)
+			end
 		end)
 
 		-- Remove model

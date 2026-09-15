@@ -84,6 +84,15 @@ function RebirthService.rebirth(player: Player): boolean
 	local rebirthEvent = Remotes.getEvent("PlayerRebirthed")
 	rebirthEvent:FireAllClients(player.Name, data.Rebirths, bonusGems)
 
+	task.spawn(function()
+		local okQ, QuestService = pcall(function()
+			return require(script.Parent.QuestService)
+		end)
+		if okQ and QuestService then
+			QuestService.onRebirth(player)
+		end
+	end)
+
 	return true
 end
 

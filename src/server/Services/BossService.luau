@@ -974,6 +974,15 @@ function BossService.attackBoss(player: Player, targetBossId: string?): (boolean
 	local damagedEvent = Remotes.getEvent("BossDamaged")
 	damagedEvent:FireAllClients(chosenState.currentHealth, chosenState.maxHealth, damage, isCrit, effectTag or trait.specialEffect, trait.damageColor, player.Name, chosenState.def.id)
 
+	task.spawn(function()
+		local okQ, QuestService = pcall(function()
+			return require(script.Parent.QuestService)
+		end)
+		if okQ and QuestService then
+			QuestService.onBossDamaged(player, damage)
+		end
+	end)
+
 	if isDead then
 		BossService.onBossDefeated(player, chosenState)
 	end

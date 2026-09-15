@@ -136,6 +136,13 @@ function PetService.hatchEgg(player: Player, eggId: string, count: number?): (bo
 		if okTut and TutorialService then
 			TutorialService.onPetEquippedOrHatched(player)
 		end
+
+		local okQ, QuestService = pcall(function()
+			return require(script.Parent.QuestService)
+		end)
+		if okQ and QuestService then
+			QuestService.onPetHatched(player, #pickedPetIds)
+		end
 	end)
 
 	return true, pickedPetIds, nil
@@ -393,6 +400,15 @@ function PetService.fusePets(player: Player, mode: "Golden" | "Rainbow", rawBase
 	-- Sync updated data to client
 	local syncEvent = Remotes.getEvent("SyncPlayerData")
 	syncEvent:FireClient(player, data)
+
+	task.spawn(function()
+		local okQ, QuestService = pcall(function()
+			return require(script.Parent.QuestService)
+		end)
+		if okQ and QuestService then
+			QuestService.onPetFused(player)
+		end
+	end)
 
 	print(string.format("⚗️ [PetService] %s fused %dx %s (%s)", player.Name, batches, targetDef.name, mode))
 

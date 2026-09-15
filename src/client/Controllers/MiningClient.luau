@@ -73,6 +73,28 @@ function MiningClient.refreshTool()
 	MiningClient.updateHoldingPose()
 end
 
+local pickaxeHidden = false
+
+-- Toggles pickaxe visibility (e.g. when holding a Quest Scroll or inspecting items)
+function MiningClient.setPickaxeVisible(visible: boolean)
+	pickaxeHidden = not visible
+	local char = player.Character
+	if not char then return end
+
+	local pick = char:FindFirstChild("EquippedPickaxe")
+	if pick then
+		for _, part in pick:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.Transparency = if visible then 0 else 1
+			elseif part:IsA("Decal") or part:IsA("Texture") then
+				part.Transparency = if visible then 0 else 1
+			elseif part:IsA("ParticleEmitter") or part:IsA("PointLight") or part:IsA("Sparkles") then
+				part.Enabled = visible
+			end
+		end
+	end
+end
+
 -- Finds the right shoulder joint across both R6 and R15 rigs
 local function getRightShoulder(char: Model): Motor6D?
 	local torso = char:FindFirstChild("Torso") -- R6
@@ -505,12 +527,12 @@ function MiningClient.playShatterEffect(position: Vector3, oreType: string)
 end
 
 function MiningClient.init()
-	-- 0. Disable Roblox Backpack Hotbar CoreGui (pickaxe is always held in hand, never an inventory slot)
+	-- 0. Enable Roblox Backpack Hotbar CoreGui for Quest Scroll and accessory tools
 	task.spawn(function()
 		local StarterGui = game:GetService("StarterGui")
 		for _ = 1, 10 do
 			local ok = pcall(function()
-				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 			end)
 			if ok then break end
 			task.wait(0.25)

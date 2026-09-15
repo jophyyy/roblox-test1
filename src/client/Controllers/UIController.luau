@@ -8455,6 +8455,59 @@ function UIController.buildHUD()
 
 	dailyRewardBadge = dBadge
 
+	-- Quest Journal & Board Stud Button with Live Notification Badge
+	local questBtn = createStudMenuButton("QuestBtn", "📜 QUESTS", Color3.fromRGB(243, 156, 18), function()
+		local okQ, QuestController = pcall(function()
+			return require(script.Parent.QuestController)
+		end)
+		if okQ and QuestController then
+			QuestController.openQuestModal()
+		end
+	end, rightSideMenu)
+
+	local qBadge = Instance.new("Frame")
+	qBadge.Name = "QuestBadge"
+	qBadge.Size = UDim2.new(0, 18, 0, 18)
+	qBadge.Position = UDim2.new(1, -18, 0, 2)
+	qBadge.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+	qBadge.BorderSizePixel = 0
+	qBadge.ZIndex = 8
+	qBadge.Visible = false
+	qBadge.Parent = questBtn
+
+	local qbCorner = Instance.new("UICorner")
+	qbCorner.CornerRadius = UDim.new(1, 0)
+	qbCorner.Parent = qBadge
+
+	local qbStroke = Instance.new("UIStroke")
+	qbStroke.Color = Color3.fromRGB(255, 255, 255)
+	qbStroke.Thickness = 1.5
+	qbStroke.Parent = qBadge
+
+	local qbText = Instance.new("TextLabel")
+	qbText.Size = UDim2.new(1, 0, 1, 0)
+	qbText.BackgroundTransparency = 1
+	qbText.Text = "!"
+	qbText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	qbText.Font = Enum.Font.FredokaOne
+	qbText.TextSize = 12
+	qbText.Parent = qBadge
+
+	task.spawn(function()
+		task.wait(1.0)
+		local okQ, QuestController = pcall(function()
+			return require(script.Parent.QuestController)
+		end)
+		if okQ and QuestController then
+			QuestController.onBadgeChanged(function(count)
+				if qBadge and qbText then
+					qBadge.Visible = count > 0
+					qbText.Text = tostring(count)
+				end
+			end)
+		end
+	end)
+
 	-- Social & Utility Buttons on Right Side
 	createStudMenuButton("LeaderboardBtn", "🏆 TOP PLAYERS", Color3.fromRGB(245, 175, 25), function()
 		openLeaderboardModal()

@@ -290,6 +290,56 @@ function MiningClient.performSwing()
 		end
 	end
 
+	-- Target Detection: Priority 1.8 - In-World Quarry Lucky Blocks
+	local quarryBlocksFolder = Workspace:FindFirstChild("QuarryLuckyBlocks")
+	if quarryBlocksFolder and rootPart then
+		local targetLuckyBlock: Model? = nil
+		local closestDist = 20
+
+		-- 1. Check direct mouse target
+		if mouse.Target then
+			local model = mouse.Target:FindFirstAncestorOfClass("Model")
+			if model and model.Parent == quarryBlocksFolder and (model:GetAttribute("IsQuarryLuckyBlock") or model.Name:find("QuarryLuckyBlock")) then
+				local cube = model.PrimaryPart or model:FindFirstChild("LuckyCube") :: BasePart?
+				if cube and (cube.Position - rootPart.Position).Magnitude <= 24 then
+					targetLuckyBlock = model
+				end
+			end
+		end
+
+		-- 2. Check proximity if not mouse hovering directly
+		if not targetLuckyBlock then
+			for _, model in quarryBlocksFolder:GetChildren() do
+				if model:IsA("Model") and (model:GetAttribute("IsQuarryLuckyBlock") or model.Name:find("QuarryLuckyBlock")) then
+					local cube = model.PrimaryPart or model:FindFirstChild("LuckyCube") :: BasePart?
+					if cube then
+						local dist = (cube.Position - rootPart.Position).Magnitude
+						if dist <= closestDist then
+							closestDist = dist
+							targetLuckyBlock = model
+						end
+					end
+				end
+			end
+		end
+
+		if targetLuckyBlock then
+			task.spawn(function()
+				local mineFn = Remotes.getFunction("MineQuarryLuckyBlock")
+				local ok, hitSuccess, wasDestroyed = pcall(function()
+					return mineFn:InvokeServer(targetLuckyBlock)
+				end)
+				if ok and hitSuccess then
+					AudioController.playSound("rbxassetid://9114223170", 0.7, 1.1)
+					if wasDestroyed then
+						AudioController.playSound("rbxassetid://9069609268", 0.9, 1.0)
+					end
+				end
+			end)
+			return
+		end
+	end
+
 	-- Target Detection: Priority 2 - Training Ores (The Power Quarry Rebirth Training)
 	local targetTrainingOreId: string? = nil
 	local targetTrainingOrePart: BasePart? = nil

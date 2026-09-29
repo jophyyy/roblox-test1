@@ -256,6 +256,40 @@ function MiningClient.performSwing()
 		return
 	end
 
+	-- Target Detection: Priority 1.5 - Dungeon Tower Mobs & Boss
+	local dungeonArena = Workspace:FindFirstChild("DungeonTowerArena")
+	if dungeonArena and rootPart then
+		local dungeonMobs = dungeonArena:FindFirstChild("ActiveDungeonMobs")
+		if dungeonMobs then
+			local closestDungeonMob: Model? = nil
+			local closestDist = 22
+			for _, dMob in dungeonMobs:GetChildren() do
+				if dMob:IsA("Model") and dMob:GetAttribute("IsDungeonMob") then
+					local mRoot = dMob:FindFirstChild("HumanoidRootPart") or dMob.PrimaryPart
+					if mRoot and mRoot:IsA("BasePart") then
+						local dist = (mRoot.Position - rootPart.Position).Magnitude
+						if mouse.Target and mouse.Target:IsDescendantOf(dMob) and dist <= 26 then
+							closestDungeonMob = dMob
+							break
+						elseif dist <= closestDist then
+							closestDist = dist
+							closestDungeonMob = dMob
+						end
+					end
+				end
+			end
+
+			if closestDungeonMob then
+				local mobId = closestDungeonMob:GetAttribute("MobId") or closestDungeonMob.Name
+				task.spawn(function()
+					local dmgMobFn = Remotes.getFunction("DamageDungeonMob")
+					dmgMobFn:InvokeServer(mobId)
+				end)
+				return
+			end
+		end
+	end
+
 	-- Target Detection: Priority 2 - Training Ores (The Power Quarry Rebirth Training)
 	local targetTrainingOreId: string? = nil
 	local targetTrainingOrePart: BasePart? = nil

@@ -626,7 +626,7 @@ function MapService.buildDungeonRuins(folder: Folder)
 		{ pos = Vector3.new(14, 0, 44), h = 16, broken = false },
 
 		-- Distant scenic meadow ruins
-		{ pos = Vector3.new(-92, 0, -92), h = 14, broken = true },
+		{ pos = Vector3.new(-92, 0, -78), h = 14, broken = true },
 		{ pos = Vector3.new(92, 0, -92), h = 16, broken = false },
 		{ pos = Vector3.new(-92, 0, 92), h = 16, broken = false },
 		{ pos = Vector3.new(92, 0, 92), h = 14, broken = true },

@@ -40,10 +40,16 @@ local REGISTERED_EVENTS = {
 	"OpenDailyRewardModal",
 	"PetMerchantPriceSync",
 	"OpenPetMerchantModal",
+	"DungeonStateUpdated",
+	"DungeonBossUpdated",
+	"DungeonMobDamaged",
 }
 
 local REGISTERED_FUNCTIONS = {
 	"GetPlayerData",
+	"EnterDungeon",
+	"LeaveDungeon",
+	"DamageDungeonMob",
 	"ManualHarvest",
 	"RequestRebirth",
 	"RequestBuyItem",

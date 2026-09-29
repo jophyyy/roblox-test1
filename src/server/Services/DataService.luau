@@ -38,6 +38,7 @@ export type PlayerData = {
 	LastWheelSpin: number?,
 	FreeSpins: number?,
 	LootBoxes: { [string]: number }?,
+	LuckyBlocks: { [string]: number }?,
 	TutorialStep: number?,
 	TutorialCompleted: boolean?,
 	RedeemedCodes: { [string]: boolean }?,
@@ -95,6 +96,7 @@ local function getDefaultData(): PlayerData
 		LastWheelSpin = 0,
 		FreeSpins = 1,
 		LootBoxes = {},
+		LuckyBlocks = {},
 		TutorialStep = 1,
 		TutorialCompleted = false,
 		RedeemedCodes = {},
@@ -388,6 +390,7 @@ function DataService.load(player: Player)
 	data.FreeSpins = data.FreeSpins or 1
 	data.Power = data.Power or GameConfig.STARTER_POWER
 	data.LootBoxes = data.LootBoxes or {}
+	data.LuckyBlocks = data.LuckyBlocks or {}
 	data.RedeemedCodes = data.RedeemedCodes or {}
 	data.DailyRewardWeek = data.DailyRewardWeek or 1
 	data.DailyRewardDay = data.DailyRewardDay or 1

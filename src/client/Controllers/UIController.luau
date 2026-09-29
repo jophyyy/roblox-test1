@@ -8639,6 +8639,42 @@ function UIController.buildHUD()
 
 	createStudMenuButton("DevShowroomBtn", "🧪 SHOWROOM (DEV)", Color3.fromRGB(0, 200, 240), triggerShowroomTeleport, rightSideMenu)
 
+	local function triggerMobArenaTeleport()
+		local char = player.Character
+		local root = if char then char:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+		local target = "Arena"
+		if root then
+			local distToArena = (root.Position - Vector3.new(0, 220, 500)).Magnitude
+			if distToArena < 120 then
+				target = "Town"
+			end
+
+			local targetPos = if target == "Arena" then Vector3.new(-10, 224, 555) else Vector3.new(0, 5, 0)
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			if humanoid and humanoid.Sit then
+				humanoid.Sit = false
+			end
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+			char:PivotTo(CFrame.new(targetPos))
+
+			if target == "Arena" then
+				showFloatingPopup("⚔️ TELEPORTED TO MOB TESTING ARENA!", Color3.fromRGB(255, 120, 30), 0)
+			else
+				showFloatingPopup("🏡 TELEPORTED TO TOWN SPAWN!", Color3.fromRGB(80, 255, 140), 0)
+			end
+		end
+
+		task.spawn(function()
+			pcall(function()
+				local devMobArenaFn = Remotes.getFunction("DevTeleportToMobArena")
+				devMobArenaFn:InvokeServer(target)
+			end)
+		end)
+	end
+
+	createStudMenuButton("DevMobArenaBtn", "⚔️ MOB ARENA (DEV)", Color3.fromRGB(245, 80, 30), triggerMobArenaTeleport, rightSideMenu)
+
 	createStudMenuButton("DevMeteorBtn", "☄️ METEOR (DEV)", Color3.fromRGB(255, 60, 20), function()
 		local devMeteorFn = Remotes.getFunction("DevTriggerMeteor")
 		local ok, success, msg = pcall(function()

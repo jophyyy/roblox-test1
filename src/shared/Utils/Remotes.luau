@@ -84,6 +84,7 @@ local REGISTERED_FUNCTIONS = {
 	"GetMeteorStatus",
 	"SkipTutorial",
 	"DevTeleportToShowroom",
+	"DevTeleportToMobArena",
 	"RedeemCode",
 	"GetLeaderboardData",
 	"ClaimDailyReward",

@@ -58,7 +58,7 @@ QuestConfig.MAIN_QUESTS = {
 		targetCount = 3,
 		icon = "🐾",
 		badge = "MAIN #2",
-		rewards = { Cash = 15000, Gems = 300, Crates = { ["crate_wood"] = 1 } },
+		rewards = { Cash = 15000, Gems = 300, Crates = { ["block_wood"] = 1 } },
 		order = 2,
 	},
 	{
@@ -94,7 +94,7 @@ QuestConfig.MAIN_QUESTS = {
 		targetCount = 35,
 		icon = "💎",
 		badge = "MAIN #5",
-		rewards = { Cash = 75000, Gems = 800, Crates = { ["crate_iron"] = 1 } },
+		rewards = { Cash = 75000, Gems = 800, Crates = { ["block_iron"] = 1 } },
 		order = 5,
 	},
 	{
@@ -118,7 +118,7 @@ QuestConfig.MAIN_QUESTS = {
 		targetCount = 1,
 		icon = "⚡",
 		badge = "MAIN #7",
-		rewards = { Cash = 300000, Gems = 2000, Crates = { ["crate_gold"] = 2 }, MasteryXP = { track = "Rebirth", amount = 200 } },
+		rewards = { Cash = 300000, Gems = 2000, Crates = { ["block_gold"] = 2 }, MasteryXP = { track = "Rebirth", amount = 200 } },
 		order = 7,
 	},
 	{
@@ -130,7 +130,7 @@ QuestConfig.MAIN_QUESTS = {
 		targetCount = 500,
 		icon = "👹",
 		badge = "MAIN #8",
-		rewards = { Cash = 750000, Gems = 3500, Crates = { ["crate_diamond"] = 1 }, MasteryXP = { track = "BossSlayer", amount = 300 } },
+		rewards = { Cash = 750000, Gems = 3500, Crates = { ["block_diamond"] = 1 }, MasteryXP = { track = "BossSlayer", amount = 300 } },
 		order = 8,
 	},
 } :: { QuestDef }
@@ -158,7 +158,7 @@ QuestConfig.DAILY_BOUNTIES = {
 		targetCount = 60,
 		icon = "⛏️",
 		badge = "DAILY",
-		rewards = { Cash = 180000, Gems = 900, Crates = { ["crate_iron"] = 1 } },
+		rewards = { Cash = 180000, Gems = 900, Crates = { ["block_iron"] = 1 } },
 		order = 2,
 	},
 	{
@@ -170,7 +170,7 @@ QuestConfig.DAILY_BOUNTIES = {
 		targetCount = 4,
 		icon = "🥚",
 		badge = "DAILY",
-		rewards = { Cash = 90000, Gems = 500, Crates = { ["crate_wood"] = 2 } },
+		rewards = { Cash = 90000, Gems = 500, Crates = { ["block_wood"] = 2 } },
 		order = 3,
 	},
 	{

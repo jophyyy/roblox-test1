@@ -86,7 +86,7 @@ DungeonConfig.STAGES = {
 			eyeColor = Color3.fromRGB(0, 240, 255),
 			material = Enum.Material.Basalt,
 		},
-		reward = { cash = 75000, gems = 250, crateId = "crate_wood" },
+		reward = { cash = 75000, gems = 250, crateId = "block_wood" },
 	},
 	[4] = {
 		stageNumber = 4,
@@ -103,7 +103,7 @@ DungeonConfig.STAGES = {
 			eyeColor = Color3.fromRGB(255, 200, 30),
 			material = Enum.Material.CrackedLava,
 		},
-		reward = { cash = 150000, gems = 500, crateId = "crate_iron" },
+		reward = { cash = 150000, gems = 500, crateId = "block_iron" },
 	},
 	[5] = {
 		stageNumber = 5,
@@ -113,7 +113,7 @@ DungeonConfig.STAGES = {
 		reward = {
 			cash = 500000,
 			gems = 2000,
-			crateId = "crate_gold",
+			crateId = "block_gold",
 			masteryXP = { track = "BossSlayer", amount = 500 },
 		},
 	},

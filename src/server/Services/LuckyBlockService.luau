@@ -324,6 +324,22 @@ function LuckyBlockService.openBlock(player: Player, rawBlockId: string): (boole
 	}
 end
 
+-- 5. Add Lucky Block to Player Inventory
+function LuckyBlockService.addLuckyBlock(player: Player, blockId: string, amount: number?)
+	local resolved = LuckyBlockConfig.resolveBlockId(blockId)
+	local data = DataService.get(player)
+	if data then
+		data.LuckyBlocks = data.LuckyBlocks or {}
+		data.LootBoxes = data.LootBoxes or {}
+		local count = amount or 1
+		data.LuckyBlocks[resolved] = (data.LuckyBlocks[resolved] or 0) + count
+		data.LootBoxes[resolved] = (data.LootBoxes[resolved] or 0) + count
+		local dropEvent = Remotes.getEvent("LuckyBlockDropped")
+		dropEvent:FireClient(player, resolved, count)
+	end
+end
+LuckyBlockService.addLootBox = LuckyBlockService.addLuckyBlock
+
 -- Initialize LuckyBlockService
 function LuckyBlockService.init()
 	print("❓ [LuckyBlockService] Initializing Lucky Block Subsystem...")

@@ -9,7 +9,7 @@ local BossService = require(script.Services.BossService)
 local TrailService = require(script.Services.TrailService)
 local PickaxeService = require(script.Services.PickaxeService)
 local MasteryService = require(script.Services.MasteryService)
-local LootBoxService = require(script.Services.LootBoxService)
+local LuckyBlockService = require(script.Services.LuckyBlockService)
 local MeteorService = require(script.Services.MeteorService)
 local TutorialService = require(script.Services.TutorialService)
 local ShowroomService = require(script.Services.ShowroomService)
@@ -33,7 +33,7 @@ local services = {
 	{ name = "BossService", fn = BossService.init },
 	{ name = "TrailService", fn = TrailService.init },
 	{ name = "PickaxeService", fn = PickaxeService.init },
-	{ name = "LootBoxService", fn = LootBoxService.init },
+	{ name = "LuckyBlockService", fn = LuckyBlockService.init },
 	{ name = "MeteorService", fn = MeteorService.init },
 	{ name = "TutorialService", fn = TutorialService.init },
 	{ name = "ShowroomService", fn = ShowroomService.init },

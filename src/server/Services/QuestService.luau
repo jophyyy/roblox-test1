@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local QuestConfig = require(ReplicatedStorage.Shared.Config.QuestConfig)
+local LuckyBlockConfig = require(ReplicatedStorage.Shared.Config.LuckyBlockConfig)
 local DataService = require(script.Parent.DataService)
 
 local QuestService = {}
@@ -278,9 +279,14 @@ function QuestService.claimReward(player: Player, questId: string): (boolean, st
 		data.Gems = (data.Gems or 0) + def.rewards.Gems
 	end
 	if def.rewards.Crates then
+		data.LuckyBlocks = data.LuckyBlocks or {}
 		data.LootBoxes = data.LootBoxes or {}
-		for crateId, count in pairs(def.rewards.Crates) do
-			data.LootBoxes[crateId] = (data.LootBoxes[crateId] or 0) + count
+		local dropEvent = Remotes.getEvent("LuckyBlockDropped")
+		for rawId, count in pairs(def.rewards.Crates) do
+			local resolved = LuckyBlockConfig.resolveBlockId(rawId)
+			data.LuckyBlocks[resolved] = (data.LuckyBlocks[resolved] or 0) + count
+			data.LootBoxes[resolved] = (data.LootBoxes[resolved] or 0) + count
+			dropEvent:FireClient(player, resolved, count)
 		end
 	end
 	if def.rewards.MasteryXP then

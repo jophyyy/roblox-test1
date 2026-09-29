@@ -11,6 +11,7 @@ local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
 local BossConfig = require(ReplicatedStorage.Shared.Config.BossConfig)
 local Remotes = require(ReplicatedStorage.Shared.Utils.Remotes)
 local FormatNumber = require(ReplicatedStorage.Shared.Utils.FormatNumber)
+local LuckyBlockConfig = require(ReplicatedStorage.Shared.Config.LuckyBlockConfig)
 
 local DataService = require(script.Parent.DataService)
 local PetService = require(script.Parent.PetService)
@@ -816,8 +817,13 @@ function DungeonService.onStageCompleted()
 				data.Gems = (data.Gems or 0) + stageDef.reward.gems
 			end
 			if stageDef.reward.crateId then
+				local blockId = LuckyBlockConfig.resolveBlockId(stageDef.reward.crateId)
+				data.LuckyBlocks = data.LuckyBlocks or {}
 				data.LootBoxes = data.LootBoxes or {}
-				data.LootBoxes[stageDef.reward.crateId] = (data.LootBoxes[stageDef.reward.crateId] or 0) + 1
+				data.LuckyBlocks[blockId] = (data.LuckyBlocks[blockId] or 0) + 1
+				data.LootBoxes[blockId] = (data.LootBoxes[blockId] or 0) + 1
+				local dropEvent = Remotes.getEvent("LuckyBlockDropped")
+				dropEvent:FireClient(p, blockId, 1)
 			end
 			if stageDef.reward.masteryXP then
 				local okM, MasteryService = pcall(function() return require(script.Parent.MasteryService) end)
